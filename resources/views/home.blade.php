@@ -201,7 +201,7 @@
         <div class="container d-flex justify-content-between align-items-center">
             <!-- Logo -->
             <div class="logo-container">
-                <img src="http://127.0.0.1:8000/images/RiffyLogo.png" alt="RIFFY Bingo">
+            <img src="{{ asset('images/RiffyLogo.png') }}" alt="Logo">
             </div>
             <!-- Enlaces -->
             <div>
@@ -218,8 +218,8 @@
     <div class="container py-4">
         <div class="bingo-container p-4">
             <!-- FORMULARIO -->
-            <form action="http://127.0.0.1:8000/reservar" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="_token" value="DjQ47IxhK49LddvkyfiuKiVTb8SwhJqjeGtyjqc6" autocomplete="off">
+            <form action="{{ route('bingo.store') }}" method="POST" enctype="multipart/form-data">
+            @csrf
                 <!-- Paso 1 -->
                 <h4 class="paso-title text-center mb-2">Paso 1</h4>
                 <p class="text-start mb-3 fw-bold">Escoge la cantidad de cartones:</p>

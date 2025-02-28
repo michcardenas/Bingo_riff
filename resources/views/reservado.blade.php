@@ -107,7 +107,7 @@
             <!-- Logo -->
             <div class="logo-container">
                 <!-- Ajusta la ruta de tu logo según tu proyecto -->
-                <img src="http://127.0.0.1:8000/images/RiffyLogo.png" alt="RIFFY Bingo">
+                <img src="{{ asset('images/RiffyLogo.png') }}" alt="Logo">
             </div>
             <!-- Enlaces -->
             <div>

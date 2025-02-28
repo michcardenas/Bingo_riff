@@ -5,20 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Reserva extends Model
+class Bingo extends Model
 {
     use HasFactory;
 
-    protected $table = 'reservas';
+    protected $table = 'bingos';
 
     protected $fillable = [
         'nombre',
-        'celular',
-        'cantidad',
-        'comprobante',
-        'series',
-        'total',
-        'numero_comprobante',
+        'fecha',
+        'precio',
         'estado',
     ];
 }
