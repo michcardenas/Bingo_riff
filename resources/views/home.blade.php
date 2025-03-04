@@ -205,7 +205,7 @@
             </div>
             <!-- Enlaces -->
             <div>
-                <a href="{{ route('buscarcartones') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
+                <a href="{{ route('cartones.index') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-inline d-md-none">Grupo WA</a>
             </div>
@@ -361,161 +361,165 @@
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
     </script>
 
-  <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
-<script>
-    // Precio dinámico (asegurando que se interprete como número decimal)
-    let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
+    <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
+    <script>
+        // Precio dinámico (asegurando que se interprete como número decimal)
+        let PRICE_PER_CARTON = parseFloat({
+            {
+                $bingo - > precio ?? 6000
+            }
+        });
 
-    // Elementos de cantidad y total
-    const inputCartones = document.getElementById('inputCartones');
-    const btnMinus = document.getElementById('btnMinus');
-    const btnPlus = document.getElementById('btnPlus');
-    const totalPrice = document.getElementById('totalPrice');
-    const totalPagar = document.getElementById('totalPagar');
-    const precioCarton = document.getElementById('precioCarton');
+        // Elementos de cantidad y total
+        const inputCartones = document.getElementById('inputCartones');
+        const btnMinus = document.getElementById('btnMinus');
+        const btnPlus = document.getElementById('btnPlus');
+        const totalPrice = document.getElementById('totalPrice');
+        const totalPagar = document.getElementById('totalPagar');
+        const precioCarton = document.getElementById('precioCarton');
 
-    // Función para formatear números con separadores de miles (sin decimales)
-    function formatNumber(number) {
-        return `$${Math.round(number).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} Pesos`;
-    }
-
-    function updateTotal() {
-        let quantity = parseInt(inputCartones.value, 10);
-        if (isNaN(quantity) || quantity < 1) {
-            quantity = 1;
-            inputCartones.value = 1;
+        // Función para formatear números con separadores de miles (sin decimales)
+        function formatNumber(number) {
+            return `$${Math.round(number).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} Pesos`;
         }
-        const total = quantity * PRICE_PER_CARTON;
-        
-        // Actualizar precio del cartón y totales usando el mismo formato (sin decimales)
-        precioCarton.textContent = formatNumber(PRICE_PER_CARTON);
-        totalPrice.textContent = formatNumber(total);
-        totalPagar.textContent = formatNumber(total);
-    }
 
-    btnMinus.addEventListener('click', () => {
-        let quantity = parseInt(inputCartones.value, 10);
-        if (quantity > 1) {
-            quantity--;
+        function updateTotal() {
+            let quantity = parseInt(inputCartones.value, 10);
+            if (isNaN(quantity) || quantity < 1) {
+                quantity = 1;
+                inputCartones.value = 1;
+            }
+            const total = quantity * PRICE_PER_CARTON;
+
+            // Actualizar precio del cartón y totales usando el mismo formato (sin decimales)
+            precioCarton.textContent = formatNumber(PRICE_PER_CARTON);
+            totalPrice.textContent = formatNumber(total);
+            totalPagar.textContent = formatNumber(total);
+        }
+
+        btnMinus.addEventListener('click', () => {
+            let quantity = parseInt(inputCartones.value, 10);
+            if (quantity > 1) {
+                quantity--;
+                inputCartones.value = quantity;
+                updateTotal();
+            }
+        });
+
+        btnPlus.addEventListener('click', () => {
+            let quantity = parseInt(inputCartones.value, 10);
+            quantity++;
             inputCartones.value = quantity;
             updateTotal();
-        }
-    });
+        });
 
-    btnPlus.addEventListener('click', () => {
-        let quantity = parseInt(inputCartones.value, 10);
-        quantity++;
-        inputCartones.value = quantity;
+        inputCartones.addEventListener('change', updateTotal);
         updateTotal();
-    });
 
-    inputCartones.addEventListener('change', updateTotal);
-    updateTotal();
+        // Manejo de archivos para vista previa múltiple con eliminación
+        let selectedFiles = []; // Array global de archivos seleccionados
+        let dt = new DataTransfer(); // Objeto DataTransfer para simular FileList
 
-    // Manejo de archivos para vista previa múltiple con eliminación
-    let selectedFiles = []; // Array global de archivos seleccionados
-    let dt = new DataTransfer(); // Objeto DataTransfer para simular FileList
+        const fileInput = document.getElementById('comprobante');
+        const previewContainer = document.getElementById('previewContainer');
 
-    const fileInput = document.getElementById('comprobante');
-    const previewContainer = document.getElementById('previewContainer');
-
-    fileInput.addEventListener('change', () => {
-        // Agregar nuevos archivos al array global
-        const newFiles = Array.from(fileInput.files);
-        newFiles.forEach(file => {
-            selectedFiles.push(file);
+        fileInput.addEventListener('change', () => {
+            // Agregar nuevos archivos al array global
+            const newFiles = Array.from(fileInput.files);
+            newFiles.forEach(file => {
+                selectedFiles.push(file);
+            });
+            updateFileInput();
+            updatePreview();
         });
-        updateFileInput();
-        updatePreview();
-    });
 
-    function updateFileInput() {
-        dt = new DataTransfer();
-        selectedFiles.forEach(file => {
-            dt.items.add(file);
-        });
-        fileInput.files = dt.files;
-    }
+        function updateFileInput() {
+            dt = new DataTransfer();
+            selectedFiles.forEach(file => {
+                dt.items.add(file);
+            });
+            fileInput.files = dt.files;
+        }
 
-    function updatePreview() {
-        previewContainer.innerHTML = '';
-        selectedFiles.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                // Crear contenedor para la imagen y botón de borrar
-                const previewItem = document.createElement('div');
-                previewItem.classList.add('preview-item');
+        function updatePreview() {
+            previewContainer.innerHTML = '';
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Crear contenedor para la imagen y botón de borrar
+                    const previewItem = document.createElement('div');
+                    previewItem.classList.add('preview-item');
 
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.classList.add('img-preview');
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.classList.add('img-preview');
 
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = 'X';
-                deleteBtn.classList.add('delete-btn');
-                deleteBtn.addEventListener('click', () => {
-                    selectedFiles.splice(index, 1);
-                    updateFileInput();
-                    updatePreview();
-                });
-
-                previewItem.appendChild(img);
-                previewItem.appendChild(deleteBtn);
-                previewContainer.appendChild(previewItem);
-            }
-            reader.readAsDataURL(file);
-        });
-    }
-</script>
-<script>
-    function cargarBingos() {
-        fetch("{{ route('bingos.get') }}") // Ruta que devuelve JSON con los bingos
-            .then(response => response.json())
-            .then(data => {
-                let dropdownList = document.getElementById("bingoDropdownList");
-                dropdownList.innerHTML = ""; // Limpiar el dropdown
-
-                if (data.length > 0) {
-                    data.forEach(bingo => {
-                        let listItem = document.createElement("li");
-                        let item = document.createElement("a");
-                        item.classList.add("dropdown-item");
-                        item.href = "#";
-                        item.dataset.bingoId = bingo.id;
-                        item.dataset.bingoPrecio = bingo.precio;
-                        item.textContent = `${bingo.nombre} - ${bingo.fecha_formateada}`;
-                        item.addEventListener('click', function(e) {
-                            e.preventDefault();
-
-                            // Actualizar ID de bingo
-                            document.getElementById('bingo_id').value = bingo.id;
-
-                            // Actualizar precio por cartón (asegurando que sea un número decimal)
-                            PRICE_PER_CARTON = parseFloat(bingo.precio);
-                            
-                            // Actualizar totales
-                            updateTotal();
-
-                            // Actualizar título del menú
-                            document.getElementById('menuDropdown').textContent = `☰ ${bingo.nombre}`;
-                        });
-
-                        listItem.appendChild(item);
-                        dropdownList.appendChild(listItem);
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'X';
+                    deleteBtn.classList.add('delete-btn');
+                    deleteBtn.addEventListener('click', () => {
+                        selectedFiles.splice(index, 1);
+                        updateFileInput();
+                        updatePreview();
                     });
-                } else {
-                    dropdownList.innerHTML = `<li class="text-center p-2">No hay bingos disponibles</li>`;
+
+                    previewItem.appendChild(img);
+                    previewItem.appendChild(deleteBtn);
+                    previewContainer.appendChild(previewItem);
                 }
-            })
-            .catch(error => console.error("Error al cargar los bingos:", error));
-    }
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+    <script>
+        function cargarBingos() {
+            fetch("{{ route('bingos.get') }}") // Ruta que devuelve JSON con los bingos
+                .then(response => response.json())
+                .then(data => {
+                    let dropdownList = document.getElementById("bingoDropdownList");
+                    dropdownList.innerHTML = ""; // Limpiar el dropdown
 
-    // Cargar los bingos al inicio
-    cargarBingos();
+                    if (data.length > 0) {
+                        data.forEach(bingo => {
+                            let listItem = document.createElement("li");
+                            let item = document.createElement("a");
+                            item.classList.add("dropdown-item");
+                            item.href = "#";
+                            item.dataset.bingoId = bingo.id;
+                            item.dataset.bingoPrecio = bingo.precio;
+                            item.textContent = `${bingo.nombre} - ${bingo.fecha_formateada}`;
+                            item.addEventListener('click', function(e) {
+                                e.preventDefault();
 
-    // Actualizar cada 5 segundos
-    setInterval(cargarBingos, 5000);
-</script>
+                                // Actualizar ID de bingo
+                                document.getElementById('bingo_id').value = bingo.id;
+
+                                // Actualizar precio por cartón (asegurando que sea un número decimal)
+                                PRICE_PER_CARTON = parseFloat(bingo.precio);
+
+                                // Actualizar totales
+                                updateTotal();
+
+                                // Actualizar título del menú
+                                document.getElementById('menuDropdown').textContent = `☰ ${bingo.nombre}`;
+                            });
+
+                            listItem.appendChild(item);
+                            dropdownList.appendChild(listItem);
+                        });
+                    } else {
+                        dropdownList.innerHTML = `<li class="text-center p-2">No hay bingos disponibles</li>`;
+                    }
+                })
+                .catch(error => console.error("Error al cargar los bingos:", error));
+        }
+
+        // Cargar los bingos al inicio
+        cargarBingos();
+
+        // Actualizar cada 5 segundos
+        setInterval(cargarBingos, 5000);
+    </script>
 
 </body>
 

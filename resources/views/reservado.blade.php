@@ -130,7 +130,7 @@
             </div>
             <!-- Enlaces -->
             <div>
-                <a href="{{ route('buscarcartones') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
+                <a href="{{ route('cartones.index') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-inline d-md-none">Grupo WA</a>
             </div>
@@ -149,7 +149,7 @@
 
             <!-- Botón: Buscar mis cartones -->
             <p class="mt-4 mb-2 fw-bold">Puedes buscar el estado de tus cartones aquí</p>
-            <a href="{{ route('buscarcartones') }}"
+            <a href="{{ route('cartones.index') }}"
                 class="btn btn-naranja text-white fw-bold w-100 py-2"
                 style="margin-bottom: 20px;">
                 BUSCAR MIS CARTONES
