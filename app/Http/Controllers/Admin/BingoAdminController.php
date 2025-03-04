@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bingo;
 use App\Models\Reserva;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\DB;
 
 class BingoAdminController extends Controller
@@ -77,15 +78,21 @@ class BingoAdminController extends Controller
     /**
      * Aprueba una reserva y actualiza su estado a "aprobado".
      */
-    public function reservasAprobar($id)
+    public function reservasAprobar(Request $request, $id)
     {
+        $request->validate([
+            'numero_comprobante' => 'required|string|max:255',
+        ]);
+    
         $reserva = Reserva::findOrFail($id);
         $reserva->estado = 'aprobado';
+        $reserva->numero_comprobante = $request->numero_comprobante;
         $reserva->save();
-
+    
         return redirect()->route('reservas.index')
-            ->with('success', 'Reserva aprobada correctamente.');
+            ->with('success', 'Reserva aprobada y número de comprobante guardado correctamente.');
     }
+    
 
     /**
      * Rechaza una reserva y actualiza su estado a "rechazado".
@@ -94,11 +101,13 @@ class BingoAdminController extends Controller
     {
         $reserva = Reserva::findOrFail($id);
         $reserva->estado = 'rechazado';
+        $reserva->eliminado = 1; // Marca la reserva como eliminada
         $reserva->save();
-
+    
         return redirect()->route('reservas.index')
-            ->with('success', 'Reserva rechazada correctamente.');
+            ->with('success', 'Reserva rechazada y marcada como eliminada correctamente.');
     }
+    
 
     public function cerrar($id)
     {

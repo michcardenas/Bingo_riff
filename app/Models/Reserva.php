@@ -13,6 +13,7 @@ class Reserva extends Model
 
     protected $fillable = [
         'nombre',
+        'eliminado',
         'celular',
         'cantidad',
         'comprobante',

@@ -23,12 +23,23 @@
             <td>{{ $reserva->series }}</td>
             <td>${{ number_format($reserva->total, 0, ',', '.') }} Pesos</td>
             <td>
-                @if($reserva->comprobante)
-                    <a href="{{ asset('storage/' . $reserva->comprobante) }}" target="_blank" class="btn btn-sm btn-light">
-                        Ver
-                    </a>
+            @if($reserva->comprobante)
+                @php
+                // Decodifica el JSON; si ya es array, lo usa tal cual
+                $comprobantes = is_array($reserva->comprobante) ? $reserva->comprobante : json_decode($reserva->comprobante, true);
+                @endphp
+
+                @if(is_array($comprobantes) && count($comprobantes) > 0)
+                @foreach($comprobantes as $index => $comprobante)
+                <a href="{{ asset('storage/' . $comprobante) }}" target="_blank" class="btn btn-sm btn-light">
+                    Ver comprobante {{ $index + 1 }}
+                </a>
+                @endforeach
                 @else
-                    <span class="text-danger">Sin comprobante</span>
+                <span class="text-danger">Sin comprobante</span>
+                @endif
+                @else
+                <span class="text-danger">Sin comprobante</span>
                 @endif
             </td>
             <td>

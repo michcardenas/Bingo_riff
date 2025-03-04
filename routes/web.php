@@ -1,13 +1,29 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\BingoController;
+use App\Http\Controllers\CartonController;
 use App\Http\Controllers\Admin\BingoAdminController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('home');
-})->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+Route::get('/bingos/get', [HomeController::class, 'getBingos'])->name('bingos.get');
+Route::get('/bingo/{id}', [HomeController::class, 'show'])->name('bingo.ver');
+Route::get('/bingo/activo', [HomeController::class, 'getBingoActivo'])->name('bingo.activo');
+
+
+// Rutas para los cartones
+Route::get('/cartones/buscar', [CartonController::class, 'index'])->name('cartones.index');
+Route::post('/cartones/buscar', [CartonController::class, 'buscar'])->name('cartones.buscar');
+Route::get('/cartones/descargar/{numero}', [CartonController::class, 'descargar'])->name('cartones.descargar');
+
+// Ruta del grupo de WhatsApp (ajusta según necesites)
+Route::get('/whatsapp/grupo', function() {
+    return redirect('https://chat.whatsapp.com/tu-enlace-aqui');
+})->name('whatsapp.grupo');
+
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -39,6 +55,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/reservas/comprobantes-duplicados', [BingoAdminController::class, 'comprobantesDuplicados'])->name('admin.comprobantesDuplicados');
     Route::get('/reservas/pedidos-duplicados', [BingoAdminController::class, 'pedidosDuplicados'])->name('admin.pedidosDuplicados');
     Route::get('/reservas/cartones-eliminados', [BingoAdminController::class, 'cartonesEliminados'])->name('admin.cartonesEliminados');
+    Route::patch('/reservas/{id}/numero-comprobante', [BingoAdminController::class, 'updateNumeroComprobante'])->name('reservas.updateNumeroComprobante');
 });
 
 require __DIR__ . '/auth.php';

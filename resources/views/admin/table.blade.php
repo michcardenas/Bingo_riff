@@ -4,7 +4,7 @@
             <th>ID</th>
             <th>Nombre</th>
             <th>Celular</th>
-            <th>Cantidad</th>
+            <th># Cartones</th>
             <th>Series</th>
             <th>Total</th>
             <th>Comprobante</th>
@@ -24,16 +24,28 @@
             <td>${{ number_format($reserva->total, 0, ',', '.') }} Pesos</td>
             <td>
                 @if($reserva->comprobante)
-                    <a href="{{ asset('storage/' . $reserva->comprobante) }}" target="_blank" class="btn btn-sm btn-light">
-                        Ver
-                    </a>
+                    @php
+                        $comprobantes = is_array($reserva->comprobante) ? $reserva->comprobante : json_decode($reserva->comprobante, true);
+                    @endphp
+                    @if(is_array($comprobantes) && count($comprobantes) > 0)
+                        @foreach($comprobantes as $index => $comprobante)
+                            <a href="{{ asset('storage/' . $comprobante) }}" target="_blank" class="btn btn-sm btn-light">
+                                Ver comprobante {{ $index + 1 }}
+                            </a>
+                        @endforeach
+                    @else
+                        <span class="text-danger">Sin comprobante</span>
+                    @endif
                 @else
                     <span class="text-danger">Sin comprobante</span>
                 @endif
             </td>
             <td>
-                <input type="text" class="form-control form-control-sm bg-dark text-white border-light" 
-                       value="{{ $reserva->numero_comprobante ?? '' }}" readonly>
+                @if($reserva->estado == 'revision')
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-light comprobante-input" value="{{ $reserva->numero_comprobante ?? '' }}">
+                @else
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-light" value="{{ $reserva->numero_comprobante ?? '' }}" readonly>
+                @endif
             </td>
             <td>
                 @if($reserva->estado == 'revision')
@@ -48,7 +60,7 @@
             </td>
             <td>
                 @if($reserva->estado == 'revision')
-                    <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline">
+                    <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline aprobar-form">
                         @csrf
                         @method('PATCH')
                         <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
@@ -72,3 +84,22 @@
         @endforelse
     </tbody>
 </table>
+
+<script>
+document.querySelectorAll('.aprobar-form').forEach(form => {
+    form.addEventListener('submit', function(event) {
+        // Encuentra la fila que contiene el formulario
+        const row = form.closest('tr');
+        // Busca el input editable del número de comprobante en la misma fila
+        const input = row.querySelector('.comprobante-input');
+        if(input) {
+            // Crea un campo oculto para enviar el valor
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'numero_comprobante';
+            hiddenInput.value = input.value;
+            form.appendChild(hiddenInput);
+        }
+    });
+});
+</script>

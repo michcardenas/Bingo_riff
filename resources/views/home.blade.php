@@ -201,25 +201,35 @@
         <div class="container d-flex justify-content-between align-items-center">
             <!-- Logo -->
             <div class="logo-container">
-            <img src="{{ asset('images/RiffyLogo.png') }}" alt="Logo">
+                <img src="{{ asset('images/RiffyLogo.png') }}" alt="Logo">
             </div>
             <!-- Enlaces -->
             <div>
-                <a href="#" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
+                <a href="{{ route('buscarcartones') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-inline d-md-none">Grupo WA</a>
             </div>
         </div>
     </header>
 
-    <!-- Mensaje de éxito -->
-    
+
+    <div class="dropdown">
+        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="menuDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            ☰ Seleccionar Bingo
+        </button>
+        <ul class="dropdown-menu" id="bingoDropdownList" aria-labelledby="menuDropdown">
+            <!-- Aquí se cargarán dinámicamente los bingos -->
+        </ul>
+    </div>
+
+
     <!-- Contenedor principal -->
     <div class="container py-4">
         <div class="bingo-container p-4">
             <!-- FORMULARIO -->
             <form action="{{ route('bingo.store') }}" method="POST" enctype="multipart/form-data">
-            @csrf
+                @csrf
+                <input type="hidden" name="bingo_id" id="bingo_id" value="{{ $bingo->id ?? '' }}">
                 <!-- Paso 1 -->
                 <h4 class="paso-title text-center mb-2">Paso 1</h4>
                 <p class="text-start mb-3 fw-bold">Escoge la cantidad de cartones:</p>
@@ -244,14 +254,15 @@
                             id="btnPlus"
                             class="btn btn-light fw-bold px-3 py-2">+</button>
                     </div>
+                    <!-- Sección de precios en HTML con formato correcto -->
                     <div class="d-flex justify-content-between align-items-center">
                         <div><span class="text-verde fw-bold">Precio cartón:</span></div>
-                        <div class="text-end fw-bold">$6.000 Pesos</div>
+                        <div class="text-end fw-bold" id="precioCarton">${{ number_format((float)($bingo->precio ?? 6000), 2, '.', '.') }} Pesos</div>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center">
                         <div><span class="text-verde fw-bold">Total:</span></div>
-                        <div class="text-end fw-bold" id="totalPrice">$6.000 Pesos</div>
+                        <div class="text-end fw-bold" id="totalPrice">${{ number_format((float)($bingo->precio ?? 6000), 0, '', '.') }} Pesos</div>
                     </div>
                 </div>
 
@@ -290,7 +301,7 @@
                             <div class="text-verde mb-3 fw-bold">Transfiya: <span class="text-white">3235903774</span></div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <div><span class="text-amarillo fw-bold">Total a pagar:</span></div>
-                                <div class="text-end fw-bold" id="totalPagar">$6.000 Pesos</div>
+                                <div class="text-end fw-bold" id="totalPagar">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</div>
                             </div>
                         </div>
                     </div>
@@ -328,7 +339,7 @@
                     </div>
                     <!-- Contenedor para la vista previa de las imágenes -->
                     <div id="previewContainer"></div>
-                                        <button class="btn btn-naranja text-white fw-bold w-100 py-2" style="margin-top: 10px;">
+                    <button class="btn btn-naranja text-white fw-bold w-100 py-2" style="margin-top: 10px;">
                         RESERVAR MIS CARTONES
                     </button>
 
@@ -350,103 +361,162 @@
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
     </script>
 
-    <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
-    <script>
-        // Precio fijo
-        const PRICE_PER_CARTON = 6000;
+  <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
+<script>
+    // Precio dinámico (asegurando que se interprete como número decimal)
+    let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
 
-        // Elementos de cantidad y total
-        const inputCartones = document.getElementById('inputCartones');
-        const btnMinus = document.getElementById('btnMinus');
-        const btnPlus = document.getElementById('btnPlus');
-        const totalPrice = document.getElementById('totalPrice');
-        const totalPagar = document.getElementById('totalPagar');
+    // Elementos de cantidad y total
+    const inputCartones = document.getElementById('inputCartones');
+    const btnMinus = document.getElementById('btnMinus');
+    const btnPlus = document.getElementById('btnPlus');
+    const totalPrice = document.getElementById('totalPrice');
+    const totalPagar = document.getElementById('totalPagar');
+    const precioCarton = document.getElementById('precioCarton');
 
-        function updateTotal() {
-            let quantity = parseInt(inputCartones.value, 10);
-            if (isNaN(quantity) || quantity < 1) {
-                quantity = 1;
-                inputCartones.value = 1;
-            }
-            const total = quantity * PRICE_PER_CARTON;
-            totalPrice.textContent = `$${total.toLocaleString('es-CO')} Pesos`;
-            totalPagar.textContent = `$${total.toLocaleString('es-CO')} Pesos`;
+    // Función para formatear números con separadores de miles (sin decimales)
+    function formatNumber(number) {
+        return `$${Math.round(number).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} Pesos`;
+    }
+
+    function updateTotal() {
+        let quantity = parseInt(inputCartones.value, 10);
+        if (isNaN(quantity) || quantity < 1) {
+            quantity = 1;
+            inputCartones.value = 1;
         }
+        const total = quantity * PRICE_PER_CARTON;
+        
+        // Actualizar precio del cartón y totales usando el mismo formato (sin decimales)
+        precioCarton.textContent = formatNumber(PRICE_PER_CARTON);
+        totalPrice.textContent = formatNumber(total);
+        totalPagar.textContent = formatNumber(total);
+    }
 
-        btnMinus.addEventListener('click', () => {
-            let quantity = parseInt(inputCartones.value, 10);
-            if (quantity > 1) {
-                quantity--;
-                inputCartones.value = quantity;
-                updateTotal();
-            }
-        });
-
-        btnPlus.addEventListener('click', () => {
-            let quantity = parseInt(inputCartones.value, 10);
-            quantity++;
+    btnMinus.addEventListener('click', () => {
+        let quantity = parseInt(inputCartones.value, 10);
+        if (quantity > 1) {
+            quantity--;
             inputCartones.value = quantity;
             updateTotal();
-        });
+        }
+    });
 
-        inputCartones.addEventListener('change', updateTotal);
+    btnPlus.addEventListener('click', () => {
+        let quantity = parseInt(inputCartones.value, 10);
+        quantity++;
+        inputCartones.value = quantity;
         updateTotal();
+    });
 
-        // Manejo de archivos para vista previa múltiple con eliminación
-        let selectedFiles = []; // Array global de archivos seleccionados
-        let dt = new DataTransfer(); // Objeto DataTransfer para simular FileList
+    inputCartones.addEventListener('change', updateTotal);
+    updateTotal();
 
-        const fileInput = document.getElementById('comprobante');
-        const previewContainer = document.getElementById('previewContainer');
+    // Manejo de archivos para vista previa múltiple con eliminación
+    let selectedFiles = []; // Array global de archivos seleccionados
+    let dt = new DataTransfer(); // Objeto DataTransfer para simular FileList
 
-        fileInput.addEventListener('change', () => {
-            // Agregar nuevos archivos al array global
-            const newFiles = Array.from(fileInput.files);
-            newFiles.forEach(file => {
-                selectedFiles.push(file);
-            });
-            updateFileInput();
-            updatePreview();
+    const fileInput = document.getElementById('comprobante');
+    const previewContainer = document.getElementById('previewContainer');
+
+    fileInput.addEventListener('change', () => {
+        // Agregar nuevos archivos al array global
+        const newFiles = Array.from(fileInput.files);
+        newFiles.forEach(file => {
+            selectedFiles.push(file);
         });
+        updateFileInput();
+        updatePreview();
+    });
 
-        function updateFileInput() {
-            dt = new DataTransfer();
-            selectedFiles.forEach(file => {
-                dt.items.add(file);
-            });
-            fileInput.files = dt.files;
-        }
+    function updateFileInput() {
+        dt = new DataTransfer();
+        selectedFiles.forEach(file => {
+            dt.items.add(file);
+        });
+        fileInput.files = dt.files;
+    }
 
-        function updatePreview() {
-            previewContainer.innerHTML = '';
-            selectedFiles.forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    // Crear contenedor para la imagen y botón de borrar
-                    const previewItem = document.createElement('div');
-                    previewItem.classList.add('preview-item');
+    function updatePreview() {
+        previewContainer.innerHTML = '';
+        selectedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Crear contenedor para la imagen y botón de borrar
+                const previewItem = document.createElement('div');
+                previewItem.classList.add('preview-item');
 
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.classList.add('img-preview');
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.classList.add('img-preview');
 
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.textContent = 'X';
-                    deleteBtn.classList.add('delete-btn');
-                    deleteBtn.addEventListener('click', () => {
-                        selectedFiles.splice(index, 1);
-                        updateFileInput();
-                        updatePreview();
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'X';
+                deleteBtn.classList.add('delete-btn');
+                deleteBtn.addEventListener('click', () => {
+                    selectedFiles.splice(index, 1);
+                    updateFileInput();
+                    updatePreview();
+                });
+
+                previewItem.appendChild(img);
+                previewItem.appendChild(deleteBtn);
+                previewContainer.appendChild(previewItem);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+</script>
+<script>
+    function cargarBingos() {
+        fetch("{{ route('bingos.get') }}") // Ruta que devuelve JSON con los bingos
+            .then(response => response.json())
+            .then(data => {
+                let dropdownList = document.getElementById("bingoDropdownList");
+                dropdownList.innerHTML = ""; // Limpiar el dropdown
+
+                if (data.length > 0) {
+                    data.forEach(bingo => {
+                        let listItem = document.createElement("li");
+                        let item = document.createElement("a");
+                        item.classList.add("dropdown-item");
+                        item.href = "#";
+                        item.dataset.bingoId = bingo.id;
+                        item.dataset.bingoPrecio = bingo.precio;
+                        item.textContent = `${bingo.nombre} - ${bingo.fecha_formateada}`;
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+
+                            // Actualizar ID de bingo
+                            document.getElementById('bingo_id').value = bingo.id;
+
+                            // Actualizar precio por cartón (asegurando que sea un número decimal)
+                            PRICE_PER_CARTON = parseFloat(bingo.precio);
+                            
+                            // Actualizar totales
+                            updateTotal();
+
+                            // Actualizar título del menú
+                            document.getElementById('menuDropdown').textContent = `☰ ${bingo.nombre}`;
+                        });
+
+                        listItem.appendChild(item);
+                        dropdownList.appendChild(listItem);
                     });
-
-                    previewItem.appendChild(img);
-                    previewItem.appendChild(deleteBtn);
-                    previewContainer.appendChild(previewItem);
+                } else {
+                    dropdownList.innerHTML = `<li class="text-center p-2">No hay bingos disponibles</li>`;
                 }
-                reader.readAsDataURL(file);
-            });
-        }
-    </script>
+            })
+            .catch(error => console.error("Error al cargar los bingos:", error));
+    }
+
+    // Cargar los bingos al inicio
+    cargarBingos();
+
+    // Actualizar cada 5 segundos
+    setInterval(cargarBingos, 5000);
+</script>
+
 </body>
 
 </html>

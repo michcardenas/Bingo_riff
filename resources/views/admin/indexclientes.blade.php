@@ -39,13 +39,18 @@
 <script>
     // Función para cargar contenido en el contenedor 'tableContent'
     function loadTableContent(url) {
-        fetch(url)
+        fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
             .then(response => response.text())
             .then(html => {
                 document.getElementById('tableContent').innerHTML = html;
             })
             .catch(error => console.error('Error cargando contenido:', error));
     }
+
 
     // Asignar eventos a los botones para actualizar la tabla sin repetir el header
     document.getElementById('btnOriginal').addEventListener('click', function() {

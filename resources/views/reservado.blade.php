@@ -9,16 +9,14 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link 
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" 
-      rel="stylesheet"
-    >
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
 
     <!-- Bootstrap 5 (CDN) -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
+        rel="stylesheet">
 
     <style>
         body {
@@ -27,30 +25,42 @@
             font-family: 'Poppins', sans-serif;
             font-size: 18px;
         }
-        h1, h2, h3, h4, h5, h6, .paso-title {
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6,
+        .paso-title {
             font-family: 'Montserrat', sans-serif;
             font-weight: 700;
         }
+
         .paso-title {
             color: #fa9044;
             font-weight: bold;
             letter-spacing: 0.5px;
             font-size: 28px;
         }
+
         p {
             font-size: 18px;
             margin-bottom: 0.8rem;
         }
+
         .logo-container {
             height: 80px;
             display: flex;
             align-items: center;
         }
+
         .logo-container img {
             height: 100%;
             width: auto;
             display: block;
         }
+
         .btn-naranja {
             background-color: #fa9044;
             border-color: #fa9044;
@@ -59,6 +69,7 @@
             letter-spacing: 0.5px;
             font-size: 20px;
         }
+
         .btn-verde {
             background-color: #00bf63;
             border-color: #00bf63;
@@ -67,31 +78,39 @@
             letter-spacing: 0.5px;
             font-size: 20px;
         }
+
         .bingo-container {
             background-color: #121212;
             border-radius: 8px;
         }
+
         .nav-link-custom {
             font-size: 16px;
         }
+
         @media (min-width: 768px) {
             .bingo-container {
                 max-width: 500px;
                 margin: 0 auto;
             }
+
             body {
                 font-size: 20px;
             }
+
             p {
                 font-size: 20px;
             }
+
             .paso-title {
                 font-size: 32px;
             }
+
             .logo-container {
                 height: 50px;
             }
         }
+
         @media (min-width: 992px) {
             .bingo-container {
                 max-width: 600px;
@@ -111,7 +130,7 @@
             </div>
             <!-- Enlaces -->
             <div>
-                <a href="#" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
+                <a href="{{ route('buscarcartones') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-inline d-md-none">Grupo WA</a>
             </div>
@@ -130,13 +149,11 @@
 
             <!-- Botón: Buscar mis cartones -->
             <p class="mt-4 mb-2 fw-bold">Puedes buscar el estado de tus cartones aquí</p>
-            <a href="#"
-               class="btn btn-naranja text-white fw-bold w-100 py-2"
-               style="margin-bottom: 20px;"
-            >
+            <a href="{{ route('buscarcartones') }}"
+                class="btn btn-naranja text-white fw-bold w-100 py-2"
+                style="margin-bottom: 20px;">
                 BUSCAR MIS CARTONES
             </a>
-
             <!-- Información de Whatsapp -->
             <p class="mt-4 fw-bold">
                 Toda la información de los sorteos se entregará a través de nuestro grupo de Whatsapp.
@@ -147,17 +164,16 @@
 
             <!-- Botón: Ingresar a grupo de Whatsapp -->
             <a href="#"
-               class="btn btn-verde text-white fw-bold w-100 py-2"
-               style="margin-top: 10px;"
-            >
+                class="btn btn-verde text-white fw-bold w-100 py-2"
+                style="margin-top: 10px;">
                 INGRESAR A GRUPO DE WHATSAPP
             </a>
         </div>
     </div>
 
     <!-- Bootstrap JS -->
-    <script 
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
     </script>
 </body>
 

@@ -24,44 +24,55 @@
             <td>${{ number_format($reserva->total, 0, ',', '.') }} Pesos</td>
             <td>
                 @if($reserva->comprobante)
-                    <a href="{{ asset('storage/' . $reserva->comprobante) }}" target="_blank" class="btn btn-sm btn-light">
-                        Ver
-                    </a>
+                @php
+                // Decodifica el JSON; si ya es array, lo usa tal cual
+                $comprobantes = is_array($reserva->comprobante) ? $reserva->comprobante : json_decode($reserva->comprobante, true);
+                @endphp
+
+                @if(is_array($comprobantes) && count($comprobantes) > 0)
+                @foreach($comprobantes as $index => $comprobante)
+                <a href="{{ asset('storage/' . $comprobante) }}" target="_blank" class="btn btn-sm btn-light">
+                    Ver comprobante {{ $index + 1 }}
+                </a>
+                @endforeach
                 @else
-                    <span class="text-danger">Sin comprobante</span>
+                <span class="text-danger">Sin comprobante</span>
+                @endif
+                @else
+                <span class="text-danger">Sin comprobante</span>
                 @endif
             </td>
             <td>
-                <input type="text" class="form-control form-control-sm bg-dark text-white border-light" 
-                       value="{{ $reserva->numero_comprobante ?? '' }}" readonly>
+                <input type="text" class="form-control form-control-sm bg-dark text-white border-light"
+                    value="{{ $reserva->numero_comprobante ?? '' }}" readonly>
             </td>
             <td>
                 @if($reserva->estado == 'revision')
-                    <span class="badge bg-warning text-dark">Revisión</span>
+                <span class="badge bg-warning text-dark">Revisión</span>
                 @elseif($reserva->estado == 'aprobado')
-                    <span class="badge bg-success">Aprobado</span>
+                <span class="badge bg-success">Aprobado</span>
                 @elseif($reserva->estado == 'rechazado')
-                    <span class="badge bg-danger">Rechazado</span>
+                <span class="badge bg-danger">Rechazado</span>
                 @else
-                    <span class="badge bg-secondary">{{ ucfirst($reserva->estado) }}</span>
+                <span class="badge bg-secondary">{{ ucfirst($reserva->estado) }}</span>
                 @endif
             </td>
             <td>
                 @if($reserva->estado == 'revision')
-                    <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline">
-                        @csrf
-                        @method('PATCH')
-                        <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
-                    </form>
-                    <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
-                        @csrf
-                        @method('PATCH')
-                        <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
-                    </form>
+                <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
+                </form>
+                <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                </form>
                 @elseif($reserva->estado == 'aprobado')
-                    <span class="text-white">Aprobado</span>
+                <span class="text-white">Aprobado</span>
                 @elseif($reserva->estado == 'rechazado')
-                    <span class="text-white">Rechazado</span>
+                <span class="text-white">Rechazado</span>
                 @endif
             </td>
         </tr>
