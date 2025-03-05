@@ -6,6 +6,7 @@
             <th>Celular</th>
             <th># Cartones</th>
             <th>Series</th>
+            <th>Bingo</th>
             <th>Total</th>
             <th>Comprobante</th>
             <th># Comprobante</th>
@@ -20,7 +21,29 @@
             <td>{{ $reserva->nombre }}</td>
             <td>{{ $reserva->celular }}</td>
             <td>{{ $reserva->cantidad }}</td>
-            <td>{{ $reserva->series }}</td>
+            <td>
+                @php
+                    $seriesData = $reserva->series;
+                    
+                    // Verificar si es una cadena JSON y convertirla a array si es necesario
+                    if (is_string($seriesData) && json_decode($seriesData) !== null) {
+                        $seriesData = json_decode($seriesData, true);
+                    }
+                @endphp
+                
+                @if(is_array($seriesData))
+                    {{ implode(', ', $seriesData) }}
+                @else
+                    {{ $seriesData }}
+                @endif
+            </td>
+            <td>
+                @if($reserva->bingo)
+                    {{ $reserva->bingo->nombre }}
+                @else
+                    <span class="text-warning">Sin asignar</span>
+                @endif
+            </td>
             <td>${{ number_format($reserva->total, 0, ',', '.') }} Pesos</td>
             <td>
                 @if($reserva->comprobante)
@@ -79,7 +102,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="10" class="text-center">No hay reservas registradas.</td>
+            <td colspan="11" class="text-center">No hay reservas registradas.</td>
         </tr>
         @endforelse
     </tbody>

@@ -3,16 +3,32 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Bingo; // Asegúrate de importar el modelo Bingo
+use App\Models\Bingo;
+use App\Models\Enlace;
 
 class HomeController extends Controller
 {
     public function index() {
-        // Obtener todos los bingos disponibles (puedes filtrar por estado si es necesario)
-        $bingos = Bingo::orderBy('fecha', 'asc')->get();
-        return view('home', compact('bingos'));
+        // Primero intentar obtener un bingo abierto
+        $bingo = Bingo::where('estado', 'abierto')
+                      ->orderBy('fecha', 'asc')
+                      ->first();
+        
+        // Si no hay bingos abiertos, obtener el primer bingo cerrado
+        if (!$bingo) {
+            $bingo = Bingo::orderBy('fecha', 'asc')->first();
+        }
+        
+        // Comprobar si el bingo está cerrado
+        $esBingoCerrado = $bingo && $bingo->estado !== 'abierto';
+        
+        // Obtener enlaces para WhatsApp
+        $enlaces = Enlace::first() ?? new Enlace();
+        
+        return view('home', compact('bingo', 'esBingoCerrado', 'enlaces'));
     }
 
+    // Método para obtener solo bingos abiertos (para compatibilidad)
     public function getBingos() {
         $bingos = Bingo::where('estado', 'abierto')
             ->orderBy('fecha', 'asc')
@@ -22,28 +38,45 @@ class HomeController extends Controller
                     'id' => $bingo->id,
                     'nombre' => $bingo->nombre,
                     'fecha_formateada' => \Carbon\Carbon::parse($bingo->fecha)->format('d/m/Y'),
-                    'precio' => $bingo->precio
+                    'precio' => $bingo->precio,
+                    'estado' => $bingo->estado
                 ];
             });
     
         return response()->json($bingos);
     }
     
-    public function getBingoActivo() {
-        $bingo = Bingo::where('estado', 'abierto')
-            ->orderBy('fecha', 'asc')
-            ->first();
+    // Método para obtener todos los bingos, tanto abiertos como cerrados
+    public function getAllBingos() {
+        $bingos = Bingo::orderBy('fecha', 'asc')
+            ->get()
+            ->map(function ($bingo) {
+                return [
+                    'id' => $bingo->id,
+                    'nombre' => $bingo->nombre,
+                    'fecha_formateada' => \Carbon\Carbon::parse($bingo->fecha)->format('d/m/Y'),
+                    'precio' => $bingo->precio,
+                    'estado' => $bingo->estado
+                ];
+            });
     
+        return response()->json($bingos);
+    }
+    
+    // Método para obtener un bingo específico por ID
+    public function getBingo($id) {
+        $bingo = Bingo::find($id);
+        
         if (!$bingo) {
-            return response()->json(['error' => 'No hay bingos activos'], 404);
+            return response()->json(['error' => 'Bingo no encontrado'], 404);
         }
-    
+        
         return response()->json([
             'id' => $bingo->id,
             'nombre' => $bingo->nombre,
-            'fecha' => \Carbon\Carbon::parse($bingo->fecha)->format('d/m/Y'),
-            'precio' => $bingo->precio
+            'fecha_formateada' => \Carbon\Carbon::parse($bingo->fecha)->format('d/m/Y'),
+            'precio' => $bingo->precio,
+            'estado' => $bingo->estado
         ]);
     }
-    
 }

@@ -120,6 +120,12 @@
 </head>
 
 <body>
+@php
+    // Obtener los enlaces de la base de datos
+    $enlaces = App\Models\Enlace::first() ?? new App\Models\Enlace();
+    $grupoWhatsapp = $enlaces->grupo_whatsapp ?? '#'; // Valor por defecto
+    $video2 = $enlaces->video_2 ?? '#'; // Valor por defecto para el video 2
+    @endphp
     <!-- Cabecera -->
     <header class="py-2 border-bottom border-secondary" style="background-color: #00bf63;">
         <div class="container d-flex justify-content-between align-items-center">
@@ -131,7 +137,7 @@
             <!-- Enlaces -->
             <div>
                 <a href="{{ route('cartones.index') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
-                <a href="#" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
+                <a href="{{ $grupoWhatsapp }}" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-inline d-md-none">Grupo WA</a>
             </div>
         </div>
@@ -163,7 +169,7 @@
             </p>
 
             <!-- Botón: Ingresar a grupo de Whatsapp -->
-            <a href="#"
+            <a href="{{ $grupoWhatsapp }}"
                 class="btn btn-verde text-white fw-bold w-100 py-2"
                 style="margin-top: 10px;">
                 INGRESAR A GRUPO DE WHATSAPP
