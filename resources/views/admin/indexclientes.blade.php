@@ -1,7 +1,4 @@
 @extends('layouts.admin')
-
-@section('title', 'Gestión de Reservas')
-
 @section('content')
 <div class="container-fluid p-0">
     <!-- Encabezado Panel verde -->

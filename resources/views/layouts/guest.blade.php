@@ -2,8 +2,10 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8" />
-    <title>{{ config('app.name', 'RiffyBingo') }}</title>
+    <title>RIFFY Bingo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="{{ asset('images/paraelico.png') }}">
+
     <!-- Carga de assets (Tailwind CSS, JS, etc.) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     

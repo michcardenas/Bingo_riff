@@ -1,6 +1,5 @@
 @extends('layouts.admin')
 
-@section('title', 'Crear Bingo')
 
 @section('content')
 <div class="my-4">

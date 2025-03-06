@@ -1,7 +1,5 @@
 @extends('layouts.admin')
 
-@section('title', 'Panel de Bingos')
-
 @section('content')
 <div class="container-fluid p-0">
     <!-- Encabezado Panel verde -->

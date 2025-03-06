@@ -1,7 +1,5 @@
 @extends('layouts.admin')
 
-@section('title', 'Gestión de Enlaces')
-
 @section('content')
 <div class="container-fluid p-0">
     <!-- Encabezado Panel verde -->

@@ -3,8 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>RIFFY Bingo - Reservado</title>
+    <title>RIFFY Bingo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{ asset('images/paraelico.png') }}">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
