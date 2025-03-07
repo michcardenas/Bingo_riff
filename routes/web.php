@@ -16,11 +16,11 @@ Route::get('/descargar/{filename}', function ($filename) {
     $file = storage_path("app/private/public/Tablas bingo RIFFY/" . $filename);
 
     if (!file_exists($file)) {
-        abort(404);
+        abort(404, 'El archivo no existe');
     }
 
-    return response()->file($file);
-});
+    return response()->download($file);
+})->where('filename', '.*'); // Permite nombres con espacios
 
 Route::get('/bingos/get', [HomeController::class, 'getBingos'])->name('bingos.get');
 Route::get('/bingos/all', [HomeController::class, 'getAllBingos'])->name('bingos.all');
