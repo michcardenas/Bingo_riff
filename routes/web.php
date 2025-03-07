@@ -6,9 +6,21 @@ use App\Http\Controllers\BingoController;
 use App\Http\Controllers\CartonController;
 use App\Http\Controllers\Admin\BingoAdminController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+
 
 // Rutas públicas
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+Route::get('/descargar/{filename}', function ($filename) {
+    $file = storage_path("app/private/public/Tablas bingo RIFFY/" . $filename);
+
+    if (!file_exists($file)) {
+        abort(404);
+    }
+
+    return response()->file($file);
+});
 
 Route::get('/bingos/get', [HomeController::class, 'getBingos'])->name('bingos.get');
 Route::get('/bingos/all', [HomeController::class, 'getAllBingos'])->name('bingos.all');
