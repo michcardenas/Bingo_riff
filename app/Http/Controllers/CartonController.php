@@ -93,19 +93,17 @@ class CartonController extends Controller
     public function descargar($numero, $bingoId = null)
     {
         Log::info("Iniciando descarga de cartón: $numero, Bingo ID: $bingoId");
-
-        // Buscar todas las reservas aprobadas
-        $query = Reserva::where('estado', 'aprobado')
-                        ->where('eliminado', 0);
-
+    
+        // Buscar reservas aprobadas
+        $query = Reserva::where('estado', 'aprobado')->where('eliminado', 0);
         if ($bingoId) {
-            $query = $query->where('bingo_id', $bingoId);
+            $query->where('bingo_id', $bingoId);
         }
-
+    
         $reservas = $query->get();
         $reservaEncontrada = null;
-
-        // Buscar manualmente en las series de cada reserva
+    
+        // Buscar manualmente en las series
         foreach ($reservas as $reserva) {
             if (!empty($reserva->series)) {
                 $seriesArray = json_decode($reserva->series, true);
@@ -115,71 +113,65 @@ class CartonController extends Controller
                 }
             }
         }
-
+    
         if (!$reservaEncontrada) {
             Log::warning("Cartón no encontrado o no aprobado: $numero");
             return redirect()->back()->with('error', 'El cartón no existe o no está aprobado.');
         }
-
-        // Convertir el número a entero para quitar ceros iniciales
-        $numeroSinCeros = intval($numero);
-        $rutaCompleta = storage_path('app/private/public/Tablas bingo RIFFY/' . $numeroSinCeros . '.pdf');
-
+    
+        // 🔹 **Corrección importante: Mantener el número tal cual para no perder ceros iniciales**
+        $rutaCompleta = storage_path("app/private/public/Tablas bingo RIFFY/{$numero}.pdf");
+    
         if (!file_exists($rutaCompleta)) {
             Log::warning("Archivo de cartón no encontrado: $rutaCompleta");
             return redirect()->back()->with('error', 'No se encontró el archivo del cartón.');
         }
-
-        // Preparar el nombre del archivo de descarga
-        $nombreArchivo = 'Carton-RIFFY-' . $numero;
+    
+        // Nombre del archivo de descarga
+        $nombreArchivo = "Carton-RIFFY-{$numero}";
+    
         if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
             $bingo = $reservaEncontrada->bingo;
             $nombreArchivo .= '-' . \Illuminate\Support\Str::slug($bingo->nombre);
-
+    
             try {
-                // Crear directorio temporal si no existe
+                // 🔹 **Crear directorio temporal si no existe**
                 $tempDir = storage_path('app/private/public/temp');
                 if (!file_exists($tempDir)) {
                     mkdir($tempDir, 0755, true);
                 }
-                $tempPath = $tempDir . '/' . $numero . '-' . time() . '.pdf';
-
-                // Obtener la fecha del bingo de forma segura
+    
+                $tempPath = "{$tempDir}/{$numero}-" . time() . ".pdf";
+    
+                // Obtener la fecha del bingo
                 $bingoFecha = '';
-                if ($bingo->fecha) {
-                    if (is_object($bingo->fecha) && method_exists($bingo->fecha, 'format')) {
-                        $bingoFecha = $bingo->fecha->format('d/m/Y');
-                    } else if (is_string($bingo->fecha)) {
-                        try {
-                            $fechaObj = Carbon::parse($bingo->fecha);
-                            $bingoFecha = $fechaObj->format('d/m/Y');
-                        } catch (\Exception $e) {
-                            $bingoFecha = $bingo->fecha;
-                        }
+                if (!empty($bingo->fecha)) {
+                    try {
+                        $fechaObj = Carbon::parse($bingo->fecha);
+                        $bingoFecha = $fechaObj->format('d/m/Y');
+                    } catch (\Exception $e) {
+                        Log::warning("Error al parsear la fecha: " . $e->getMessage());
+                        $bingoFecha = $bingo->fecha;
                     }
                 }
-
-                // Generar el PDF con la segunda página de marca de agua
-                $resultado = $this->addWatermarkPageToPdf(
-                    $rutaCompleta,
-                    $tempPath,
-                    $bingo->nombre,
-                    $bingoFecha
-                );
-
+    
+                // 🔹 **Generar el PDF con la marca de agua**
+                $resultado = $this->addWatermarkPageToPdf($rutaCompleta, $tempPath, $bingo->nombre, $bingoFecha);
+    
                 if ($resultado) {
                     Log::info("Página de marca de agua añadida correctamente para cartón $numero");
-                    return response()->download($tempPath, $nombreArchivo . '.pdf')->deleteFileAfterSend(true);
+                    return response()->download($tempPath, "{$nombreArchivo}.pdf")->deleteFileAfterSend(true);
                 } else {
                     Log::warning("No se pudo añadir la página de marca de agua al cartón $numero");
                 }
             } catch (\Exception $e) {
-                Log::error('Error al procesar la marca de agua: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+                Log::error("Error al procesar la marca de agua: " . $e->getMessage());
             }
         }
-
+    
+        // 🔹 **Si no hay marca de agua, descargar directamente**
         Log::info("Descargando cartón sin página adicional de marca de agua: $numero");
-        return response()->download($rutaCompleta, $nombreArchivo . '.pdf');
+        return response()->download($rutaCompleta, "{$nombreArchivo}.pdf");
     }
 
     /**
