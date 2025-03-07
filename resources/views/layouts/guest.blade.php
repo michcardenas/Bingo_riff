@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>RIFFY Bingo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/png" href="{{ asset('images/paraelico.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/RiffyLogo.png') }}">
 
     <!-- Carga de assets (Tailwind CSS, JS, etc.) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
