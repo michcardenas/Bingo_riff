@@ -90,6 +90,12 @@ class CartonController extends Controller
     /**
      * Descarga el cartón si está aprobado, agregando una segunda página con la marca de agua.
      */
+    use Illuminate\Http\Request;
+    use Illuminate\Support\Facades\Log;
+    use Illuminate\Support\Facades\Response;
+    use Carbon\Carbon;
+    use App\Models\Reserva;
+    
     public function descargar($numero, $bingoId = null)
     {
         Log::info("Iniciando descarga de cartón: $numero, Bingo ID: $bingoId");
@@ -119,17 +125,17 @@ class CartonController extends Controller
             return redirect()->back()->with('error', 'El cartón no existe o no está aprobado.');
         }
     
-        // 🔹 **Corrección importante: Mantener el número tal cual para no perder ceros iniciales**
-        $rutaCompleta = storage_path("app/private/public/Tablas bingo RIFFY/{$numero}.pdf");
+        // 🔹 **Corrección: Ajustar la nueva ruta de la carpeta**
+        $rutaCompleta = storage_path("app/private/public/TablasbingoRIFFY/{$numero}.pdf");
     
+        // 🔹 **Verificar si el archivo existe**
         if (!file_exists($rutaCompleta)) {
             Log::warning("Archivo de cartón no encontrado: $rutaCompleta");
             return redirect()->back()->with('error', 'No se encontró el archivo del cartón.');
         }
     
-        // Nombre del archivo de descarga
+        // 🔹 **Preparar el nombre del archivo**
         $nombreArchivo = "Carton-RIFFY-{$numero}";
-    
         if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
             $bingo = $reservaEncontrada->bingo;
             $nombreArchivo .= '-' . \Illuminate\Support\Str::slug($bingo->nombre);
@@ -173,7 +179,7 @@ class CartonController extends Controller
         Log::info("Descargando cartón sin página adicional de marca de agua: $numero");
         return response()->download($rutaCompleta, "{$nombreArchivo}.pdf");
     }
-
+    
     /**
      * Agrega una página extra al PDF original (como segunda página) que contiene la marca de agua.
      *
