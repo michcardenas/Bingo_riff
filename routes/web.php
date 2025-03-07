@@ -13,14 +13,14 @@ use Illuminate\Support\Facades\Storage;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/descargar/{filename}', function ($filename) {
-    $file = storage_path("app/private/public/Tablas bingo RIFFY/" . $filename);
+    $path = storage_path("app/private/public/Tablas bingo RIFFY/" . $filename);
 
-    if (!file_exists($file)) {
-        abort(404, 'El archivo no existe');
+    if (!file_exists($path)) {
+        return response()->json(['error' => 'El archivo no existe'], 404);
     }
 
-    return response()->download($file);
-})->where('filename', '.*'); // Permite nombres con espacios
+    return Response::download($path);
+})->where('filename', '.*');
 
 Route::get('/bingos/get', [HomeController::class, 'getBingos'])->name('bingos.get');
 Route::get('/bingos/all', [HomeController::class, 'getAllBingos'])->name('bingos.all');
