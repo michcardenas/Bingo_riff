@@ -133,7 +133,9 @@
             <!-- Logo -->
             <div class="logo-container">
                 <!-- Ajusta la ruta de tu logo según tu proyecto -->
-                <img src="{{ asset('images/RiffyLogo.png') }}" alt="Logo">
+                <a href="{{ route('home') }}">
+                <img src="{{ asset('images/RiffyLogo.png') }}" alt="RIFFY Bingo" id="riffy-logo" style="height: 70px;">
+            </a>
             </div>
             <!-- Enlaces -->
             <div>

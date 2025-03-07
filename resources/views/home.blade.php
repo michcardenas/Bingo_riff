@@ -262,7 +262,9 @@
         <div class="container d-flex justify-content-between align-items-center">
             <!-- Logo -->
             <div class="logo-container">
-                <img src="{{ asset('images/RiffyLogo.png') }}" alt="Logo">
+            <a href="{{ route('home') }}">
+                <img src="{{ asset('images/RiffyLogo.png') }}" alt="RIFFY Bingo" id="riffy-logo" style="height: 70px;">
+            </a>
             </div>
             <!-- Enlaces -->
             <div>
