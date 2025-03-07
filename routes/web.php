@@ -4,8 +4,10 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\BingoController;
 use App\Http\Controllers\CartonController;
+use App\Models\Bingo;
 use App\Http\Controllers\Admin\BingoAdminController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 // Rutas públicas
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -14,7 +16,6 @@ Route::get('/bingos/get', [HomeController::class, 'getBingos'])->name('bingos.ge
 Route::get('/bingos/all', [HomeController::class, 'getAllBingos'])->name('bingos.all');
 Route::get('/bingo/{id}', [HomeController::class, 'show'])->name('bingo.ver');
 Route::get('/bingo/activo', [HomeController::class, 'getBingoActivo'])->name('bingo.activo');
-
 // Rutas para los cartones
 Route::get('/cartones/buscar', [CartonController::class, 'index'])->name('cartones.index');
 Route::post('/cartones/buscar', [CartonController::class, 'buscar'])->name('cartones.buscar');
@@ -60,6 +61,35 @@ Route::middleware('auth')->group(function () {
         Route::patch('/reservas/{id}/numero-comprobante', [BingoAdminController::class, 'updateNumeroComprobante'])->name('reservas.updateNumeroComprobante');
         Route::get('/enlaces', [App\Http\Controllers\EnlaceController::class, 'edit'])->name('enlaces.edit');
         Route::patch('/enlaces/update', [App\Http\Controllers\EnlaceController::class, 'update'])->name('enlaces.update');
+    });
+});
+
+// Rutas de API para bingos
+Route::prefix('api')->group(function () {
+    Route::get('/bingos/by-name', function (Request $request) {
+        $nombre = $request->query('nombre');
+        
+        if (!$nombre) {
+            return response()->json(['error' => 'Nombre de bingo requerido'], 400);
+        }
+        
+        $bingo = Bingo::where('nombre', $nombre)->first();
+        
+        if (!$bingo) {
+            return response()->json(['error' => 'Bingo no encontrado'], 404);
+        }
+        
+        return response()->json($bingo);
+    });
+
+    Route::get('/bingos/{id}', function ($id) {
+        $bingo = Bingo::find($id);
+        
+        if (!$bingo) {
+            return response()->json(['error' => 'Bingo no encontrado'], 404);
+        }
+        
+        return response()->json($bingo);
     });
 });
 

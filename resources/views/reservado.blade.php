@@ -89,6 +89,63 @@
             font-size: 16px;
         }
 
+        .whatsapp-float {
+            position: fixed;
+            width: 80px;
+            height: 80px;
+            bottom: 40px;
+            right: 40px;
+            background-color: #25d366;
+            color: #FFF;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 40px;
+            box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .whatsapp-float:hover {
+            background-color: #128C7E;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Efecto de pulso para llamar más la atención */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+            }
+        }
+
+        .whatsapp-float {
+            animation: pulse 2s infinite;
+        }
+
+        /* Media query para dispositivos móviles */
+        @media screen and (max-width: 767px) {
+            .whatsapp-float {
+                width: 65px;
+                height: 65px;
+                bottom: 30px;
+                right: 30px;
+                font-size: 35px;
+            }
+        }
+
         @media (min-width: 768px) {
             .bingo-container {
                 max-width: 500px;
@@ -121,7 +178,7 @@
 </head>
 
 <body>
-@php
+    @php
     // Obtener los enlaces de la base de datos
     $enlaces = App\Models\Enlace::first() ?? new App\Models\Enlace();
     $grupoWhatsapp = $enlaces->grupo_whatsapp ?? '#'; // Valor por defecto
@@ -132,16 +189,21 @@
         <div class="container d-flex justify-content-between align-items-center">
             <!-- Logo -->
             <div class="logo-container">
-                <!-- Ajusta la ruta de tu logo según tu proyecto -->
                 <a href="{{ route('home') }}">
-                <img src="{{ asset('images/RiffyLogo.png') }}" alt="RIFFY Bingo" id="riffy-logo" style="height: 70px;">
-            </a>
+                    <img src="{{ asset('images/RiffyLogo.png') }}" alt="RIFFY Bingo" id="riffy-logo" style="height: 70px;">
+                </a>
             </div>
             <!-- Enlaces -->
             <div>
+                <a href="{{ route('home') }}" class="text-white text-decoration-none me-3 nav-link-custom">Comprar mi cartón</a>
                 <a href="{{ route('cartones.index') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
-                <a href="{{ $grupoWhatsapp }}" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
+                @if($enlaces->grupo_whatsapp)
+                <a href="{{ $enlaces->grupo_whatsapp }}" target="_blank" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
+                <a href="{{ $enlaces->grupo_whatsapp }}" target="_blank" class="text-white text-decoration-none nav-link-custom d-inline d-md-none">Grupo WA</a>
+                @else
+                <a href="#" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
                 <a href="#" class="text-white text-decoration-none nav-link-custom d-inline d-md-none">Grupo WA</a>
+                @endif
             </div>
         </div>
     </header>
@@ -179,6 +241,11 @@
             </a>
         </div>
     </div>
+
+    <a href="https://wa.me/{{ $numeroContacto ?? '3235903774' }}" class="whatsapp-float" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
 
     <!-- Bootstrap JS -->
     <script

@@ -20,6 +20,8 @@
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
         rel="stylesheet">
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <style>
         body {
             background-color: #000;
@@ -170,6 +172,129 @@
             margin-top: 1rem;
         }
 
+        /* Estilos para el contenedor de video vertical */
+        .video-vertical-container {
+            max-width: 500px;
+            height: 700px; /* Altura significativamente mayor para video vertical */
+            margin: 0 auto;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .video-vertical-container iframe {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+           /* Estilos para notificaciones de error */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            max-width: 350px;
+            z-index: 1050;
+        }
+
+        .notification {
+            background-color: #FFEEEE;
+            border-left: 4px solid #FF0000;
+            color: #FF0000;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification-title {
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+
+        .notification-message {
+            margin: 0;
+        }
+
+        .notification-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #FF0000;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .whatsapp-float {
+    position: fixed;
+    width: 80px;
+    height: 80px;
+    bottom: 40px;
+    right: 40px;
+    background-color: #25d366;
+    color: #FFF;
+    border-radius: 50px;
+    text-align: center;
+    font-size: 40px;
+    box-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.whatsapp-float:hover {
+    background-color: #128C7E;
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
+}
+
+/* Efecto de pulso para llamar más la atención */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+    }
+}
+
+.whatsapp-float {
+    animation: pulse 2s infinite;
+}
+
+/* Media query para dispositivos móviles */
+@media screen and (max-width: 767px) {
+    .whatsapp-float {
+        width: 65px;
+        height: 65px;
+        bottom: 30px;
+        right: 30px;
+        font-size: 35px;
+    }
+}
+
         @media (min-width: 768px) {
             .bingo-container {
                 max-width: 500px;
@@ -215,6 +340,11 @@
             .logo-container {
                 height: 50px;
             }
+
+            .video-vertical-container {
+            height: 600px; /* Ajustar altura para dispositivos más pequeños */
+            max-width: 100%;
+            }
         }
 
         @media (min-width: 992px) {
@@ -224,6 +354,12 @@
             
             .bingo-cerrado-container {
                 max-width: 600px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .video-vertical-container {
+                height: 500px; /* Ajustar altura para móviles */
             }
         }
 
@@ -268,6 +404,7 @@
             </div>
             <!-- Enlaces -->
             <div>
+                <a href="{{ route('home') }}" class="text-white text-decoration-none me-3 nav-link-custom">Comprar mi cartón</a>
                 <a href="{{ route('cartones.index') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
                 @if($enlaces->grupo_whatsapp)
                     <a href="{{ $enlaces->grupo_whatsapp }}" target="_blank" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
@@ -279,15 +416,6 @@
             </div>
         </div>
     </header>
-
-    <div class="dropdown">
-        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="menuDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            ☰ Seleccionar Bingo
-        </button>
-        <ul class="dropdown-menu" id="bingoDropdownList" aria-labelledby="menuDropdown">
-            <!-- Aquí se cargarán dinámicamente los bingos -->
-        </ul>
-    </div>
 
     <!-- Contenedor principal -->
     <div class="container py-4">
@@ -364,17 +492,18 @@
                             name="nombre"
                             class="form-control bg-white text-dark"
                             placeholder="Ingresa tu nombre completo"
-                            required>
+                            >
                     </div>
                     <div class="mb-2">
-                        <label class="form-label fw-bold">Celular</label>
-                        <input
-                            type="tel"
-                            name="celular"
-                            class="form-control bg-white text-dark"
-                            placeholder="Ingresa tu número de celular"
-                            required>
-                    </div>
+                    <label class="form-label fw-bold">Celular</label>
+                    <input
+                        type="tel"
+                        name="celular"
+                        class="form-control bg-white text-dark"
+                        placeholder="Ingresa tu número de celular"
+                        pattern="[0-9]+"
+                        inputmode="numeric">
+                </div>
                 </div>
 
                 <!-- Paso 3 -->
@@ -421,7 +550,7 @@
                                 style="display: none;"
                                 accept="image/*"
                                 multiple
-                                required>
+                                >
                         </label>
                     </div>
                     <!-- Contenedor para la vista previa de las imágenes -->
@@ -429,7 +558,6 @@
                     <button class="btn btn-naranja text-white fw-bold w-100 py-2" style="margin-top: 10px;">
                         RESERVAR MIS CARTONES
                     </button>
-
                 </div>
             </form>
 
@@ -437,7 +565,7 @@
             <div class="text-center mt-4 fw-bold">
                 <p class="mb-1">¿Cómo comprar?</p>
                 @if($enlaces->video_1)
-                    <div class="ratio ratio-16x9 mt-2" style="max-width: 640px; margin: 0 auto;">
+                    <div class="video-vertical-container">
                         <iframe 
                             src="{{ str_replace('watch?v=', 'embed/', $enlaces->video_1) }}" 
                             title="Video tutorial de compra" 
@@ -453,6 +581,11 @@
         </div>
     </div>
 
+    <a href="https://wa.me/{{ $numeroContacto ?? '3235903774' }}" class="whatsapp-float" target="_blank">
+    <i class="fab fa-whatsapp"></i>
+</a>
+
+
     <!-- Bootstrap JS -->
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
@@ -460,9 +593,10 @@
 
 <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
 <script>
-        // Declare updateTotal in the global scope
+// Variables globales
 let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
 let inputCartones, btnMinus, btnPlus, totalPrice, totalPagar, precioCarton;
+let selectedFiles = []; // Array para mantener los archivos seleccionados
 
 // Function to format numbers with thousands separators (without decimals)
 function formatNumber(number) {
@@ -484,8 +618,224 @@ function updateTotal() {
     totalPagar.textContent = formatNumber(total);
 }
 
+// Función para mostrar notificaciones de error
+function showErrorNotification(title, message) {
+    // Crear contenedor de notificaciones si no existe
+    let container = document.querySelector('.notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'notification-container';
+        document.body.appendChild(container);
+    }
+    
+    // Crear la notificación
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    
+    // Agregar botón de cierre
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'notification-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('click', function() {
+        container.removeChild(notification);
+    });
+    
+    // Agregar título
+    const titleElement = document.createElement('h5');
+    titleElement.className = 'notification-title';
+    titleElement.textContent = title;
+    
+    // Agregar mensaje
+    const messageElement = document.createElement('p');
+    messageElement.className = 'notification-message';
+    messageElement.innerHTML = message;
+    
+    // Ensamblar la notificación
+    notification.appendChild(closeBtn);
+    notification.appendChild(titleElement);
+    notification.appendChild(messageElement);
+    
+    // Agregar al contenedor
+    container.appendChild(notification);
+    
+    // Auto-eliminar después de 5 segundos
+    setTimeout(function() {
+        if (container.contains(notification)) {
+            container.removeChild(notification);
+        }
+    }, 5000);
+}
+
+// Form validation function with notifications
+function validarFormulario(event) {
+    // Prevent form submission
+    event.preventDefault();
+    
+    // Get form elements
+    const form = event.target;
+    const nombre = form.querySelector('input[name="nombre"]');
+    const celular = form.querySelector('input[name="celular"]');
+    const comprobantes = form.querySelector('input[name="comprobante[]"]');
+    
+    // Reset previous error messages
+    removeAllErrorHighlights();
+    
+    // Array to collect field errors
+    let camposFaltantes = [];
+    
+    // Validate nombre
+    if (!nombre.value.trim()) {
+        highlightField(nombre);
+        camposFaltantes.push('Nombre');
+    }
+    
+    // Validate celular
+    if (!celular.value.trim()) {
+        highlightField(celular);
+        camposFaltantes.push('Celular');
+    } else if (!/^[0-9]+$/.test(celular.value.trim())) {
+        highlightField(celular);
+        camposFaltantes.push('Celular (formato inválido)');
+    }
+    
+    // Validate file upload
+    if (selectedFiles.length === 0) {
+        highlightField(comprobantes.closest('.border-naranja'));
+        camposFaltantes.push('Comprobante de pago');
+    }
+    
+    // If fields are missing, show notification
+    if (camposFaltantes.length > 0) {
+        let message = '<ul style="margin-bottom: 0; padding-left: 20px;">';
+        camposFaltantes.forEach(campo => {
+            message += `<li>${campo}</li>`;
+        });
+        message += '</ul>';
+        
+        showErrorNotification('Por favor completa los siguientes campos:', message);
+        
+        // Scroll to the first error field
+        const firstErrorField = document.querySelector('.border-danger');
+        if (firstErrorField) {
+            firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        return false;
+    }
+    
+    // Preparar los datos para enviar al servidor
+    const formData = new FormData(form);
+    
+    // Eliminar los archivos existentes en el FormData (para evitar duplicados)
+    formData.delete('comprobante[]');
+    
+    // Agregar cada archivo seleccionado al FormData
+    selectedFiles.forEach(file => {
+        formData.append('comprobante[]', file);
+    });
+    
+    // Ahora vamos a enviar el formulario usando Fetch API
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin' // Para asegurar que las cookies CSRF se envíen
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error en el servidor');
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Redirigir a la página que nos devuelve el servidor
+        document.open();
+        document.write(html);
+        document.close();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorNotification('Error al enviar formulario', 'Hubo un problema al enviar los datos. Por favor intenta nuevamente.');
+    });
+}
+
+// Función simplificada para resaltar un campo con error
+function highlightField(element) {
+    // Add red border to indicate error
+    element.classList.add('border-danger');
+}
+
+// Function to remove all error highlights
+function removeAllErrorHighlights() {
+    // Remove error borders
+    document.querySelectorAll('.border-danger').forEach(el => {
+        el.classList.remove('border-danger');
+    });
+}
+
 // Initialize elements after DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Add styles for notifications
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+        /* Estilos para notificaciones de error */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            max-width: 350px;
+            z-index: 1050;
+        }
+        
+        .notification {
+            background-color: #FFEEEE;
+            border-left: 4px solid #FF0000;
+            color: #FF0000;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .notification-title {
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        
+        .notification-message {
+            margin: 0;
+        }
+        
+        .notification-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #FF0000;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+        
+        /* Estilo para campos con error */
+        .border-danger {
+            border: 2px solid #FF0000 !important;
+        }
+    `;
+    document.head.appendChild(styleElement);
+
     // Get elements for quantity and total
     inputCartones = document.getElementById('inputCartones');
     btnMinus = document.getElementById('btnMinus');
@@ -494,9 +844,26 @@ document.addEventListener('DOMContentLoaded', function() {
     totalPagar = document.getElementById('totalPagar');
     precioCarton = document.getElementById('precioCarton');
 
-    // Obtener los contenedores para los estados de bingo
+    // Manejamos la visualización basada en si el bingo está abierto o cerrado
+    const esBingoCerrado = {{ $esBingoCerrado ? 'true' : 'false' }};
     const bingoFormContainer = document.getElementById('bingoFormContainer');
     const bingoCerradoContainer = document.getElementById('bingoCerradoContainer');
+    
+    if (esBingoCerrado) {
+        // Si el bingo está cerrado, mostrar el mensaje correspondiente
+        bingoFormContainer.style.display = 'none';
+        bingoCerradoContainer.style.display = 'block';
+        
+        // Actualizar la fecha del bingo cerrado
+        const bingoCerradoFecha = document.getElementById('bingoCerradoFecha');
+        if (bingoCerradoFecha) {
+            bingoCerradoFecha.textContent = "{{ $bingo->nombre ?? '' }} - {{ \Carbon\Carbon::parse($bingo->fecha ?? now())->format('d/m/Y') }}";
+        }
+    } else {
+        // Si el bingo está abierto, mostrar el formulario
+        bingoFormContainer.style.display = 'block';
+        bingoCerradoContainer.style.display = 'none';
+    }
 
     btnMinus.addEventListener('click', () => {
         let quantity = parseInt(inputCartones.value, 10);
@@ -517,10 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
     inputCartones.addEventListener('change', updateTotal);
     updateTotal();
 
-    // File handling for multiple preview with deletion
-    let selectedFiles = []; // Global array of selected files
-    let dt = new DataTransfer(); // DataTransfer object to simulate FileList
-
+    // File handling for multiple preview with deletion - CORREGIDO
     const fileInput = document.getElementById('comprobante');
     const previewContainer = document.getElementById('previewContainer');
 
@@ -530,17 +894,11 @@ document.addEventListener('DOMContentLoaded', function() {
         newFiles.forEach(file => {
             selectedFiles.push(file);
         });
-        updateFileInput();
         updatePreview();
+        
+        // Reset el input para permitir seleccionar el mismo archivo múltiples veces
+        fileInput.value = '';
     });
-
-    function updateFileInput() {
-        dt = new DataTransfer();
-        selectedFiles.forEach(file => {
-            dt.items.add(file);
-        });
-        fileInput.files = dt.files;
-    }
 
     function updatePreview() {
         previewContainer.innerHTML = '';
@@ -562,13 +920,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = 'X';
                 deleteBtn.classList.add('delete-btn');
-                deleteBtn.setAttribute('data-index', index); // Agregar índice como atributo
+                deleteBtn.setAttribute('data-index', index); 
                 deleteBtn.addEventListener('click', function() {
                     const idx = parseInt(this.getAttribute('data-index'));
                     // Eliminar el archivo del array
                     selectedFiles.splice(idx, 1);
-                    // Actualizar el input file y la vista previa
-                    updateFileInput();
+                    // Actualizar la vista previa
                     updatePreview();
                 });
 
@@ -580,121 +937,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Load bingos
-    cargarBingos();
-    
-    // Update every 5 seconds
-    setInterval(cargarBingos, 5000);
-});
-
-function cargarBingos() {
-    fetch("{{ route('bingos.all') }}") // Route that returns all bingos (open and closed)
-        .then(response => response.json())
-        .then(data => {
-            let dropdownList = document.getElementById("bingoDropdownList");
-            dropdownList.innerHTML = ""; // Clear dropdown
-
-            // Separamos los bingos en abiertos y cerrados
-            const bingosAbiertos = data.filter(bingo => bingo.estado === 'abierto');
-            const bingosCerrados = data.filter(bingo => bingo.estado !== 'abierto');
-            
-            if (bingosAbiertos.length > 0 || bingosCerrados.length > 0) {
-                // Primero mostrar los bingos abiertos
-                if (bingosAbiertos.length > 0) {
-                    const headerAbiertos = document.createElement("li");
-                    headerAbiertos.innerHTML = '<h6 class="dropdown-header">Bingos Disponibles</h6>';
-                    dropdownList.appendChild(headerAbiertos);
-                    
-                    bingosAbiertos.forEach(bingo => {
-                        let listItem = document.createElement("li");
-                        let item = document.createElement("a");
-                        item.classList.add("dropdown-item");
-                        item.href = "#";
-                        item.dataset.bingoId = bingo.id;
-                        item.dataset.bingoPrecio = bingo.precio;
-                        item.dataset.bingoEstado = bingo.estado;
-                        item.textContent = `${bingo.nombre} - ${bingo.fecha_formateada}`;
-                        item.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            seleccionarBingo(bingo);
-                        });
-
-                        listItem.appendChild(item);
-                        dropdownList.appendChild(listItem);
-                    });
-                    
-                    // Agregar separador si hay bingos cerrados
-                    if (bingosCerrados.length > 0) {
-                        const divider = document.createElement("li");
-                        divider.innerHTML = '<hr class="dropdown-divider">';
-                        dropdownList.appendChild(divider);
-                    }
+    // Add form validation on submit
+    const bingoForm = document.querySelector('form');
+    if (bingoForm) {
+        bingoForm.addEventListener('submit', validarFormulario);
+        
+        // Add event listeners to remove validation errors when user interacts with field
+        const formInputs = bingoForm.querySelectorAll('input, select, textarea');
+        formInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                // Remove error styling from this input
+                this.classList.remove('border-danger');
+            });
+        });
+        
+        // Special case for file upload
+        if (fileInput) {
+            const fileContainer = fileInput.closest('.border-naranja');
+            fileInput.addEventListener('change', function() {
+                if (fileContainer) {
+                    fileContainer.classList.remove('border-danger');
                 }
-                
-                // Luego mostrar los bingos cerrados
-                if (bingosCerrados.length > 0) {
-                    const headerCerrados = document.createElement("li");
-                    headerCerrados.innerHTML = '<h6 class="dropdown-header">Bingos Cerrados</h6>';
-                    dropdownList.appendChild(headerCerrados);
-                    
-                    bingosCerrados.forEach(bingo => {
-                        let listItem = document.createElement("li");
-                        let item = document.createElement("a");
-                        item.classList.add("dropdown-item", "text-muted");
-                        item.href = "#";
-                        item.dataset.bingoId = bingo.id;
-                        item.dataset.bingoPrecio = bingo.precio;
-                        item.dataset.bingoEstado = bingo.estado;
-                        item.textContent = `${bingo.nombre} - ${bingo.fecha_formateada}`;
-                        
-                        item.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            seleccionarBingo(bingo);
-                        });
-
-                        listItem.appendChild(item);
-                        dropdownList.appendChild(listItem);
-                    });
-                }
-            } else {
-                dropdownList.innerHTML = `<li class="text-center p-2">No hay bingos disponibles</li>`;
-            }
-        })
-        .catch(error => console.error("Error al cargar los bingos:", error));
-}
-
-// Función para seleccionar un bingo y actualizar la interfaz
-function seleccionarBingo(bingo) {
-    // Update bingo ID
-    document.getElementById('bingo_id').value = bingo.id;
-
-    // Update menu title
-    document.getElementById('menuDropdown').textContent = `☰ ${bingo.nombre}`;
-    
-    // Obtener los contenedores
-    const bingoFormContainer = document.getElementById('bingoFormContainer');
-    const bingoCerradoContainer = document.getElementById('bingoCerradoContainer');
-    const bingoCerradoFecha = document.getElementById('bingoCerradoFecha');
-    
-    if (bingo.estado === 'abierto') {
-        // Si el bingo está abierto, mostrar el formulario y ocultar el mensaje de bingo cerrado
-        bingoFormContainer.style.display = 'block';
-        bingoCerradoContainer.style.display = 'none';
-        
-        // Update price per card
-        PRICE_PER_CARTON = parseFloat(bingo.precio);
-        
-        // Update totals
-        updateTotal();
-    } else {
-        // Si el bingo está cerrado, ocultar el formulario y mostrar el mensaje de bingo cerrado
-        bingoFormContainer.style.display = 'none';
-        bingoCerradoContainer.style.display = 'block';
-        
-        // Actualizar la fecha del bingo cerrado
-        bingoCerradoFecha.textContent = `${bingo.nombre} - ${bingo.fecha_formateada}`;
+            });
+        }
     }
-}
+});
     </script>
 
 </body>

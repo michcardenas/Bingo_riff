@@ -4,6 +4,7 @@
             <th>ID</th>
             <th>Nombre</th>
             <th>Celular</th>
+            <th>Fecha</th>
             <th># Cartones</th>
             <th>Series</th>
             <th>Bingo</th>
@@ -20,6 +21,7 @@
             <td>{{ $reserva->id }}</td>
             <td>{{ $reserva->nombre }}</td>
             <td>{{ $reserva->celular }}</td>
+            <td>{{ $reserva->created_at->format('d/m/Y H:i') }}</td>
             <td>{{ $reserva->cantidad }}</td>
             <td>
                 @php
@@ -94,7 +96,11 @@
                         <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
                     </form>
                 @elseif($reserva->estado == 'aprobado')
-                    <span class="text-white">Aprobado</span>
+                    <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                    </form>
                 @elseif($reserva->estado == 'rechazado')
                     <span class="text-white">Rechazado</span>
                 @endif
@@ -102,14 +108,14 @@
         </tr>
         @empty
         <tr>
-            <td colspan="11" class="text-center">No hay reservas registradas.</td>
+            <td colspan="12" class="text-center">No hay reservas registradas.</td>
         </tr>
         @endforelse
     </tbody>
 </table>
 
 <script>
-document.querySelectorAll('.aprobar-form').forEach(form => {
+document.querySelectorAll('.aprobar-form, form').forEach(form => {
     form.addEventListener('submit', function(event) {
         // Encuentra la fila que contiene el formulario
         const row = form.closest('tr');

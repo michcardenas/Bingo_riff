@@ -9,14 +9,14 @@ use App\Models\Enlace;
 class HomeController extends Controller
 {
     public function index() {
-        // Primero intentar obtener un bingo abierto
+        // Primero intentar obtener un bingo abierto (ordenando por fecha descendente para tener el más reciente)
         $bingo = Bingo::where('estado', 'abierto')
-                      ->orderBy('fecha', 'asc')
+                      ->orderBy('fecha', 'desc')
                       ->first();
         
-        // Si no hay bingos abiertos, obtener el primer bingo cerrado
+        // Si no hay bingos abiertos, obtener el primer bingo cerrado más reciente
         if (!$bingo) {
-            $bingo = Bingo::orderBy('fecha', 'asc')->first();
+            $bingo = Bingo::orderBy('fecha', 'desc')->first();
         }
         
         // Comprobar si el bingo está cerrado
@@ -27,7 +27,7 @@ class HomeController extends Controller
         
         return view('home', compact('bingo', 'esBingoCerrado', 'enlaces'));
     }
-
+    
     // Método para obtener solo bingos abiertos (para compatibilidad)
     public function getBingos() {
         $bingos = Bingo::where('estado', 'abierto')

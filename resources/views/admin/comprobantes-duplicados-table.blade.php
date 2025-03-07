@@ -93,7 +93,11 @@
                         <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
                     </form>
                 @elseif($reserva->estado == 'aprobado')
-                    <span class="text-white">Aprobado</span>
+                    <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                    </form>
                 @elseif($reserva->estado == 'rechazado')
                     <span class="text-white">Rechazado</span>
                 @endif
@@ -101,7 +105,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="10" class="text-center">No hay reservas registradas.</td>
+            <td colspan="11" class="text-center">No hay reservas registradas.</td>
         </tr>
         @endforelse
     </tbody>

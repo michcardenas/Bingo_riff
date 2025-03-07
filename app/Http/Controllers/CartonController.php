@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Reserva;
+use App\Models\Bingo;
+use App\Models\Enlace;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
@@ -11,12 +13,16 @@ use Carbon\Carbon;
 
 class CartonController extends Controller
 {
-    /**
+/**
      * Muestra la vista para buscar cartones.
      */
     public function index()
     {
-        return view('buscarcartones');
+        // Obtener número de contacto para WhatsApp
+        $enlaces = Enlace::first();
+        $numeroContacto = $enlaces ? $enlaces->numero_contacto : '3235903774';
+        
+        return view('buscarcartones', compact('numeroContacto'));
     }
 
     /**
@@ -32,8 +38,8 @@ class CartonController extends Controller
         Log::info('Búsqueda iniciada para teléfono: ' . $telefono);
 
         // Buscar reservas asociadas al número de teléfono
+        // IMPORTANTE: Quitamos el filtro de eliminado=0 para mostrar todos
         $reservas = Reserva::where('celular', $telefono)
-            ->where('eliminado', 0)
             ->get();
 
         Log::info('Reservas encontradas: ' . $reservas->count());
@@ -42,7 +48,7 @@ class CartonController extends Controller
         $cartones = collect();
 
         foreach ($reservas as $reserva) {
-            Log::info('Procesando reserva ID: ' . $reserva->id . ', Series: ' . $reserva->series);
+            Log::info('Procesando reserva ID: ' . $reserva->id . ', Series: ' . $reserva->series . ', Estado: ' . $reserva->estado);
 
             // Obtener información del bingo asociado
             $bingoNombre = 'No asignado';
@@ -62,15 +68,16 @@ class CartonController extends Controller
                     foreach ($seriesArray as $serie) {
                         $cartones->push([
                             'numero' => $serie,
-                            'estado' => $reserva->estado,
+                            'estado' => $reserva->estado, // Incluimos el estado tal cual viene de la base de datos
                             'nombre' => $reserva->nombre,
                             'fecha_creacion' => $reserva->created_at->format('d/m/Y'),
                             'tipo_sorteo' => 'Principal',
                             'id_reserva' => $reserva->id,
                             'bingo_nombre' => $bingoNombre,
-                            'bingo_id' => $bingoId
+                            'bingo_id' => $bingoId,
+                            'eliminado' => $reserva->eliminado // Añadimos el campo eliminado para referencia
                         ]);
-                        Log::info('Cartón agregado: ' . $serie . ' para bingo: ' . $bingoNombre);
+                        Log::info('Cartón agregado: ' . $serie . ' para bingo: ' . $bingoNombre . ', Estado: ' . $reserva->estado);
                     }
                 } else {
                     Log::warning('El formato de series no es un array para la reserva ID: ' . $reserva->id);
@@ -81,14 +88,20 @@ class CartonController extends Controller
         }
 
         Log::info('Total de cartones encontrados: ' . $cartones->count());
+        
+        // Obtener número de contacto para WhatsApp
+        $enlaces = Enlace::first();
+        $numeroContacto = $enlaces ? $enlaces->numero_contacto : '3235903774';
 
         return view('buscarcartones', [
-            'cartones' => $cartones
+            'cartones' => $cartones,
+            'numeroContacto' => $numeroContacto
         ]);
     }
 
-    /**
+   /**
      * Descarga el cartón si está aprobado, agregando una segunda página con la marca de agua.
+     * Incluye verificación para bingos cerrados (máx 24 horas de disponibilidad)
      */
     public function descargar($numero, $bingoId = null)
     {
@@ -119,6 +132,28 @@ class CartonController extends Controller
         if (!$reservaEncontrada) {
             Log::warning("Cartón no encontrado o no aprobado: $numero");
             return redirect()->back()->with('error', 'El cartón no existe o no está aprobado.');
+        }
+
+        // NUEVA FUNCIONALIDAD: Verificar si el bingo está cerrado y el tiempo desde su cierre
+        if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
+            $bingo = $reservaEncontrada->bingo;
+            
+            // Verificar si el bingo está cerrado
+            if ($bingo->estado !== 'abierto') {
+                // Determinar la fecha de cierre (usando fecha_cierre o updated_at como respaldo)
+                $fechaCierre = $bingo->fecha_cierre ? Carbon::parse($bingo->fecha_cierre) : Carbon::parse($bingo->updated_at);
+                $ahora = Carbon::now();
+                $diferenciaHoras = $fechaCierre->diffInHours($ahora);
+                
+                // Si han pasado más de 24 horas desde el cierre
+                if ($diferenciaHoras > 24) {
+                    Log::warning("Intento de descarga de cartón {$numero} para bingo cerrado hace más de 24 horas");
+                    return redirect()->back()->with('error', 'La descarga de este cartón ha expirado. Los cartones solo están disponibles por 24 horas después del cierre del bingo.');
+                }
+                
+                // Si está dentro del período válido, registrar en el log
+                Log::info("Descarga de cartón {$numero} para bingo cerrado dentro del período válido ({$diferenciaHoras} horas desde el cierre)");
+            }
         }
 
         // Convertir el número a entero para quitar ceros iniciales
@@ -182,69 +217,25 @@ class CartonController extends Controller
         return response()->download($rutaCompleta, $nombreArchivo . '.pdf');
     }
 
-    /**
-     * Agrega una página extra al PDF original (como segunda página) que contiene la marca de agua.
-     *
-     * Se importa la primera página del PDF original, luego se inserta una nueva página con
-     * la información de marca de agua (por ejemplo, el nombre del bingo y la fecha) y, si
-     * existen más páginas en el documento original, se agregan a continuación.
-     *
-     * @param string $inputPath Ruta al PDF original.
-     * @param string $outputPath Ruta donde se guardará el nuevo PDF.
-     * @param string $bingoName Nombre del bingo (para la marca de agua).
-     * @param string|null $bingoDate Fecha del bingo (opcional).
-     * @return bool
-     */
-    private function addWatermarkPageToPdf($inputPath, $outputPath, $bingoName, $bingoDate = null)
+    public function getBingoByName(Request $request)
     {
-        try {
-            // Crear una instancia de FPDI con TCPDF.
-            $pdf = new \setasign\Fpdi\Tcpdf\Fpdi();
-            $pdf->setPrintHeader(false);
-            $pdf->setPrintFooter(false);
-
-            // Abrir el PDF original y obtener el número de páginas.
-            $pageCount = $pdf->setSourceFile($inputPath);
-            if ($pageCount < 1) {
-                throw new \Exception("El PDF original no tiene páginas.");
-            }
-
-            // --- Primera página: se importa la primera página del PDF original.
-            $templateId = $pdf->importPage(1);
-            $size = $pdf->getTemplateSize($templateId);
-            $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
-            $pdf->AddPage($orientation, [$size['width'], $size['height']]);
-            $pdf->useTemplate($templateId);
-
-            // --- Segunda página: se inserta una nueva página con la marca de agua.
-            $pdf->AddPage();
-            $pdf->SetFont('helvetica', 'B', 20);
-            $pdf->SetTextColor(150, 150, 150);
-            $watermarkText = "BINGO: " . strtoupper($bingoName);
-            if ($bingoDate) {
-                $watermarkText .= " - FECHA: " . $bingoDate;
-            }
-            // Centramos el texto en la página (ajusta la posición según lo necesites)
-            $pdf->SetXY(10, 40);
-            $pdf->Cell(0, 10, $watermarkText, 0, 1, 'C');
-
-            // --- Resto de páginas: se agregan las páginas restantes del PDF original (si las hay).
-            if ($pageCount > 1) {
-                for ($pageNo = 2; $pageNo <= $pageCount; $pageNo++) {
-                    $templateId = $pdf->importPage($pageNo);
-                    $size = $pdf->getTemplateSize($templateId);
-                    $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
-                    $pdf->AddPage($orientation, [$size['width'], $size['height']]);
-                    $pdf->useTemplate($templateId);
-                }
-            }
-
-            // Guardar el nuevo PDF con la página adicional.
-            $pdf->Output($outputPath, 'F');
-            return true;
-        } catch (\Exception $e) {
-            Log::error("Error al agregar página de marca de agua: " . $e->getMessage());
-            return false;
+        $nombre = $request->nombre;
+        $bingo = Bingo::where('nombre', $nombre)->first();
+        if (!$bingo) {
+            return response()->json(['error' => 'Bingo no encontrado'], 404);
         }
+        return response()->json($bingo);
+    }
+    
+    /**
+     * Obtener información del bingo por ID para la API
+     */
+    public function getBingoById($id)
+    {
+        $bingo = Bingo::find($id);
+        if (!$bingo) {
+            return response()->json(['error' => 'Bingo no encontrado'], 404);
+        }
+        return response()->json($bingo);
     }
 }
