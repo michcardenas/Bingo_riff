@@ -87,15 +87,7 @@ class CartonController extends Controller
         ]);
     }
 
-    /**
-     * Descarga el cartón si está aprobado, agregando una segunda página con la marca de agua.
-     */
-    use Illuminate\Http\Request;
-    use Illuminate\Support\Facades\Log;
-    use Illuminate\Support\Facades\Response;
-    use Carbon\Carbon;
-    use App\Models\Reserva;
-    
+  
     public function descargar($numero, $bingoId = null)
     {
         Log::info("Iniciando descarga de cartón: $numero, Bingo ID: $bingoId");
