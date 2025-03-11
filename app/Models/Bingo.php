@@ -16,5 +16,16 @@ class Bingo extends Model
         'fecha',
         'precio',
         'estado',
+        'reabierto',
     ];
+
+    /**
+     * Obtiene las reservas asociadas a este bingo.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function reservas()
+    {
+        return $this->hasMany(Reserva::class);
+    }
 }

@@ -6,6 +6,8 @@
     <title>RIFFY Bingo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="{{ asset('images/RiffyLogo.png') }}">
+    <!-- Add this in the <head> section -->
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 
     <!-- Google Fonts -->
@@ -736,26 +738,31 @@ function validarFormulario(event) {
     
     // Ahora vamos a enviar el formulario usando Fetch API
     fetch(form.action, {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin' // Para asegurar que las cookies CSRF se envíen
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Error en el servidor');
-        }
-        return response.text();
-    })
-    .then(html => {
-        // Redirigir a la página que nos devuelve el servidor
-        document.open();
-        document.write(html);
-        document.close();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showErrorNotification('Error al enviar formulario', 'Hubo un problema al enviar los datos. Por favor intenta nuevamente.');
-    });
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin'
+})
+.then(response => {
+    if (!response.ok) {
+        return response.text().then(text => {
+            console.error('Error del servidor:', response.status, response.statusText);
+            console.error('Contenido de la respuesta:', text);
+            throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+        });
+    }
+    return response.text();
+})
+.then(html => {
+    // Redirigir a la página que nos devuelve el servidor
+    document.open();
+    document.write(html);
+    document.close();
+})
+.catch(error => {
+    console.error('Error completo:', error);
+    showErrorNotification('Error al enviar formulario', 
+        `Hubo un problema al enviar los datos. Error: ${error.message}. Revisa la consola para más detalles.`);
+});
 }
 
 // Función simplificada para resaltar un campo con error

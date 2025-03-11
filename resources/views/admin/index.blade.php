@@ -42,24 +42,45 @@
 <!-- Línea separadora -->
 <hr class="bg-secondary mb-4">
 
+<!-- Botón para limpiar registros -->
+<div class="container mb-3">
+    <div class="row">
+        <div class="col-12">
+            <form action="{{ route('bingos.limpiar') }}" method="POST" onsubmit="return confirm('¿Estás seguro de que deseas limpiar todos los registros? Esta acción no se puede deshacer.')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Limpiar Registros
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Tabla de bingos -->
 <div class="container mb-4">
     <div class="row">
         <div class="col-12">
-            <table class="table table-dark">
+            <table class="table table-dark table-striped align-middle">
                 <thead>
                     <tr>
                         <th>Nombre del bingo</th>
                         <th>Fecha</th>
                         <th>Precio</th>
                         <th>Estado</th>
+                        <th>Participantes</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($bingos as $bingo)
                     <tr>
-                        <td>{{ $bingo->nombre }}</td>
+                        <td>
+                            <a href="{{ route('bingos.reservas', $bingo->id) }}" class="text-white fw-bold text-decoration-none">
+                                {{ $bingo->nombre }}
+                                <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+                            </a>
+                        </td>
                         <td>{{ \Carbon\Carbon::parse($bingo->fecha)->format('d/m/Y') }}</td>
                         <td>
                             <!-- Visualización del precio y botón de editar -->
@@ -81,32 +102,65 @@
                                 <button type="button" class="btn btn-sm btn-secondary" onclick="cancelEdit({{ $bingo->id }})">Cancelar</button>
                             </form>
                         </td>
-                        <td>{{ ucfirst($bingo->estado) }}</td>
                         <td>
-                            @if(strtolower($bingo->estado) == 'abierto')
-                            <!-- Si el bingo está abierto, mostrar botón para cerrarlo -->
-                            <form action="{{ route('bingos.cerrar', $bingo->id) }}" method="POST" class="d-inline">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn btn-sm" style="background-color: #00bf63; color: white; font-weight: bold; border: 2px solid white;">
-                                    Cerrar Bingo
-                                </button>
-                            </form>
-                            @else
-                            @if(!$bingo->reabierto)
-                            <!-- Si está cerrado y aún no se reabrió, mostrar botón para abrirlo -->
-                            <form action="{{ route('bingos.abrir', $bingo->id) }}" method="POST" class="d-inline">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn btn-sm" style="background-color: #00bf63; color: white; font-weight: bold; border: 2px solid white;">
-                                    Abrir Bingo
-                                </button>
-                            </form>
-                            @else
-                            <!-- Si ya se reabrió una vez, mostrar un mensaje -->
-                            <span class="badge bg-secondary">Cerrado (ya se cerró 1 vez)</span>
-                            @endif
-                            @endif
+                            <span class="badge {{ strtolower($bingo->estado) == 'archivado' ? 'bg-warning text-dark' : (strtolower($bingo->estado) == 'abierto' ? 'bg-success' : 'bg-danger') }}">
+                                {{ ucfirst($bingo->estado) }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-dark">
+                                {{ $bingo->reservas_count ?? 0 }} Participantes
+                            </span>
+                        </td>
+                        <td>
+                            <!-- Acciones según el estado del bingo -->
+                            <div class="d-flex gap-2">
+                                <!-- Botón para ver reservas -->
+                                <a href="{{ route('bingos.reservas', $bingo->id) }}" class="btn btn-sm btn-info me-2">
+                                    <i class="bi bi-people-fill"></i> Ver Participantes
+                                </a>
+                                
+                                @if(strtolower($bingo->estado) == 'abierto')
+                                <!-- Si el bingo está abierto, mostrar botón para cerrarlo -->
+                                <form action="{{ route('bingos.cerrar', $bingo->id) }}" method="POST" class="d-inline me-2">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-sm" style="background-color: #00bf63; color: white; font-weight: bold; border: 2px solid white;">
+                                        Cerrar Bingo
+                                    </button>
+                                </form>
+                                @elseif(strtolower($bingo->estado) == 'cerrado')
+                                <!-- Si está cerrado, mostrar botón para abrirlo -->
+                                @if(!$bingo->reabierto)
+                                <form action="{{ route('bingos.abrir', $bingo->id) }}" method="POST" class="d-inline me-2">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-sm" style="background-color: #00bf63; color: white; font-weight: bold; border: 2px solid white;">
+                                        Abrir Bingo
+                                    </button>
+                                </form>
+                                @else
+                                <!-- Si ya se reabrió una vez, mostrar un mensaje -->
+                                <span class="badge bg-secondary me-2">Cerrado (ya se reabrió 1 vez)</span>
+                                @endif
+                                @endif
+                                
+                                <!-- Botón para archivar el bingo (disponible siempre excepto cuando ya está archivado) -->
+                                @if(strtolower($bingo->estado) != 'archivado')
+                                <form action="{{ route('bingos.archivar', $bingo->id) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-sm" style="background-color: #FFB700; color: white; font-weight: bold; border: 2px solid white;">
+                                        Archivar Bingo
+                                    </button>
+                                </form>
+                                @else
+                                <!-- Si está archivado, mostrar un mensaje informativo -->
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-lock-fill me-1"></i> Archivado (No permite descarga)
+                                </span>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                     @endforeach

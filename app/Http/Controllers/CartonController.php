@@ -99,9 +99,9 @@ class CartonController extends Controller
         ]);
     }
 
-   /**
+  /**
      * Descarga el cartón si está aprobado, agregando una segunda página con la marca de agua.
-     * Incluye verificación para bingos cerrados (máx 24 horas de disponibilidad)
+     * Incluye verificación para bingos cerrados (máx 24 horas de disponibilidad) y archivados (no permite descarga)
      */
     public function descargar($numero, $bingoId = null)
     {
@@ -135,12 +135,18 @@ class CartonController extends Controller
             return redirect()->back()->with('error', 'El cartón no existe o no está aprobado.');
         }
 
-        // NUEVA FUNCIONALIDAD: Verificar si el bingo está cerrado y el tiempo desde su cierre
+        // Verificar si el bingo está archivado - no permite descarga en ningún caso
         if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
             $bingo = $reservaEncontrada->bingo;
             
-            // Verificar si el bingo está cerrado
-            if ($bingo->estado !== 'abierto') {
+            // Verificar si el bingo está archivado
+            if (strtolower($bingo->estado) === 'archivado') {
+                Log::warning("Intento de descarga de cartón {$numero} para bingo archivado");
+                return redirect()->back()->with('error', 'Este cartón pertenece a un bingo archivado y no puede ser descargado.');
+            }
+            
+            // VERIFICACIÓN EXISTENTE: Verificar si el bingo está cerrado y el tiempo desde su cierre
+            if (strtolower($bingo->estado) !== 'abierto') {
                 // Determinar la fecha de cierre (usando fecha_cierre o updated_at como respaldo)
                 $fechaCierre = $bingo->fecha_cierre ? Carbon::parse($bingo->fecha_cierre) : Carbon::parse($bingo->updated_at);
                 $ahora = Carbon::now();
