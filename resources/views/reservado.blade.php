@@ -18,6 +18,9 @@
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
         rel="stylesheet">
+        
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
     <style>
         body {
@@ -182,7 +185,9 @@
     // Obtener los enlaces de la base de datos
     $enlaces = App\Models\Enlace::first() ?? new App\Models\Enlace();
     $grupoWhatsapp = $enlaces->grupo_whatsapp ?? '#'; // Valor por defecto
-    $video2 = $enlaces->video_2 ?? '#'; // Valor por defecto para el video 2
+    
+    // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
+    $telefonoAtencion = $enlaces->telefono_atencion ?? ($enlaces->numero_contacto ?? '3235903774');
     @endphp
     <!-- Cabecera -->
     <header class="py-2 border-bottom border-secondary" style="background-color: #00bf63;">
@@ -242,10 +247,10 @@
         </div>
     </div>
 
-    <a href="https://wa.me/{{ $numeroContacto ?? '3235903774' }}" class="whatsapp-float" target="_blank">
+    <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
+    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $telefonoAtencion) }}" class="whatsapp-float" target="_blank">
         <i class="fab fa-whatsapp"></i>
     </a>
-
 
     <!-- Bootstrap JS -->
     <script

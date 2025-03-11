@@ -7,6 +7,42 @@
         <h1 class="display-4 text-center m-0">Enlaces del Sistema</h1>
     </div>
 
+    <!-- Números de contacto destacados -->
+    <div class="container mb-4">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card bg-dark text-white">
+                    <div class="card-header bg-secondary">
+                        <h4 class="m-0">Números de Contacto</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6 text-center">
+                                <h5 class="text-muted mb-2">Contacto de Pagos</h5>
+                                <h3>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-credit-card me-2" viewBox="0 0 16 16">
+                                        <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1H2zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7z"/>
+                                        <path d="M2 10a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-1z"/>
+                                    </svg>
+                                    {{ $enlaces->numero_contacto ?? 'No configurado' }}
+                                </h3>
+                            </div>
+                            <div class="col-md-6 text-center">
+                                <h5 class="text-muted mb-2">Atención al Cliente</h5>
+                                <h3>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-telephone-fill me-2" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M1.885.511a1.745 1.745 0 0 1 2.61.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"/>
+                                    </svg>
+                                    {{ $enlaces->telefono_atencion ?? 'No configurado' }}
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Formulario para gestionar enlaces -->
     <div class="container mb-5">
         <div class="row justify-content-center">
@@ -21,7 +57,7 @@
                             @method('PATCH')
 
                             <div class="mb-4">
-                                <label class="form-label fw-bold">Número de Contacto</label>
+                                <label class="form-label fw-bold">Número de Contacto para Pagos</label>
                                 <input 
                                     type="text" 
                                     class="form-control" 
@@ -29,6 +65,17 @@
                                     value="{{ $enlaces->numero_contacto ?? '' }}"
                                     placeholder="Ej: 3235903774">
                                 <small class="text-muted">Este número se mostrará en la vista principal para pagos.</small>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Teléfono de Atención al Cliente</label>
+                                <input 
+                                    type="text" 
+                                    class="form-control" 
+                                    name="telefono_atencion" 
+                                    value="{{ $enlaces->telefono_atencion ?? '' }}"
+                                    placeholder="Ej: 3001234567">
+                                <small class="text-muted">Número de atención al cliente (se guardará con prefijo +57).</small>
                             </div>
 
                             <div class="mb-4">

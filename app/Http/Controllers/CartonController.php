@@ -20,7 +20,8 @@ class CartonController extends Controller
     {
         // Obtener número de contacto para WhatsApp
         $enlaces = Enlace::first();
-        $numeroContacto = $enlaces ? $enlaces->numero_contacto : '3235903774';
+        // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
+        $numeroContacto = $enlaces ? ($enlaces->telefono_atencion ?: $enlaces->numero_contacto) : '3235903774';
         
         return view('buscarcartones', compact('numeroContacto'));
     }
@@ -91,7 +92,8 @@ class CartonController extends Controller
         
         // Obtener número de contacto para WhatsApp
         $enlaces = Enlace::first();
-        $numeroContacto = $enlaces ? $enlaces->numero_contacto : '3235903774';
+        // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
+        $numeroContacto = $enlaces ? ($enlaces->telefono_atencion ?: $enlaces->numero_contacto) : '3235903774';
 
         return view('buscarcartones', [
             'cartones' => $cartones,

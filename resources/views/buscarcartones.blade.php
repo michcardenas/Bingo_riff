@@ -267,6 +267,9 @@
     $enlaces = App\Models\Enlace::first() ?? new App\Models\Enlace();
     $grupoWhatsapp = $enlaces->grupo_whatsapp ?? '#'; // Valor por defecto
     $video2 = $enlaces->video_2 ?? '#'; // Valor por defecto para el video 2
+    
+    // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
+    $telefonoAtencion = $enlaces->telefono_atencion ?? ($enlaces->numero_contacto ?? '3235903774');
     @endphp
 
     <!-- Cabecera -->
@@ -324,8 +327,8 @@
                 </div>
                 <button type="submit" class="btn btn-orange">BUSCAR MIS CARTONES</button>
             </form>
-                        <!-- Mensaje de notificación de WhatsApp -->
-                        <div class="alert alert-info mt-3 mb-3 text-center">
+            <!-- Mensaje de notificación de WhatsApp -->
+            <div class="alert alert-info mt-3 mb-3 text-center">
                 <i class="fab fa-whatsapp me-2"></i> Informaremos por el grupo de Whatsapp cuando los cartones esten aprobados para su descarga.
             </div>
 
@@ -370,7 +373,7 @@
                             <span class="estado-revision">Revisión</span>
                             @elseif($carton['estado'] == 'rechazado')
                             <span class="estado-rechazado">Rechazado</span>
-                            <a href="#" class="ms-2 contactar-admin" data-carton="{{ $carton['numero'] }}" data-whatsapp="{{ $numeroContacto ?? '3235903774' }}">
+                            <a href="#" class="ms-2 contactar-admin" data-carton="{{ $carton['numero'] }}" data-whatsapp="{{ $telefonoAtencion }}">
                                 <i class="fab fa-whatsapp text-success"></i>
                             </a>
                             @else
@@ -407,10 +410,10 @@
         </div>
     </div>
 
-    <a href="https://wa.me/{{ $numeroContacto ?? '3235903774' }}" class="whatsapp-float" target="_blank">
-    <i class="fab fa-whatsapp"></i>
-</a>
-
+    <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
+    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $telefonoAtencion) }}" class="whatsapp-float" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+    </a>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -427,7 +430,9 @@
                     const cartonNumero = this.getAttribute('data-carton');
                     const adminWhatsapp = this.getAttribute('data-whatsapp') || "3235903774";
                     const mensaje = `Hola, necesito ayuda con mi cartón rechazado #${cartonNumero}.`;
-                    const whatsappUrl = `https://wa.me/${adminWhatsapp}?text=${encodeURIComponent(mensaje)}`;
+                    // Limpiar número de WhatsApp de cualquier carácter no numérico
+                    const whatsappNumero = adminWhatsapp.replace(/[^0-9]/g, '');
+                    const whatsappUrl = `https://wa.me/${whatsappNumero}?text=${encodeURIComponent(mensaje)}`;
                     window.open(whatsappUrl, '_blank');
                 });
             });

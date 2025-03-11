@@ -392,7 +392,9 @@
     @php
         // Obtener los enlaces de la base de datos
         $enlaces = App\Models\Enlace::first() ?? new App\Models\Enlace();
-        $numeroContacto = $enlaces->numero_contacto ?? '3235903774'; // Valor por defecto
+        // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
+        $numeroContacto = $enlaces->numero_contacto ?? '3235903774'; // Número para pagos (original)
+        $telefonoAtencion = $enlaces->telefono_atencion ?? $numeroContacto; // Teléfono de atención (nuevo)
     @endphp
 
     <!-- Cabecera -->
@@ -583,9 +585,10 @@
         </div>
     </div>
 
-    <a href="https://wa.me/{{ $numeroContacto ?? '3235903774' }}" class="whatsapp-float" target="_blank">
-    <i class="fab fa-whatsapp"></i>
-</a>
+    <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
+    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $telefonoAtencion) }}" class="whatsapp-float" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+    </a>
 
 
     <!-- Bootstrap JS -->
@@ -969,7 +972,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
-    </script>
+</script>
 
 </body>
 

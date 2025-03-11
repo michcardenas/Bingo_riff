@@ -12,6 +12,7 @@ class Enlace extends Model
     protected $table = 'enlaces';
     
     protected $fillable = [
+        'telefono_atencion',
         'numero_contacto',
         'video_1',
         'video_2',
