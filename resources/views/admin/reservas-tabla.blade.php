@@ -74,7 +74,7 @@
                    data-id="{{ $reserva->id }}">
           @else
             <input type="text" class="form-control form-control-sm bg-dark text-white border-light" 
-                   value="{{ $reserva->numero_comprobante ?? '' }}" readonly>
+                   value="{{ $reserva->numero_comprobante ?? '' }}">
           @endif
         </td>
         <td>
