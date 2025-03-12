@@ -136,11 +136,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Variable para almacenar el tipo de vista actual
     let tipoActual = 'todas';
     let dataTable = null;
+
+    // Mover la tabla existente al contenedor tableContent
+    const existingTable = document.querySelector('#reservas-table');
+    const tableContent = document.querySelector('#tableContent');
+    if (existingTable && tableContent) {
+        // Verificar si la tabla ya está en el contenedor adecuado
+        if (!tableContent.contains(existingTable)) {
+            // Limpiar el contenedor
+            tableContent.innerHTML = '';
+            // Mover la tabla
+            tableContent.appendChild(existingTable);
+        }
+    }
     
-    // Función para cargar contenido de tabla vía AJAX
-    function loadTableContent(url, actualizarFiltros = true) {
-        // Mostrar indicador de carga
-        document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
+    // Inicializar la tabla que ya está en el DOM
+    function initializeExistingTable() {
+        // Verificar si hay una tabla en la página
+        const table = document.querySelector('#reservas-table');
+        if (!table) {
+            console.error('No se encontró la tabla #reservas-table en el DOM');
+            return;
+        }
         
         // Destruir DataTable existente si existe
         if (dataTable !== null) {
@@ -148,273 +165,243 @@ document.addEventListener('DOMContentLoaded', function() {
             dataTable = null;
         }
         
-        // Hacer la petición AJAX
-        fetch(url, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+        try {
+            // Inicializar DataTable con opciones personalizadas
+            dataTable = $(table).DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
+                    emptyTable: "No hay resultados que concuerden con tu filtro",
+                    zeroRecords: "No hay resultados que concuerden con tu filtro"
+                },
+                order: [[0, 'desc']], // Ordenar por la primera columna de forma descendente
+                responsive: true,
+                // Personalizar con clases oscuras para mantener el estilo
+                dom: '<"row"<"col-md-6"l><"col-md-6"f>>rt<"row"<"col-md-6"i><"col-md-6"p>>',
+                initComplete: function() {
+                    // Añadir clases personalizadas para el tema oscuro
+                    $('.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate').addClass('text-white');
+                    $('.dataTables_wrapper .form-control').addClass('bg-dark text-white border-secondary');
+                    $('.dataTables_wrapper .page-link').addClass('bg-dark text-white border-secondary');
+                    
+                    // Configurar eventos después de inicializar DataTable
+                    setupEditSeriesEvents();
+                }
+            });
+            
+            // Mostrar mensaje si no hay datos
+            if ($(table).find('tbody tr').length === 0 || 
+                $(table).find('tbody tr:first').text().includes('No hay reservas')) {
+                $('#tableContent').append('<div id="no-reservas" class="alert alert-warning text-center mt-3">No hay reservas registradas para este bingo.</div>');
+            } else {
+                $('#no-reservas').remove();
             }
-        })
-        .then(response => response.text())
-        .then(html => {
-            // Si el HTML está vacío, mostrar mensaje
-            if (html.trim() === '') {
-                document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
+        } catch (error) {
+            console.error('Error inicializando DataTable:', error);
+            tableContent.innerHTML = '<div class="alert alert-danger text-center">Error al inicializar la tabla: ' + error.message + '</div>';
+        }
+    }
+    
+    // Función para configurar los eventos de edición de series
+    function setupEditSeriesEvents() {
+        // Manejar el evento de clic en el botón "Editar Series"
+        $('.edit-series').off('click').on('click', function() {
+            // Obtener datos del botón
+            const reservaId = $(this).data('id');
+            const nombre = $(this).data('nombre');
+            let seriesData = $(this).data('series');
+            const cantidad = parseInt($(this).data('cantidad'));
+            const total = parseInt($(this).data('total'));
+            const bingoId = $(this).data('bingo-id');
+            const bingoPrice = parseInt($(this).data('bingo-precio'));
+            
+            console.log("Botón Editar Series clickeado:", {
+                reservaId, nombre, seriesData, cantidad, total, bingoId, bingoPrice
+            });
+            
+            // Verificar que el modal existe
+            const modal = $('#editSeriesModal');
+            if (modal.length === 0) {
+                console.error('Error: No se encontró el modal #editSeriesModal');
+                alert('Error: No se encontró el modal para editar series. Por favor, contacta al administrador.');
                 return;
             }
             
-            // Verificar si el contenido contiene una tabla con datos
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            
-            // Buscar si hay filas de datos (excluyendo encabezados y filas de "no hay resultados")
-            const hasDataRows = Array.from(tempDiv.querySelectorAll('table tbody tr')).some(tr => {
-                // Excluir filas que tienen mensaje de "no hay resultados"
-                const text = tr.textContent.trim().toLowerCase();
-                return !text.includes('no hay') && !text.includes('no se encontraron');
-            });
-            
-            if (!hasDataRows) {
-                // Si no hay filas con datos, mostrar un mensaje personalizado
-                document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
-                return;
-            }
-            
-            // Si hay contenido válido, actualizar el contenedor
-            document.getElementById('tableContent').innerHTML = html;
-            
-            // Inicializar DataTable después de cargar la tabla
-            initializeDataTable();
-            
-            // Actualizamos el tipo actual basado en qué botón está activo
-            if (actualizarFiltros) {
-                const activeButton = document.querySelector('.col-auto button.active');
-                if (activeButton) {
-                    if (activeButton.id === 'btnComprobanteDuplicado') tipoActual = 'comprobantes-duplicados';
-                    else if (activeButton.id === 'btnPedidoDuplicado') tipoActual = 'pedidos-duplicados';
-                    else if (activeButton.id === 'btnCartonesEliminados') tipoActual = 'cartones-eliminados';
-                    else tipoActual = 'todas';
+            // Convertir seriesData a array si es una cadena
+            let series = [];
+            if (typeof seriesData === 'string') {
+                try {
+                    // Intentar parsear como JSON
+                    series = JSON.parse(seriesData);
+                } catch (e) {
+                    console.error('Error al parsear series:', e);
+                    // Si no es JSON válido, dividir por comas
+                    series = seriesData.split(',').map(item => item.trim());
                 }
+            } else if (Array.isArray(seriesData)) {
+                series = seriesData;
             }
-        })
-        .catch(error => {
-            console.error('Error cargando contenido:', error);
-            document.getElementById('tableContent').innerHTML = '<div class="alert alert-danger">Error al cargar los datos. Por favor, intenta nuevamente.</div>';
-        });
-    }
-    
-    // Función para inicializar DataTable en la tabla cargada
-function initializeDataTable() {
-    // Verificar si hay una tabla en el contenedor
-    const table = document.querySelector('#tableContent table');
-    if (!table) return;
-    
-    try {
-        // Inicializar DataTable con opciones personalizadas
-        dataTable = $(table).DataTable({
-            language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
-                emptyTable: "No hay resultados que concuerden con tu filtro",
-                zeroRecords: "No hay resultados que concuerden con tu filtro"
-            },
-            order: [[0, 'desc']], // Ordenar por la primera columna de forma descendente
-            responsive: true,
-            // Personalizar con clases oscuras para mantener el estilo
-            dom: '<"row"<"col-md-6"l><"col-md-6"f>>rt<"row"<"col-md-6"i><"col-md-6"p>>',
-            initComplete: function() {
-                // Añadir clases personalizadas para el tema oscuro
-                $('.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate').addClass('text-white');
-                $('.dataTables_wrapper .form-control').addClass('bg-dark text-white border-secondary');
-                $('.dataTables_wrapper .page-link').addClass('bg-dark text-white border-secondary');
+            
+            // Completar datos del formulario en el modal
+            $('#reserva_id').val(reservaId);
+            $('#bingo_id').val(bingoId);
+            $('#clientName').text(nombre);
+            $('#newQuantity').val(cantidad);
+            $('#newQuantity').attr('max', Array.isArray(series) ? series.length : 1);
+            $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(total));
+            
+            // Establecer URL del formulario
+            const form = $('#editSeriesForm');
+            
+            // Construir URL basada en el pathname actual
+            const currentPath = window.location.pathname;
+            const baseUrl = currentPath.includes('/admin') 
+              ? currentPath.substring(0, currentPath.indexOf('/admin')) 
+              : '';
+            
+            // Usar esta URL para asegurar compatibilidad en todos los entornos
+            form.attr('action', `${baseUrl}/reservas/${reservaId}/update-series`);
+            
+            // Para depurar
+            console.log('URL del formulario:', form.attr('action'));
+            console.log('ID de Reserva:', reservaId);
+            console.log('Series:', series);
+            
+            // Limpiar contenido previo
+            $('#currentSeries').empty();
+            $('#seriesCheckboxes').empty();
+            
+            // Mostrar series actuales y crear checkboxes
+            if (Array.isArray(series) && series.length > 0) {
+                const seriesList = $('<ul class="list-group"></ul>');
                 
-                // Aplicar estilos según el tipo de vista
-                if (tipoActual === 'comprobantes-duplicados') {
-                    $('#tableContent table tbody tr').addClass('duplicado-comprobante');
-                } else if (tipoActual === 'pedidos-duplicados') {
-                    $('#tableContent table tbody tr').addClass('duplicado-pedido');
-                } else if (tipoActual === 'cartones-eliminados') {
-                    $('#tableContent table tbody tr').addClass('carton-eliminado');
-                }
-                
-                // Configurar eventos después de inicializar DataTable
-                setupEditSeriesEvents();
-            }
-        });
-    } catch (error) {
-        console.error('Error inicializando DataTable:', error);
-        // Si hay un error al inicializar DataTable, mostrar un mensaje
-        document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
-    }
-}
-
-// Función para configurar los eventos de edición de series
-function setupEditSeriesEvents() {
-    // Manejar el evento de clic en el botón "Editar Series"
-    $('.edit-series').off('click').on('click', function() {
-        // Obtener datos del botón
-        const reservaId = $(this).data('id');
-        const nombre = $(this).data('nombre');
-        let seriesData = $(this).data('series');
-        const cantidad = parseInt($(this).data('cantidad'));
-        const total = parseInt($(this).data('total'));
-        const bingoId = $(this).data('bingo-id');
-        const bingoPrice = parseInt($(this).data('bingo-precio'));
-        
-        console.log("Botón Editar Series clickeado:", {
-            reservaId, nombre, seriesData, cantidad, total, bingoId, bingoPrice
-        });
-        
-        // Verificar que el modal existe
-        const modal = $('#editSeriesModal');
-        if (modal.length === 0) {
-            console.error('Error: No se encontró el modal #editSeriesModal');
-            alert('Error: No se encontró el modal para editar series. Por favor, contacta al administrador.');
-            return;
-        }
-        
-        // Convertir seriesData a array si es una cadena
-        let series = [];
-        if (typeof seriesData === 'string') {
-            try {
-                // Intentar parsear como JSON
-                series = JSON.parse(seriesData);
-            } catch (e) {
-                console.error('Error al parsear series:', e);
-                // Si no es JSON válido, dividir por comas
-                series = seriesData.split(',').map(item => item.trim());
-            }
-        } else if (Array.isArray(seriesData)) {
-            series = seriesData;
-        }
-        
-        // Completar datos del formulario en el modal
-        $('#reserva_id').val(reservaId);
-        $('#bingo_id').val(bingoId);
-        $('#clientName').text(nombre);
-        $('#newQuantity').val(cantidad);
-        $('#newQuantity').attr('max', Array.isArray(series) ? series.length : 1);
-        $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(total));
-        
-        // Establecer URL del formulario
-        $('#editSeriesForm').attr('action', `/admin/reservas/${reservaId}/update-series`);
-        
-        // Limpiar contenido previo
-        $('#currentSeries').empty();
-        $('#seriesCheckboxes').empty();
-        
-        // Mostrar series actuales y crear checkboxes
-        if (Array.isArray(series) && series.length > 0) {
-            const seriesList = $('<ul class="list-group"></ul>');
-            
-            series.forEach((serie, index) => {
-                // Crear elemento de lista
-                const listItem = $(`<li class="list-group-item bg-dark text-white border-light">Serie ${serie}</li>`);
-                seriesList.append(listItem);
-                
-                // Crear checkbox
-                const col = $('<div class="col-md-4 mb-2"></div>');
-                const checkDiv = $('<div class="form-check"></div>');
-                const checkbox = $(`<input type="checkbox" id="serie_${index}" name="selected_series[]" value="${serie}" class="form-check-input" checked>`);
-                const label = $(`<label for="serie_${index}" class="form-check-label">Serie ${serie}</label>`);
-                
-                checkDiv.append(checkbox).append(label);
-                col.append(checkDiv);
-                $('#seriesCheckboxes').append(col);
-            });
-            
-            $('#currentSeries').append(seriesList);
-        } else {
-            $('#currentSeries').text('No hay series disponibles');
-        }
-        
-        // Configurar evento para cambio en cantidad
-        $('#newQuantity').off('change').on('change', function() {
-            const newQuantity = parseInt($(this).val());
-            
-            // Actualizar total estimado
-            const newTotal = newQuantity * bingoPrice;
-            $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(newTotal));
-            
-            // Verificar selecciones
-            updateSelectedCounter();
-        });
-        
-        // Función para actualizar contador de seleccionados
-        function updateSelectedCounter() {
-            const checkboxes = $('input[name="selected_series[]"]');
-            const newQuantity = parseInt($('#newQuantity').val());
-            let checkedCount = 0;
-            
-            checkboxes.each(function() {
-                if ($(this).prop('checked')) checkedCount++;
-            });
-            
-            // Si hay más seleccionados que la cantidad permitida, desmarcar los últimos
-            if (checkedCount > newQuantity) {
-                let toUncheck = checkedCount - newQuantity;
-                $(checkboxes.get().reverse()).each(function() {
-                    if ($(this).prop('checked') && toUncheck > 0) {
-                        $(this).prop('checked', false);
-                        toUncheck--;
-                    }
+                series.forEach((serie, index) => {
+                    // Crear elemento de lista
+                    const listItem = $(`<li class="list-group-item bg-dark text-white border-light">Serie ${serie}</li>`);
+                    seriesList.append(listItem);
+                    
+                    // Crear checkbox
+                    const col = $('<div class="col-md-4 mb-2"></div>');
+                    const checkDiv = $('<div class="form-check"></div>');
+                    const checkbox = $(`<input type="checkbox" id="serie_${index}" name="selected_series[]" value="${serie}" class="form-check-input" checked>`);
+                    const label = $(`<label for="serie_${index}" class="form-check-label">Serie ${serie}</label>`);
+                    
+                    checkDiv.append(checkbox).append(label);
+                    col.append(checkDiv);
+                    $('#seriesCheckboxes').append(col);
                 });
+                
+                $('#currentSeries').append(seriesList);
+            } else {
+                $('#currentSeries').text('No hay series disponibles');
             }
-        }
-        
-        // Configurar eventos para checkboxes
-        $('input[name="selected_series[]"]').off('change').on('change', function() {
-            const newQuantity = parseInt($('#newQuantity').val());
-            let checkedCount = 0;
             
-            $('input[name="selected_series[]"]').each(function() {
-                if ($(this).prop('checked')) checkedCount++;
+            // Configurar evento para cambio en cantidad
+            $('#newQuantity').off('change').on('change', function() {
+                const newQuantity = parseInt($(this).val());
+                
+                // Actualizar total estimado
+                const newTotal = newQuantity * bingoPrice;
+                $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(newTotal));
+                
+                // Verificar selecciones
+                updateSelectedCounter();
             });
             
-            // Si se excede la cantidad permitida, desmarcar este checkbox
-            if (checkedCount > newQuantity && $(this).prop('checked')) {
-                $(this).prop('checked', false);
-                alert(`Solo puedes seleccionar ${newQuantity} series.`);
+            // Función para actualizar contador de seleccionados
+            function updateSelectedCounter() {
+                const checkboxes = $('input[name="selected_series[]"]');
+                const newQuantity = parseInt($('#newQuantity').val());
+                let checkedCount = 0;
+                
+                checkboxes.each(function() {
+                    if ($(this).prop('checked')) checkedCount++;
+                });
+                
+                // Si hay más seleccionados que la cantidad permitida, desmarcar los últimos
+                if (checkedCount > newQuantity) {
+                    let toUncheck = checkedCount - newQuantity;
+                    $(checkboxes.get().reverse()).each(function() {
+                        if ($(this).prop('checked') && toUncheck > 0) {
+                            $(this).prop('checked', false);
+                            toUncheck--;
+                        }
+                    });
+                }
+            }
+            
+            // Configurar eventos para checkboxes
+            $('input[name="selected_series[]"]').off('change').on('change', function() {
+                const newQuantity = parseInt($('#newQuantity').val());
+                let checkedCount = 0;
+                
+                $('input[name="selected_series[]"]').each(function() {
+                    if ($(this).prop('checked')) checkedCount++;
+                });
+                
+                // Si se excede la cantidad permitida, desmarcar este checkbox
+                if (checkedCount > newQuantity && $(this).prop('checked')) {
+                    $(this).prop('checked', false);
+                    alert(`Solo puedes seleccionar ${newQuantity} series.`);
+                }
+            });
+            
+            // Inicializar contador de selecciones
+            updateSelectedCounter();
+            
+            // Mostrar modal
+            modal.modal('show');
+            
+            // Configurar botón de guardar
+            $('#saveSeriesChanges').off('click').on('click', function() {
+                const selectedCheckboxes = $('input[name="selected_series[]"]:checked');
+                const newQuantity = parseInt($('#newQuantity').val());
+                
+                if (selectedCheckboxes.length !== newQuantity) {
+                    alert(`Debes seleccionar exactamente ${newQuantity} series.`);
+                    return;
+                }
+                
+                // Mostrar indicador de carga
+                $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...');
+                
+                // Enviar formulario
+                $('#editSeriesForm').submit();
+            });
+            
+            // Manejar envío del formulario
+            $('#editSeriesForm').off('submit').on('submit', function() {
+                // Aquí puedes agregar lógica adicional si es necesario
+                // El formulario se enviará normalmente
+            });
+        });
+        
+        // Manejar envío de formularios de aprobación/rechazo
+        $('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').off('submit').on('submit', function() {
+            // Encuentra la fila que contiene el formulario
+            const row = $(this).closest('tr');
+            // Busca el input editable del número de comprobante en la misma fila
+            const input = row.find('.comprobante-input');
+            if (input.length > 0) {
+                // Crea un campo oculto para enviar el valor
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'numero_comprobante',
+                    value: input.val()
+                }).appendTo($(this));
             }
         });
         
-        // Inicializar contador de selecciones
-        updateSelectedCounter();
-        
-        // Mostrar modal
-        modal.modal('show');
-        
-        // Configurar botón de guardar
-        $('#saveSeriesChanges').off('click').on('click', function() {
-            const selectedCheckboxes = $('input[name="selected_series[]"]:checked');
-            const newQuantity = parseInt($('#newQuantity').val());
-            
-            if (selectedCheckboxes.length !== newQuantity) {
-                alert(`Debes seleccionar exactamente ${newQuantity} series.`);
-                return;
-            }
-            
-            // Enviar formulario
-            $('#editSeriesForm').submit();
+        // Manejar la actualización del número de comprobante mediante AJAX
+        $('.comprobante-input').off('blur').on('blur', function() {
+            const reservaId = $(this).data('id');
+            const numeroComprobante = $(this).val();
+            // Aquí puedes implementar el guardado vía AJAX si lo necesitas
+            console.log('Actualizar comprobante:', reservaId, numeroComprobante);
         });
-    });
+    }
     
-    // Manejar envío de formularios de aprobación/rechazo
-    $('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').on('submit', function(e) {
-        // Encuentra la fila que contiene el formulario
-        const row = $(this).closest('tr');
-        // Busca el input editable del número de comprobante en la misma fila
-        const input = row.find('.comprobante-input');
-        if (input.length > 0) {
-            // Crea un campo oculto para enviar el valor
-            $('<input>').attr({
-                type: 'hidden',
-                name: 'numero_comprobante',
-                value: input.val()
-            }).appendTo($(this));
-        }
-    });
-}
-
-    
+    // Inicializar la tabla existente en carga
+    initializeExistingTable();
     
     // Función para actualizar botones activos
     function updateActiveButton(activeBtn) {
@@ -429,114 +416,77 @@ function setupEditSeriesEvents() {
         activeBtn.classList.add('active');
     }
     
-    // Función para añadir filtros a una URL
-    function addFiltersToUrl(baseUrl) {
-        const nombre = document.getElementById('nombre').value.trim();
+    // Funciones de filtrado para la tabla existente
+    document.getElementById('btnFiltrar').addEventListener('click', function() {
+        const nombre = document.getElementById('nombre').value.trim().toLowerCase();
         const celular = document.getElementById('celular').value.trim();
         const serie = document.getElementById('serie').value.trim();
         
-        // Crear objeto URL para manipular parámetros
-        const url = new URL(baseUrl, window.location.origin);
-        
-        // Añadir parámetros si existen
-        if (nombre) url.searchParams.append('nombre', nombre);
-        if (celular) url.searchParams.append('celular', celular);
-        if (serie) url.searchParams.append('serie', serie);
-        
-        return url.toString();
-    }
-    
-    // Obtener el ID del bingo actual de la URL o variable global
-    let bingoId;
-    try {
-        // Intentar obtener el ID del bingo de una variable global (si existe)
-        bingoId = typeof bingo_id !== 'undefined' ? bingo_id : window.location.pathname.split('/').filter(Boolean)[2];
-    } catch (e) {
-        // Si falla, extraer de la URL
-        const pathParts = window.location.pathname.split('/').filter(Boolean);
-        bingoId = pathParts[pathParts.indexOf('bingos') + 1] || '0';
-    }
-    
-    // Definir la ruta para todas las reservas usando tabla existente
-    const rutaTablaTodasReservas = `/admin/bingos/${bingoId}/reservas-tabla?tipo=todas`;
-    
-    // Cargar inicialmente la tabla de todas las reservas
-    loadTableContent(rutaTablaTodasReservas);
-    
-    // Asignar eventos a los botones
-    document.getElementById('btnTodasReservas').addEventListener('click', function() {
-        updateActiveButton(this);
-        tipoActual = 'todas';
-        loadTableContent(rutaTablaTodasReservas);
-    });
-
-    document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
-        updateActiveButton(this);
-        tipoActual = 'comprobantes-duplicados';
-        loadTableContent("{{ route('admin.comprobantesDuplicados') }}");
-    });
-
-    document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
-        updateActiveButton(this);
-        tipoActual = 'pedidos-duplicados';
-        loadTableContent("{{ route('admin.pedidosDuplicados') }}");
-    });
-
-    document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
-        updateActiveButton(this);
-        tipoActual = 'cartones-eliminados';
-        loadTableContent("{{ route('admin.cartonesEliminados') }}");
-    });
-    
-    // Evento para el botón de Filtrar
-    document.getElementById('btnFiltrar').addEventListener('click', function() {
-        let baseUrl;
-        
-        // Determinar qué ruta base usar según el tipo actual
-        switch(tipoActual) {
-            case 'comprobantes-duplicados':
-                baseUrl = "{{ route('admin.comprobantesDuplicados') }}";
-                break;
-            case 'pedidos-duplicados':
-                baseUrl = "{{ route('admin.pedidosDuplicados') }}";
-                break;
-            case 'cartones-eliminados':
-                baseUrl = "{{ route('admin.cartonesEliminados') }}";
-                break;
-            default:
-                baseUrl = rutaTablaTodasReservas;
+        if (dataTable) {
+            // Limpiar mensajes anteriores
+            $('#no-resultados, #no-duplicados').remove();
+            
+            // Resetear la tabla para mostrar todas las filas
+            dataTable.search('').columns().search('').draw();
+            
+            // Mostrar todas las filas antes de aplicar filtros
+            dataTable.rows().nodes().to$().show();
+            
+            // Para filtro complejo, usamos $.fn.dataTable.ext.search
+            $.fn.dataTable.ext.search.pop(); // Eliminar filtros anteriores
+            
+            $.fn.dataTable.ext.search.push(
+                function(settings, data, dataIndex) {
+                    const row = dataTable.row(dataIndex).node();
+                    let seriesStr = data[5]; // Columna de series
+                    
+                    // Verificar si cumple con los filtros
+                    const nombreMatch = !nombre || data[1].toLowerCase().includes(nombre);
+                    const celularMatch = !celular || data[2].includes(celular);
+                    
+                    // Para series, intentamos buscar en el texto visible
+                    let serieMatch = true;
+                    if (serie) {
+                        serieMatch = seriesStr.includes(serie);
+                    }
+                    
+                    return nombreMatch && celularMatch && serieMatch;
+                }
+            );
+            
+            // Redraw con los filtros aplicados
+            dataTable.draw();
+            
+            // Verificar si hay resultados
+            const visibleRows = dataTable.rows({search:'applied'}).nodes().length;
+            if (visibleRows === 0) {
+                $('#tableContent').append('<div id="no-resultados" class="alert alert-warning text-center mt-3">No hay resultados que coincidan con los filtros aplicados.</div>');
+            }
         }
-        
-        // Añadir los filtros a la URL base
-        const filteredUrl = addFiltersToUrl(baseUrl);
-        
-        // Cargar la tabla con la URL filtrada
-        loadTableContent(filteredUrl, false);
     });
     
-    // Evento para el botón de Limpiar filtros
+    // Limpiar filtros
     document.getElementById('btnLimpiar').addEventListener('click', function() {
         document.getElementById('nombre').value = '';
         document.getElementById('celular').value = '';
         document.getElementById('serie').value = '';
         
-        // Determinar qué ruta base usar según el tipo actual
-        let baseUrl;
-        switch(tipoActual) {
-            case 'comprobantes-duplicados':
-                baseUrl = "{{ route('admin.comprobantesDuplicados') }}";
-                break;
-            case 'pedidos-duplicados':
-                baseUrl = "{{ route('admin.pedidosDuplicados') }}";
-                break;
-            case 'cartones-eliminados':
-                baseUrl = "{{ route('admin.cartonesEliminados') }}";
-                break;
-            default:
-                baseUrl = rutaTablaTodasReservas;
-        }
+        // Limpiar mensajes
+        $('#no-resultados, #no-duplicados').remove();
         
-        loadTableContent(baseUrl, false);
+        if (dataTable) {
+            // Eliminar filtros personalizados
+            $.fn.dataTable.ext.search.pop();
+            
+            // Mostrar todas las filas
+            dataTable.rows().nodes().to$().show();
+            
+            // Limpiar búsquedas
+            dataTable.search('').columns().search('').draw();
+            
+            // Eliminar clases de duplicados
+            $(dataTable.rows().nodes()).removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
+        }
     });
     
     // Permitir filtrar con Enter en los campos de texto
@@ -545,6 +495,150 @@ function setupEditSeriesEvents() {
             e.preventDefault();
             document.getElementById('btnFiltrar').click();
         }
+    });
+    
+    // Para manejar diferentes vistas
+    document.getElementById('btnTodasReservas').addEventListener('click', function() {
+        updateActiveButton(this);
+        tipoActual = 'todas';
+        
+        // Limpiar mensajes
+        $('#no-resultados, #no-duplicados').remove();
+        
+        // Mostrar todas las filas
+        if (dataTable) {
+            // Eliminar filtros personalizados
+            $.fn.dataTable.ext.search.pop();
+            
+            // Eliminar cualquier clase especial
+            $(dataTable.rows().nodes()).removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
+            
+            // Mostrar todas las filas
+            dataTable.rows().nodes().to$().show();
+            
+            // Limpiar búsquedas
+            dataTable.search('').columns().search('').draw();
+        }
+    });
+    
+    // Función para detectar comprobantes duplicados
+    document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
+        updateActiveButton(this);
+        tipoActual = 'comprobantes-duplicados';
+        
+        // Limpiar mensajes anteriores
+        $('#no-resultados, #no-duplicados').remove();
+        
+        if (dataTable) {
+            // Obtener todos los números de comprobante
+            const comprobantes = {};
+            dataTable.rows().every(function() {
+                const row = this.node();
+                const numeroComprobante = $(row).find('input[type="text"]').val();
+                
+                if (numeroComprobante && numeroComprobante.trim() !== '') {
+                    if (!comprobantes[numeroComprobante]) {
+                        comprobantes[numeroComprobante] = [];
+                    }
+                    comprobantes[numeroComprobante].push(row);
+                }
+            });
+            
+            // Limpiar primero todas las clases
+            $(dataTable.rows().nodes()).removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
+            
+            // Ocultar todas las filas primero
+            dataTable.rows().nodes().to$().hide();
+            
+            // Mostrar solo las filas con comprobantes duplicados
+            let duplicadosEncontrados = false;
+            for (const [comprobante, filas] of Object.entries(comprobantes)) {
+                if (filas.length > 1) {
+                    // Este comprobante está duplicado
+                    filas.forEach(row => {
+                        $(row).addClass('duplicado-comprobante').show();
+                    });
+                    duplicadosEncontrados = true;
+                }
+            }
+            
+            // Mensaje si no hay duplicados
+            if (!duplicadosEncontrados) {
+                $('#tableContent').append('<div id="no-duplicados" class="alert alert-success text-center mt-3">No se encontraron comprobantes duplicados.</div>');
+            }
+            
+            // Actualizar DataTable
+            dataTable.draw();
+        }
+    });
+    
+    // Función para detectar pedidos duplicados
+    document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
+        updateActiveButton(this);
+        tipoActual = 'pedidos-duplicados';
+        
+        // Limpiar mensajes anteriores
+        $('#no-resultados, #no-duplicados').remove();
+        
+        if (dataTable) {
+            // Obtener todos los números de celular
+            const celulares = {};
+            dataTable.rows().every(function() {
+                const row = this.node();
+                const celular = $(row).find('td:eq(2)').text().trim();
+                const nombre = $(row).find('td:eq(1)').text().trim();
+                
+                if (celular && celular !== '') {
+                    const key = nombre + '-' + celular; // Combinar nombre y celular para ser más específico
+                    if (!celulares[key]) {
+                        celulares[key] = [];
+                    }
+                    celulares[key].push(row);
+                }
+            });
+            
+            // Limpiar primero todas las clases
+            $(dataTable.rows().nodes()).removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
+            
+            // Ocultar todas las filas primero
+            dataTable.rows().nodes().to$().hide();
+            
+            // Mostrar solo las filas con pedidos duplicados
+            let duplicadosEncontrados = false;
+            for (const [key, filas] of Object.entries(celulares)) {
+                if (filas.length > 1) {
+                    // Este pedido está duplicado
+                    filas.forEach(row => {
+                        $(row).addClass('duplicado-pedido').show();
+                    });
+                    duplicadosEncontrados = true;
+                }
+            }
+            
+            // Mensaje si no hay duplicados
+            if (!duplicadosEncontrados) {
+                $('#tableContent').append('<div id="no-duplicados" class="alert alert-info text-center mt-3">No se encontraron pedidos duplicados.</div>');
+            }
+            
+            // Actualizar DataTable
+            dataTable.draw();
+        }
+    });
+    
+    // Función para cartones eliminados
+    document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
+        updateActiveButton(this);
+        tipoActual = 'cartones-eliminados';
+        
+        // Limpiar mensajes anteriores
+        $('#no-resultados, #no-duplicados').remove();
+        
+        // Podemos mostrar un mensaje de que esta funcionalidad requiere una implementación específica
+        $('#tableContent').append('<div id="no-duplicados" class="alert alert-secondary text-center mt-3">La funcionalidad de cartones eliminados requiere configuración adicional. Por favor, contacta al administrador.</div>');
+        
+        // Aquí deberías implementar la lógica específica para detectar cartones eliminados
+        // Como esta funcionalidad depende de cómo se manejan los cartones eliminados en tu sistema,
+        // proporcionamos un mensaje informativo en su lugar.
     });
 });
 </script>
