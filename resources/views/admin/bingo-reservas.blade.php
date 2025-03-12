@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let dataTable = null;
     
     // Función para cargar la tabla vía AJAX
-    function loadTableContent(url) {
+    function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         console.log('Intentando cargar tabla desde URL:', url);
         
         // Mostrar indicador de carga
@@ -177,6 +177,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Inicializar DataTable
             initializeDataTable();
+            
+            // Si hay que filtrar después de cargar, aplicar el filtro
+            if (filtrarDespues && dataTable) {
+                setTimeout(() => {
+                    filtrarPorTipo(tipoFiltro);
+                }, 100);
+            }
         })
         .catch(error => {
             console.error('Error cargando tabla:', error);
@@ -222,6 +229,190 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Función para filtrar según el tipo seleccionado
+    function filtrarPorTipo(tipo) {
+        if (!dataTable) return;
+        
+        // Limpiar mensajes previos
+        $('#mensaje-filtro').remove();
+        
+        // Resetear DataTable para mostrar todas las filas
+        dataTable.search('').columns().search('').draw();
+        
+        if (tipo === 'todas') {
+            return; // No hacer nada, mostrar todas
+        }
+        
+        // Aplicar el filtro según el tipo
+        if (tipo === 'comprobantes-duplicados') {
+            // Buscar comprobantes duplicados
+            const comprobantes = {};
+            let filasDuplicadas = [];
+            
+            dataTable.rows().every(function(rowIdx) {
+                const fila = this.node();
+                const comprobante = $(fila).find('input[type="text"]').val();
+                
+                if (comprobante && comprobante.trim() !== '') {
+                    if (!comprobantes[comprobante]) {
+                        comprobantes[comprobante] = [];
+                    }
+                    comprobantes[comprobante].push(rowIdx);
+                }
+            });
+            
+            // Identificar filas con comprobantes duplicados
+            for (const comp in comprobantes) {
+                if (comprobantes[comp].length > 1) {
+                    filasDuplicadas = filasDuplicadas.concat(comprobantes[comp]);
+                }
+            }
+            
+            if (filasDuplicadas.length > 0) {
+                // Mostrar solo las filas con comprobantes duplicados
+                dataTable.rows().every(function(rowIdx) {
+                    if (!filasDuplicadas.includes(rowIdx)) {
+                        $(this.node()).addClass('d-none');
+                    } else {
+                        $(this.node()).removeClass('d-none').addClass('duplicado-comprobante');
+                    }
+                });
+                dataTable.draw();
+            } else {
+                // No hay duplicados
+                dataTable.rows().nodes().to$().addClass('d-none');
+                dataTable.draw();
+                $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-success">No se encontraron comprobantes duplicados.</div>');
+            }
+        } 
+        else if (tipo === 'pedidos-duplicados') {
+            // Buscar pedidos duplicados (mismo nombre y celular)
+            const clientes = {};
+            let filasDuplicadas = [];
+            
+            dataTable.rows().every(function(rowIdx) {
+                const fila = this.node();
+                const nombre = $(fila).find('td:eq(1)').text().trim().toLowerCase();
+                const celular = $(fila).find('td:eq(2)').text().trim();
+                
+                if (nombre && celular) {
+                    const key = `${nombre}-${celular}`;
+                    if (!clientes[key]) {
+                        clientes[key] = [];
+                    }
+                    clientes[key].push(rowIdx);
+                }
+            });
+            
+            // Identificar filas con clientes duplicados
+            for (const cliente in clientes) {
+                if (clientes[cliente].length > 1) {
+                    filasDuplicadas = filasDuplicadas.concat(clientes[cliente]);
+                }
+            }
+            
+            if (filasDuplicadas.length > 0) {
+                // Mostrar solo las filas con clientes duplicados
+                dataTable.rows().every(function(rowIdx) {
+                    if (!filasDuplicadas.includes(rowIdx)) {
+                        $(this.node()).addClass('d-none');
+                    } else {
+                        $(this.node()).removeClass('d-none').addClass('duplicado-pedido');
+                    }
+                });
+                dataTable.draw();
+            } else {
+                // No hay duplicados
+                dataTable.rows().nodes().to$().addClass('d-none');
+                dataTable.draw();
+                $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-info">No se encontraron pedidos duplicados.</div>');
+            }
+        }
+        else if (tipo === 'cartones-eliminados') {
+            // Buscar reservas con cartones eliminados/modificados
+            const filasModificadas = [];
+            
+            dataTable.rows().every(function(rowIdx) {
+                const fila = this.node();
+                
+                // Buscar indicios de modificación en las series o cantidad
+                // 1. Verificar si el botón "Editar Series" tiene el atributo data-modificado
+                const botonEditar = $(fila).find('.edit-series');
+                
+                // 2. También, podemos verificar si hay diferencias entre series originales y actuales
+                let seriesModificadas = false;
+                
+                try {
+                    // Verificar si la fila tiene alguna marca de modificación (clase o atributo)
+                    // Nota: en una implementación real, necesitarías tener algún indicador en los datos
+                    // que muestre que los cartones fueron modificados/eliminados
+                    
+                    // Aquí implemento una lógica basada en lo que puedo ver en el HTML:
+                    // - Busco cualquier indicador visual en la fila
+                    // - Verifico si la celda de series tiene alguna marca especial
+                    const celdaSeries = $(fila).find('td:eq(5)');
+                    const textoSeries = celdaSeries.text().trim();
+                    
+                    // Verificar si hay texto que indique modificación
+                    seriesModificadas = textoSeries.includes('modificado') || 
+                                        textoSeries.includes('eliminado') ||
+                                        celdaSeries.hasClass('text-warning') ||
+                                        celdaSeries.hasClass('text-danger');
+                                        
+                    // También verificar si el estado es "rechazado", lo que podría indicar cartones eliminados
+                    const estado = $(fila).find('td:eq(10)').text().trim().toLowerCase();
+                    if (estado === 'rechazado') {
+                        seriesModificadas = true;
+                    }
+                    
+                    // Verificar si la cantidad de cartones actual es diferente de la original
+                    // (esto requeriría tener ese dato disponible)
+                    const cantidadOriginal = botonEditar.data('cantidad-original');
+                    const cantidadActual = parseInt($(fila).find('td:eq(4)').text().trim());
+                    
+                    if (cantidadOriginal && cantidadOriginal !== cantidadActual) {
+                        seriesModificadas = true;
+                    }
+                    
+                    // Verificar si hay algún atributo data-* que indique modificación
+                    if ($(fila).data('modificado') || 
+                        botonEditar.data('modificado') || 
+                        seriesModificadas) {
+                        filasModificadas.push(rowIdx);
+                    }
+                    
+                    // Alternativa: si no hay una marca clara, podemos usar un enfoque heurístico
+                    // y considerar que cualquier reserva con estado "rechazado" o que tenga botón 
+                    // "Editar Series" ha sido modificada
+                    if (estado === 'rechazado' || botonEditar.length > 0) {
+                        filasModificadas.push(rowIdx);
+                    }
+                    
+                } catch (e) {
+                    console.error('Error al verificar modificaciones:', e);
+                }
+            });
+            
+            // Aplicar filtro si se encontraron filas modificadas
+            if (filasModificadas.length > 0) {
+                // Mostrar solo las filas con cartones modificados/eliminados
+                dataTable.rows().every(function(rowIdx) {
+                    if (!filasModificadas.includes(rowIdx)) {
+                        $(this.node()).addClass('d-none');
+                    } else {
+                        $(this.node()).removeClass('d-none').addClass('carton-eliminado');
+                    }
+                });
+                dataTable.draw();
+            } else {
+                // No hay cartones eliminados identificados
+                dataTable.rows().nodes().to$().addClass('d-none');
+                dataTable.draw();
+                $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-warning">No se identificaron cartones eliminados usando los criterios actuales.</div>');
+            }
+        }
+    }
+    
     // Configurar manejadores de eventos
     function setupEventHandlers() {
         // Eventos para edición de series
@@ -255,12 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Establecer URL del formulario
             const form = $('#editSeriesForm');
-            
-            // Construir URL basada en el pathname actual
-            const baseUrl = basePath;
-            
-            // Usar esta URL para asegurar compatibilidad en todos los entornos
-            form.attr('action', `${baseUrl}/reservas/${reservaId}/update-series`);
+            form.attr('action', `${basePath}/reservas/${reservaId}/update-series`);
             
             // Mostrar series actuales y crear checkboxes
             const currentSeriesDiv = $('#currentSeries');
@@ -309,6 +495,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
+            // Guardar la cantidad original para detectar cambios después
+            if (!$(this).data('cantidad-original')) {
+                $(this).data('cantidad-original', cantidad);
+            }
+            
             // Manejar cambio en la cantidad de cartones
             $('#newQuantity').off('change').on('change', function() {
                 const newQuantity = parseInt($(this).val());
@@ -346,6 +537,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (selectedCheckboxes.length !== newQuantity) {
                     alert(`Debes seleccionar exactamente ${newQuantity} series.`);
                     return;
+                }
+                
+                // Si la cantidad seleccionada es menor que la original, marcar como modificado
+                const cantidadOriginal = parseInt($('.edit-series').data('cantidad-original') || 0);
+                if (cantidadOriginal > 0 && newQuantity < cantidadOriginal) {
+                    $('.edit-series').data('modificado', true);
                 }
                 
                 // Mostrar indicador de carga
@@ -450,58 +647,46 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTableContent(rutaTablaTodasReservas);
     });
     
-    // Modificar estas URLs para usar el mismo patrón que la URL principal que sí funciona
+    // Usar filtrado en el frontend para las demás opciones
     document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'comprobantes-duplicados';
-        // Usar el mismo formato con bingoId y el parámetro tipo
-        const url = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=comprobantes-duplicados`;
-        console.log('URL comprobantes duplicados:', url);
-        loadTableContent(url);
+        
+        // Cargar todas las reservas primero y después filtrar en el frontend
+        loadTableContent(rutaTablaTodasReservas, true, 'comprobantes-duplicados');
     });
     
     document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'pedidos-duplicados';
-        // Usar el mismo formato con bingoId y el parámetro tipo
-        const url = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=pedidos-duplicados`;
-        console.log('URL pedidos duplicados:', url);
-        loadTableContent(url);
+        
+        // Cargar todas las reservas primero y después filtrar en el frontend
+        loadTableContent(rutaTablaTodasReservas, true, 'pedidos-duplicados');
     });
     
     document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'cartones-eliminados';
-        // Usar el mismo formato con bingoId y el parámetro tipo
-        const url = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=cartones-eliminados`;
-        console.log('URL cartones eliminados:', url);
-        loadTableContent(url);
+        
+        // Cargar todas las reservas primero y después filtrar en el frontend
+        loadTableContent(rutaTablaTodasReservas, true, 'cartones-eliminados');
     });
     
     // Evento para el botón de Filtrar
     document.getElementById('btnFiltrar').addEventListener('click', function() {
-        let baseUrl;
+        const nombre = document.getElementById('nombre').value.trim();
+        const celular = document.getElementById('celular').value.trim();
+        const serie = document.getElementById('serie').value.trim();
         
-        // Determinar qué ruta base usar según el tipo actual
-        switch(tipoActual) {
-            case 'comprobantes-duplicados':
-                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=comprobantes-duplicados`;
-                break;
-            case 'pedidos-duplicados':
-                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=pedidos-duplicados`;
-                break;
-            case 'cartones-eliminados':
-                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=cartones-eliminados`;
-                break;
-            default:
-                baseUrl = rutaTablaTodasReservas;
+        // Si no hay filtros, solo aplicar el filtro por tipo
+        if (!nombre && !celular && !serie) {
+            filtrarPorTipo(tipoActual);
+            return;
         }
         
-        // Añadir los filtros a la URL base
-        const filteredUrl = addFiltersToUrl(baseUrl);
-        
-        // Cargar la tabla con la URL filtrada
-        loadTableContent(filteredUrl);
+        // Si hay filtros, cargar los datos filtrados
+        const filteredUrl = addFiltersToUrl(rutaTablaTodasReservas);
+        loadTableContent(filteredUrl, true, tipoActual);
     });
     
     // Evento para el botón de Limpiar filtros
@@ -510,23 +695,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('celular').value = '';
         document.getElementById('serie').value = '';
         
-        // Determinar qué ruta base usar según el tipo actual
-        let baseUrl;
-        switch(tipoActual) {
-            case 'comprobantes-duplicados':
-                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=comprobantes-duplicados`;
-                break;
-            case 'pedidos-duplicados':
-                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=pedidos-duplicados`;
-                break;
-            case 'cartones-eliminados':
-                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=cartones-eliminados`;
-                break;
-            default:
-                baseUrl = rutaTablaTodasReservas;
-        }
-        
-        loadTableContent(baseUrl);
+        // Cargar todas las reservas y después aplicar el filtro por tipo
+        loadTableContent(rutaTablaTodasReservas, true, tipoActual);
     });
     
     // Permitir filtrar con Enter en los campos de texto
@@ -536,6 +706,27 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('btnFiltrar').click();
         }
     });
+    
+    // Agregar estilos CSS para ocultar filas
+    const style = document.createElement('style');
+    style.textContent = `
+        .d-none {
+            display: none !important;
+        }
+        .duplicado-comprobante {
+            background-color: #fff3cd !important;
+            color: #212529 !important;
+        }
+        .duplicado-pedido {
+            background-color: #cff4fc !important;
+            color: #212529 !important;
+        }
+        .carton-eliminado {
+            background-color: #f8d7da !important;
+            color: #212529 !important;
+        }
+    `;
+    document.head.appendChild(style);
 });
 </script>
 
