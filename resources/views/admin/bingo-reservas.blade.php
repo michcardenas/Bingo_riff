@@ -429,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Construir la URL correcta para la tabla de reservas
     // Usar la misma ruta base que la URL actual para evitar problemas de duplicación
     const baseUrl = window.location.origin;
-    const rutaTablaTodasReservas = `${baseUrl}/admin/bingos/${bingoId}/reservas-tabla?tipo=todas`;
+    const rutaTablaTodasReservas = `/admin/bingos/${bingoId}/reservas-tabla?tipo=todas`;
     
     console.log('URL para todas las reservas:', rutaTablaTodasReservas);
     
