@@ -158,6 +158,9 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             console.log('Estado de respuesta:', response.status);
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
             return response.text();
         })
         .then(html => {
@@ -177,7 +180,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error cargando tabla:', error);
-            document.getElementById('tableContent').innerHTML = '<div class="alert alert-danger text-center">Error al cargar los datos: ' + error.message + '</div>';
+            document.getElementById('tableContent').innerHTML = 
+                `<div class="alert alert-danger text-center">
+                    Error al cargar los datos: ${error.message}<br>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
+                </div>`;
         });
     }
     
@@ -248,10 +255,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Establecer URL del formulario
             const form = $('#editSeriesForm');
-            const currentPath = window.location.pathname;
-            const baseUrl = currentPath.includes('/admin') 
-                ? currentPath.substring(0, currentPath.indexOf('/admin')) 
-                : '';
+            
+            // Construir URL basada en el pathname actual
+            const baseUrl = basePath;
+            
+            // Usar esta URL para asegurar compatibilidad en todos los entornos
             form.attr('action', `${baseUrl}/reservas/${reservaId}/update-series`);
             
             // Mostrar series actuales y crear checkboxes
@@ -366,6 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const reservaId = $(this).data('id');
             const numeroComprobante = $(this).val();
             console.log('Actualizar comprobante:', reservaId, numeroComprobante);
+            // Aquí puedes implementar el guardado vía AJAX si lo necesitas
         });
     }
     
@@ -398,6 +407,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return url.toString();
     }
+    
     // Construir la URL correcta basada en la ubicación actual
     console.log('Location completa:', window.location.href);
     
@@ -433,11 +443,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cargar inicialmente la tabla de todas las reservas
     loadTableContent(rutaTablaTodasReservas);
     
-    // Para los otros botones, usar la función para construir URLs correctas
-    function getCorrectPath(route) {
-        return `${basePath}${route}`;
-    }
-    
     // Asignar eventos a los botones
     document.getElementById('btnTodasReservas').addEventListener('click', function() {
         updateActiveButton(this);
@@ -445,22 +450,32 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTableContent(rutaTablaTodasReservas);
     });
     
+    // Modificar estas URLs para usar el mismo patrón que la URL principal que sí funciona
     document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'comprobantes-duplicados';
-        loadTableContent(getCorrectPath("/admin/bingos/comprobantes-duplicados"));
+        // Usar el mismo formato con bingoId y el parámetro tipo
+        const url = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=comprobantes-duplicados`;
+        console.log('URL comprobantes duplicados:', url);
+        loadTableContent(url);
     });
     
     document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'pedidos-duplicados';
-        loadTableContent(getCorrectPath("/admin/bingos/pedidos-duplicados"));
+        // Usar el mismo formato con bingoId y el parámetro tipo
+        const url = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=pedidos-duplicados`;
+        console.log('URL pedidos duplicados:', url);
+        loadTableContent(url);
     });
     
     document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'cartones-eliminados';
-        loadTableContent(getCorrectPath("/admin/bingos/cartones-eliminados"));
+        // Usar el mismo formato con bingoId y el parámetro tipo
+        const url = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=cartones-eliminados`;
+        console.log('URL cartones eliminados:', url);
+        loadTableContent(url);
     });
     
     // Evento para el botón de Filtrar
@@ -470,13 +485,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Determinar qué ruta base usar según el tipo actual
         switch(tipoActual) {
             case 'comprobantes-duplicados':
-                baseUrl = getCorrectPath("/admin/bingos/comprobantes-duplicados");
+                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=comprobantes-duplicados`;
                 break;
             case 'pedidos-duplicados':
-                baseUrl = getCorrectPath("/admin/bingos/pedidos-duplicados");
+                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=pedidos-duplicados`;
                 break;
             case 'cartones-eliminados':
-                baseUrl = getCorrectPath("/admin/bingos/cartones-eliminados");
+                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=cartones-eliminados`;
                 break;
             default:
                 baseUrl = rutaTablaTodasReservas;
@@ -499,13 +514,13 @@ document.addEventListener('DOMContentLoaded', function() {
         let baseUrl;
         switch(tipoActual) {
             case 'comprobantes-duplicados':
-                baseUrl = getCorrectPath("/admin/bingos/comprobantes-duplicados");
+                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=comprobantes-duplicados`;
                 break;
             case 'pedidos-duplicados':
-                baseUrl = getCorrectPath("/admin/bingos/pedidos-duplicados");
+                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=pedidos-duplicados`;
                 break;
             case 'cartones-eliminados':
-                baseUrl = getCorrectPath("/admin/bingos/cartones-eliminados");
+                baseUrl = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=cartones-eliminados`;
                 break;
             default:
                 baseUrl = rutaTablaTodasReservas;
