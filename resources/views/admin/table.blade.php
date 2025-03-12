@@ -252,106 +252,175 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Manejador para el evento de editar series
     function handleEditSeries() {
-        const modal = document.getElementById('editSeriesModal');
-        const seriesData = this.getAttribute('data-series');
-        let series = [];
+    const modal = document.getElementById('editSeriesModal');
+    const seriesData = this.getAttribute('data-series');
+    let series = [];
 
-        try {
-            series = JSON.parse(seriesData);
-        } catch (e) {
-            console.error('Error al parsear series:', e);
-            // Si las series no están en formato JSON, intentar convertirlas desde string
-            if (typeof seriesData === 'string') {
-                series = seriesData.split(',').map(item => item.trim());
+    try {
+        series = JSON.parse(seriesData);
+    } catch (e) {
+        console.error('Error al parsear series:', e);
+        // Si las series no están en formato JSON, intentar convertirlas desde string
+        if (typeof seriesData === 'string') {
+            series = seriesData.split(',').map(item => item.trim());
+        }
+    }
+
+    const reservaId = this.getAttribute('data-id');
+    const bingoId = this.getAttribute('data-bingo-id');
+    const cantidad = parseInt(this.getAttribute('data-cantidad'));
+    const total = parseInt(this.getAttribute('data-total'));
+    const bingoPrice = parseInt(this.getAttribute('data-bingo-precio'));
+
+    // Completar datos del formulario
+    document.getElementById('reserva_id').value = reservaId;
+    document.getElementById('bingo_id').value = bingoId;
+    document.getElementById('clientName').textContent = this.getAttribute('data-nombre');
+    document.getElementById('newQuantity').value = cantidad;
+    document.getElementById('newQuantity').setAttribute('max', Array.isArray(series) ? series.length : 1);
+    document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(total);
+
+    // Establecer URL del formulario usando el atributo data-update-url
+    const form = document.getElementById('editSeriesForm');
+    form.action = this.getAttribute('data-update-url');
+
+    // Mostrar series actuales y crear checkboxes
+    const currentSeriesDiv = document.getElementById('currentSeries');
+    const seriesCheckboxesDiv = document.getElementById('seriesCheckboxes');
+
+    // Limpiar contenido previo
+    currentSeriesDiv.innerHTML = '';
+    seriesCheckboxesDiv.innerHTML = '';
+
+    // Mostrar y crear checkboxes para cada serie
+    if (Array.isArray(series) && series.length > 0) {
+        const seriesList = document.createElement('ul');
+        seriesList.className = 'list-group';
+
+        series.forEach((serie, index) => {
+            // Crear elemento de lista
+            const listItem = document.createElement('li');
+            listItem.className = 'list-group-item bg-dark text-white border-light';
+            listItem.textContent = `Serie ${serie}`;
+            seriesList.appendChild(listItem);
+
+            // Crear checkbox
+            const col = document.createElement('div');
+            col.className = 'col-md-4 mb-2';
+
+            const checkDiv = document.createElement('div');
+            checkDiv.className = 'form-check';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `serie_${index}`;
+            checkbox.name = 'selected_series[]';
+            checkbox.value = serie;
+            checkbox.className = 'form-check-input';
+            checkbox.checked = true;
+
+            const label = document.createElement('label');
+            label.htmlFor = `serie_${index}`;
+            label.className = 'form-check-label';
+            label.textContent = `Serie ${serie}`;
+
+            checkDiv.appendChild(checkbox);
+            checkDiv.appendChild(label);
+            col.appendChild(checkDiv);
+            seriesCheckboxesDiv.appendChild(col);
+        });
+
+        currentSeriesDiv.appendChild(seriesList);
+    } else {
+        currentSeriesDiv.textContent = 'No hay series disponibles';
+    }
+
+    // Manejar cambio en la cantidad de cartones
+    const newQuantityInput = document.getElementById('newQuantity');
+    newQuantityInput.removeEventListener('change', handleQuantityChange);
+    newQuantityInput.addEventListener('change', handleQuantityChange);
+
+    function handleQuantityChange() {
+        const newQuantity = parseInt(this.value);
+        
+        // Actualizar el total estimado
+        const newTotal = newQuantity * bingoPrice;
+        document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+
+        // Actualizar contador
+        updateSelectedCounter();
+    }
+
+    // Función para actualizar contador de seleccionados
+    function updateSelectedCounter() {
+        const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+        const newQuantity = parseInt(document.getElementById('newQuantity').value);
+        let checkedCount = 0;
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) checkedCount++;
+        });
+
+        // Verificar si se están seleccionando más series de las permitidas
+        if (checkedCount > newQuantity) {
+            // Desmarcar los últimos checkboxes seleccionados para que coincida con la cantidad
+            let toUncheck = checkedCount - newQuantity;
+            for (let i = checkboxes.length - 1; i >= 0 && toUncheck > 0; i--) {
+                if (checkboxes[i].checked) {
+                    checkboxes[i].checked = false;
+                    toUncheck--;
+                }
             }
         }
+    }
 
-        const reservaId = this.getAttribute('data-id');
-        const bingoId = this.getAttribute('data-bingo-id');
-        const cantidad = parseInt(this.getAttribute('data-cantidad'));
-        const total = parseInt(this.getAttribute('data-total'));
-        const bingoPrice = parseInt(this.getAttribute('data-bingo-precio'));
+    // Añadir listeners a los checkboxes
+    document.querySelectorAll('input[name="selected_series[]"]').forEach(checkbox => {
+        checkbox.removeEventListener('change', handleCheckboxChange);
+        checkbox.addEventListener('change', handleCheckboxChange);
+    });
 
-        // Completar datos del formulario
-        document.getElementById('reserva_id').value = reservaId;
-        document.getElementById('bingo_id').value = bingoId;
-        document.getElementById('clientName').textContent = this.getAttribute('data-nombre');
-        document.getElementById('newQuantity').value = cantidad;
-        document.getElementById('newQuantity').setAttribute('max', Array.isArray(series) ? series.length : 1);
-        document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(total);
+    function handleCheckboxChange() {
+        const newQuantity = parseInt(document.getElementById('newQuantity').value);
+        const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+        let checkedCount = 0;
 
-        // Establecer URL del formulario
-        const form = document.getElementById('editSeriesForm');
-        form.action = `/admin/reservas/${reservaId}/update-series`;
+        checkboxes.forEach(cb => {
+            if (cb.checked) checkedCount++;
+        });
 
-        // Mostrar series actuales y crear checkboxes
-        const currentSeriesDiv = document.getElementById('currentSeries');
-        const seriesCheckboxesDiv = document.getElementById('seriesCheckboxes');
+        // Si se excede la cantidad permitida, desmarcar este checkbox
+        if (checkedCount > newQuantity && this.checked) {
+            this.checked = false;
+            alert(`Solo puedes seleccionar ${newQuantity} series.`);
+        }
+    }
 
-        // Limpiar contenido previo
-        currentSeriesDiv.innerHTML = '';
-        seriesCheckboxesDiv.innerHTML = '';
+    // Inicializar contador
+    updateSelectedCounter();
 
-        // Mostrar y crear checkboxes para cada serie
-        if (Array.isArray(series) && series.length > 0) {
-            const seriesList = document.createElement('ul');
-            seriesList.className = 'list-group';
+    // Mostrar modal
+    const modalInstance = new bootstrap.Modal(modal);
+    modalInstance.show();
 
-            series.forEach((serie, index) => {
-                // Crear elemento de lista
-                const listItem = document.createElement('li');
-                listItem.className = 'list-group-item bg-dark text-white border-light';
-                listItem.textContent = `Serie ${serie}`;
-                seriesList.appendChild(listItem);
+    // Manejar clic en el botón de guardar
+    const saveButton = document.getElementById('saveSeriesChanges');
+    saveButton.removeEventListener('click', handleSaveClick);
+    saveButton.addEventListener('click', handleSaveClick);
 
-                // Crear checkbox
-                const col = document.createElement('div');
-                col.className = 'col-md-4 mb-2';
+    function handleSaveClick() {
+        const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
+        const newQuantity = parseInt(document.getElementById('newQuantity').value);
 
-                const checkDiv = document.createElement('div');
-                checkDiv.className = 'form-check';
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `serie_${index}`;
-                checkbox.name = 'selected_series[]';
-                checkbox.value = serie;
-                checkbox.className = 'form-check-input';
-                checkbox.checked = true;
-
-                const label = document.createElement('label');
-                label.htmlFor = `serie_${index}`;
-                label.className = 'form-check-label';
-                label.textContent = `Serie ${serie}`;
-
-                checkDiv.appendChild(checkbox);
-                checkDiv.appendChild(label);
-                col.appendChild(checkDiv);
-                seriesCheckboxesDiv.appendChild(col);
-            });
-
-            currentSeriesDiv.appendChild(seriesList);
-        } else {
-            currentSeriesDiv.textContent = 'No hay series disponibles';
+        if (selectedCheckboxes.length !== newQuantity) {
+            alert(`Debes seleccionar exactamente ${newQuantity} series.`);
+            return;
         }
 
-        // Manejar cambio en la cantidad de cartones
-        const newQuantityInput = document.getElementById('newQuantity');
-        newQuantityInput.removeEventListener('change', handleQuantityChange);
-        newQuantityInput.addEventListener('change', handleQuantityChange);
-
-        function handleQuantityChange() {
-            const newQuantity = parseInt(this.value);
-            
-            // Actualizar el total estimado
-            const newTotal = newQuantity * bingoPrice;
-            document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
-
-            // Actualizar contador
-            updateSelectedCounter();
-        }
+        // Enviar formulario
+        document.getElementById('editSeriesForm').submit();
+    }
 
         // Función para actualizar contador de seleccionados
         function updateSelectedCounter() {
