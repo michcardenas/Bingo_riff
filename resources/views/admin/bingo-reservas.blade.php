@@ -398,43 +398,45 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return url.toString();
     }
+    // Construir la URL correcta basada en la ubicación actual
+    console.log('Location completa:', window.location.href);
     
-    // Obtener el ID del bingo correctamente
-    let bingoId;
+    // Obtener la parte base de la URL (todo antes de /admin)
+    let basePath = '';
+    const urlPath = window.location.pathname;
     
-    // Método 1: Extraer de la URL actual
-    const currentUrl = window.location.pathname;
-    console.log('URL actual:', currentUrl);
-    
-    // Extraer el ID del bingo usando una expresión regular
-    // Buscamos un patrón como /admin/bingos/{id}/participantes o /bingos/{id}/participantes
-    const bingoMatch = currentUrl.match(/\/bingos\/(\d+)/);
-    if (bingoMatch && bingoMatch[1]) {
-        bingoId = bingoMatch[1];
-        console.log('ID del bingo extraído con regex:', bingoId);
-    } else {
-        console.warn('No se pudo extraer el ID del bingo con regex');
-        
-        // Método alternativo: buscar en los elementos del DOM
-        const bingoIdElement = document.querySelector('input[name="bingo_id"]');
-        if (bingoIdElement) {
-            bingoId = bingoIdElement.value;
-            console.log('ID del bingo encontrado en el DOM:', bingoId);
-        } else {
-            console.error('No se pudo determinar el ID del bingo');
-            bingoId = '0'; // Valor por defecto
+    // Verificar si incluye un path de usuario con tilde (~)
+    if (urlPath.includes('~')) {
+        // Extraer todo hasta la siguiente barra después de la tilde
+        const tildeMatch = urlPath.match(/^(\/~[^/]+)/);
+        if (tildeMatch) {
+            basePath = tildeMatch[1];
+            console.log('Base path con tilde:', basePath);
         }
     }
     
-    // Construir la URL correcta para la tabla de reservas
-    // Usar la misma ruta base que la URL actual para evitar problemas de duplicación
-    const baseUrl = window.location.origin;
-    const rutaTablaTodasReservas = `/admin/bingos/${bingoId}/reservas-tabla?tipo=todas`;
+    // Extraer el ID del bingo
+    const bingoMatch = urlPath.match(/\/bingos\/(\d+)/);
+    let bingoId = '0';
     
+    if (bingoMatch && bingoMatch[1]) {
+        bingoId = bingoMatch[1];
+        console.log('ID del bingo extraído:', bingoId);
+    } else {
+        console.warn('No se pudo extraer el ID del bingo');
+    }
+    
+    // Construir la ruta correcta con el basePath
+    const rutaTablaTodasReservas = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=todas`;
     console.log('URL para todas las reservas:', rutaTablaTodasReservas);
     
     // Cargar inicialmente la tabla de todas las reservas
     loadTableContent(rutaTablaTodasReservas);
+    
+    // Para los otros botones, usar la función para construir URLs correctas
+    function getCorrectPath(route) {
+        return `${basePath}${route}`;
+    }
     
     // Asignar eventos a los botones
     document.getElementById('btnTodasReservas').addEventListener('click', function() {
@@ -443,27 +445,22 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTableContent(rutaTablaTodasReservas);
     });
     
-    // Para los otros botones, usar la función para construir URLs absolutas
-    function getAbsoluteUrl(route) {
-        return `${baseUrl}${route}`;
-    }
-    
     document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'comprobantes-duplicados';
-        loadTableContent(getAbsoluteUrl("/admin/bingos/comprobantes-duplicados"));
+        loadTableContent(getCorrectPath("/admin/bingos/comprobantes-duplicados"));
     });
     
     document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'pedidos-duplicados';
-        loadTableContent(getAbsoluteUrl("/admin/bingos/pedidos-duplicados"));
+        loadTableContent(getCorrectPath("/admin/bingos/pedidos-duplicados"));
     });
     
     document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'cartones-eliminados';
-        loadTableContent(getAbsoluteUrl("/admin/bingos/cartones-eliminados"));
+        loadTableContent(getCorrectPath("/admin/bingos/cartones-eliminados"));
     });
     
     // Evento para el botón de Filtrar
@@ -473,13 +470,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Determinar qué ruta base usar según el tipo actual
         switch(tipoActual) {
             case 'comprobantes-duplicados':
-                baseUrl = getAbsoluteUrl("/admin/bingos/comprobantes-duplicados");
+                baseUrl = getCorrectPath("/admin/bingos/comprobantes-duplicados");
                 break;
             case 'pedidos-duplicados':
-                baseUrl = getAbsoluteUrl("/admin/bingos/pedidos-duplicados");
+                baseUrl = getCorrectPath("/admin/bingos/pedidos-duplicados");
                 break;
             case 'cartones-eliminados':
-                baseUrl = getAbsoluteUrl("/admin/bingos/cartones-eliminados");
+                baseUrl = getCorrectPath("/admin/bingos/cartones-eliminados");
                 break;
             default:
                 baseUrl = rutaTablaTodasReservas;
@@ -502,13 +499,13 @@ document.addEventListener('DOMContentLoaded', function() {
         let baseUrl;
         switch(tipoActual) {
             case 'comprobantes-duplicados':
-                baseUrl = getAbsoluteUrl("/admin/bingos/comprobantes-duplicados");
+                baseUrl = getCorrectPath("/admin/bingos/comprobantes-duplicados");
                 break;
             case 'pedidos-duplicados':
-                baseUrl = getAbsoluteUrl("/admin/bingos/pedidos-duplicados");
+                baseUrl = getCorrectPath("/admin/bingos/pedidos-duplicados");
                 break;
             case 'cartones-eliminados':
-                baseUrl = getAbsoluteUrl("/admin/bingos/cartones-eliminados");
+                baseUrl = getCorrectPath("/admin/bingos/cartones-eliminados");
                 break;
             default:
                 baseUrl = rutaTablaTodasReservas;
