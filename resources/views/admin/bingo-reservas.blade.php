@@ -133,12 +133,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Variables para control
+    // Variable para almacenar el tipo de vista actual
     let tipoActual = 'todas';
     let dataTable = null;
     
-    // Función para cargar la tabla vía AJAX
-    function loadTableContent(url) {
+    // Función para cargar contenido de tabla vía AJAX
+    function loadTableContent(url, actualizarFiltros = true) {
         // Mostrar indicador de carga
         document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
         
@@ -154,218 +154,267 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => {
-            console.log('Estado de respuesta:', response.status);
-            return response.text();
-        })
+        .then(response => response.text())
         .then(html => {
-            console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
-            
-            // Si el HTML está vacío o contiene mensaje de no resultados
-            if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
-                document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
+            // Si el HTML está vacío, mostrar mensaje
+            if (html.trim() === '') {
+                document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
                 return;
             }
             
-            // Actualizar el contenedor con la tabla
+            // Verificar si el contenido contiene una tabla con datos
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // Buscar si hay filas de datos (excluyendo encabezados y filas de "no hay resultados")
+            const hasDataRows = Array.from(tempDiv.querySelectorAll('table tbody tr')).some(tr => {
+                // Excluir filas que tienen mensaje de "no hay resultados"
+                const text = tr.textContent.trim().toLowerCase();
+                return !text.includes('no hay') && !text.includes('no se encontraron');
+            });
+            
+            if (!hasDataRows) {
+                // Si no hay filas con datos, mostrar un mensaje personalizado
+                document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
+                return;
+            }
+            
+            // Si hay contenido válido, actualizar el contenedor
             document.getElementById('tableContent').innerHTML = html;
             
-            // Inicializar DataTable
+            // Inicializar DataTable después de cargar la tabla
             initializeDataTable();
+            
+            // Actualizamos el tipo actual basado en qué botón está activo
+            if (actualizarFiltros) {
+                const activeButton = document.querySelector('.col-auto button.active');
+                if (activeButton) {
+                    if (activeButton.id === 'btnComprobanteDuplicado') tipoActual = 'comprobantes-duplicados';
+                    else if (activeButton.id === 'btnPedidoDuplicado') tipoActual = 'pedidos-duplicados';
+                    else if (activeButton.id === 'btnCartonesEliminados') tipoActual = 'cartones-eliminados';
+                    else tipoActual = 'todas';
+                }
+            }
         })
         .catch(error => {
-            console.error('Error cargando tabla:', error);
-            document.getElementById('tableContent').innerHTML = '<div class="alert alert-danger text-center">Error al cargar los datos: ' + error.message + '</div>';
+            console.error('Error cargando contenido:', error);
+            document.getElementById('tableContent').innerHTML = '<div class="alert alert-danger">Error al cargar los datos. Por favor, intenta nuevamente.</div>';
         });
     }
     
-    // Función para inicializar DataTable
-    function initializeDataTable() {
-        const table = document.querySelector('#tableContent table');
-        if (!table) {
-            console.error('No se encontró ninguna tabla en #tableContent');
+    // Función para inicializar DataTable en la tabla cargada
+function initializeDataTable() {
+    // Verificar si hay una tabla en el contenedor
+    const table = document.querySelector('#tableContent table');
+    if (!table) return;
+    
+    try {
+        // Inicializar DataTable con opciones personalizadas
+        dataTable = $(table).DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
+                emptyTable: "No hay resultados que concuerden con tu filtro",
+                zeroRecords: "No hay resultados que concuerden con tu filtro"
+            },
+            order: [[0, 'desc']], // Ordenar por la primera columna de forma descendente
+            responsive: true,
+            // Personalizar con clases oscuras para mantener el estilo
+            dom: '<"row"<"col-md-6"l><"col-md-6"f>>rt<"row"<"col-md-6"i><"col-md-6"p>>',
+            initComplete: function() {
+                // Añadir clases personalizadas para el tema oscuro
+                $('.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate').addClass('text-white');
+                $('.dataTables_wrapper .form-control').addClass('bg-dark text-white border-secondary');
+                $('.dataTables_wrapper .page-link').addClass('bg-dark text-white border-secondary');
+                
+                // Aplicar estilos según el tipo de vista
+                if (tipoActual === 'comprobantes-duplicados') {
+                    $('#tableContent table tbody tr').addClass('duplicado-comprobante');
+                } else if (tipoActual === 'pedidos-duplicados') {
+                    $('#tableContent table tbody tr').addClass('duplicado-pedido');
+                } else if (tipoActual === 'cartones-eliminados') {
+                    $('#tableContent table tbody tr').addClass('carton-eliminado');
+                }
+                
+                // Configurar eventos después de inicializar DataTable
+                setupEditSeriesEvents();
+            }
+        });
+    } catch (error) {
+        console.error('Error inicializando DataTable:', error);
+        // Si hay un error al inicializar DataTable, mostrar un mensaje
+        document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
+    }
+}
+
+// Función para configurar los eventos de edición de series
+function setupEditSeriesEvents() {
+    // Manejar el evento de clic en el botón "Editar Series"
+    $('.edit-series').off('click').on('click', function() {
+        // Obtener datos del botón
+        const reservaId = $(this).data('id');
+        const nombre = $(this).data('nombre');
+        let seriesData = $(this).data('series');
+        const cantidad = parseInt($(this).data('cantidad'));
+        const total = parseInt($(this).data('total'));
+        const bingoId = $(this).data('bingo-id');
+        const bingoPrice = parseInt($(this).data('bingo-precio'));
+        
+        console.log("Botón Editar Series clickeado:", {
+            reservaId, nombre, seriesData, cantidad, total, bingoId, bingoPrice
+        });
+        
+        // Verificar que el modal existe
+        const modal = $('#editSeriesModal');
+        if (modal.length === 0) {
+            console.error('Error: No se encontró el modal #editSeriesModal');
+            alert('Error: No se encontró el modal para editar series. Por favor, contacta al administrador.');
             return;
         }
         
-        try {
-            dataTable = $(table).DataTable({
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/es-ES.json'
-                },
-                responsive: true,
-                order: [[0, 'desc']],
-                columnDefs: [
-                    { orderable: true, targets: [0, 1, 2, 3, 7] },
-                    { orderable: false, targets: '_all' },
-                    { targets: 11, searchable: false }
-                ],
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
-                stateSave: true
-            });
-            
-            console.log('DataTable inicializado correctamente');
-            
-            // Configurar eventos después de inicializar DataTable
-            setupEventHandlers();
-        } catch (error) {
-            console.error('Error al inicializar DataTable:', error);
-        }
-    }
-    
-    // Configurar manejadores de eventos
-    function setupEventHandlers() {
-        // Eventos para edición de series
-        $('.edit-series').off('click').on('click', function() {
-            const modal = $('#editSeriesModal');
-            const seriesData = $(this).data('series');
-            let series = [];
-            
+        // Convertir seriesData a array si es una cadena
+        let series = [];
+        if (typeof seriesData === 'string') {
             try {
-                series = typeof seriesData === 'object' ? seriesData : JSON.parse(seriesData);
+                // Intentar parsear como JSON
+                series = JSON.parse(seriesData);
             } catch (e) {
                 console.error('Error al parsear series:', e);
-                if (typeof seriesData === 'string') {
-                    series = seriesData.split(',').map(item => item.trim());
-                }
+                // Si no es JSON válido, dividir por comas
+                series = seriesData.split(',').map(item => item.trim());
             }
+        } else if (Array.isArray(seriesData)) {
+            series = seriesData;
+        }
+        
+        // Completar datos del formulario en el modal
+        $('#reserva_id').val(reservaId);
+        $('#bingo_id').val(bingoId);
+        $('#clientName').text(nombre);
+        $('#newQuantity').val(cantidad);
+        $('#newQuantity').attr('max', Array.isArray(series) ? series.length : 1);
+        $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(total));
+        
+        // Establecer URL del formulario
+        $('#editSeriesForm').attr('action', `/admin/reservas/${reservaId}/update-series`);
+        
+        // Limpiar contenido previo
+        $('#currentSeries').empty();
+        $('#seriesCheckboxes').empty();
+        
+        // Mostrar series actuales y crear checkboxes
+        if (Array.isArray(series) && series.length > 0) {
+            const seriesList = $('<ul class="list-group"></ul>');
             
-            const reservaId = $(this).data('id');
-            const bingoId = $(this).data('bingo-id');
-            const cantidad = parseInt($(this).data('cantidad'));
-            const total = parseInt($(this).data('total'));
-            const bingoPrice = parseInt($(this).data('bingo-precio'));
-            
-            // Completar datos del formulario
-            $('#reserva_id').val(reservaId);
-            $('#bingo_id').val(bingoId);
-            $('#clientName').text($(this).data('nombre'));
-            $('#newQuantity').val(cantidad);
-            $('#newQuantity').attr('max', Array.isArray(series) ? series.length : 1);
-            $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(total));
-            
-            // Establecer URL del formulario
-            const form = $('#editSeriesForm');
-            const currentPath = window.location.pathname;
-            const baseUrl = currentPath.includes('/admin') 
-                ? currentPath.substring(0, currentPath.indexOf('/admin')) 
-                : '';
-            form.attr('action', `${baseUrl}/reservas/${reservaId}/update-series`);
-            
-            // Mostrar series actuales y crear checkboxes
-            const currentSeriesDiv = $('#currentSeries');
-            const seriesCheckboxesDiv = $('#seriesCheckboxes');
-            
-            // Limpiar contenido previo
-            currentSeriesDiv.empty();
-            seriesCheckboxesDiv.empty();
-            
-            // Mostrar y crear checkboxes para cada serie
-            if (Array.isArray(series) && series.length > 0) {
-                const seriesList = $('<ul class="list-group"></ul>');
+            series.forEach((serie, index) => {
+                // Crear elemento de lista
+                const listItem = $(`<li class="list-group-item bg-dark text-white border-light">Serie ${serie}</li>`);
+                seriesList.append(listItem);
                 
-                series.forEach((serie, index) => {
-                    const listItem = $(`<li class="list-group-item bg-dark text-white border-light">Serie ${serie}</li>`);
-                    seriesList.append(listItem);
-                    
-                    const col = $('<div class="col-md-4 mb-2"></div>');
-                    const checkDiv = $('<div class="form-check"></div>');
-                    const checkbox = $(`<input type="checkbox" id="serie_${index}" name="selected_series[]" value="${serie}" class="form-check-input" checked>`);
-                    const label = $(`<label for="serie_${index}" class="form-check-label">Serie ${serie}</label>`);
-                    
-                    checkDiv.append(checkbox).append(label);
-                    col.append(checkDiv);
-                    seriesCheckboxesDiv.append(col);
-                });
+                // Crear checkbox
+                const col = $('<div class="col-md-4 mb-2"></div>');
+                const checkDiv = $('<div class="form-check"></div>');
+                const checkbox = $(`<input type="checkbox" id="serie_${index}" name="selected_series[]" value="${serie}" class="form-check-input" checked>`);
+                const label = $(`<label for="serie_${index}" class="form-check-label">Serie ${serie}</label>`);
                 
-                currentSeriesDiv.append(seriesList);
-            } else {
-                currentSeriesDiv.text('No hay series disponibles');
-            }
-            
-            // Función para actualizar contador de seleccionados
-            function updateSelectedCounter() {
-                const checkedCount = $('input[name="selected_series[]"]:checked').length;
-                const newQuantity = parseInt($('#newQuantity').val());
-                
-                if (checkedCount > newQuantity) {
-                    let toUncheck = checkedCount - newQuantity;
-                    $($('input[name="selected_series[]"]:checked').get().reverse()).each(function() {
-                        if (toUncheck > 0) {
-                            $(this).prop('checked', false);
-                            toUncheck--;
-                        }
-                    });
-                }
-            }
-            
-            // Manejar cambio en la cantidad de cartones
-            $('#newQuantity').off('change').on('change', function() {
-                const newQuantity = parseInt($(this).val());
-                
-                // Actualizar el total estimado
-                const newTotal = newQuantity * bingoPrice;
-                $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(newTotal));
-                
-                // Actualizar contador
-                updateSelectedCounter();
+                checkDiv.append(checkbox).append(label);
+                col.append(checkDiv);
+                $('#seriesCheckboxes').append(col);
             });
             
-            // Añadir listeners a los checkboxes
-            $('input[name="selected_series[]"]').off('change').on('change', function() {
-                const newQuantity = parseInt($('#newQuantity').val());
-                const checkedCount = $('input[name="selected_series[]"]:checked').length;
-                
-                if (checkedCount > newQuantity && $(this).is(':checked')) {
-                    $(this).prop('checked', false);
-                    alert(`Solo puedes seleccionar ${newQuantity} series.`);
-                }
-            });
+            $('#currentSeries').append(seriesList);
+        } else {
+            $('#currentSeries').text('No hay series disponibles');
+        }
+        
+        // Configurar evento para cambio en cantidad
+        $('#newQuantity').off('change').on('change', function() {
+            const newQuantity = parseInt($(this).val());
             
-            // Inicializar contador
+            // Actualizar total estimado
+            const newTotal = newQuantity * bingoPrice;
+            $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(newTotal));
+            
+            // Verificar selecciones
             updateSelectedCounter();
-            
-            // Mostrar modal
-            modal.modal('show');
-            
-            // Manejar clic en el botón de guardar
-            $('#saveSeriesChanges').off('click').on('click', function() {
-                const selectedCheckboxes = $('input[name="selected_series[]"]:checked');
-                const newQuantity = parseInt($('#newQuantity').val());
-                
-                if (selectedCheckboxes.length !== newQuantity) {
-                    alert(`Debes seleccionar exactamente ${newQuantity} series.`);
-                    return;
-                }
-                
-                // Mostrar indicador de carga
-                $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...');
-                
-                // Enviar formulario
-                $('#editSeriesForm').submit();
-            });
         });
         
-        // Manejar evento de formularios de aprobación/rechazo
-        $('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').off('submit').on('submit', function() {
-            const row = $(this).closest('tr');
-            const input = row.find('.comprobante-input');
-            if (input.length) {
-                $('<input>').attr({
-                    type: 'hidden',
-                    name: 'numero_comprobante',
-                    value: input.val()
-                }).appendTo(this);
+        // Función para actualizar contador de seleccionados
+        function updateSelectedCounter() {
+            const checkboxes = $('input[name="selected_series[]"]');
+            const newQuantity = parseInt($('#newQuantity').val());
+            let checkedCount = 0;
+            
+            checkboxes.each(function() {
+                if ($(this).prop('checked')) checkedCount++;
+            });
+            
+            // Si hay más seleccionados que la cantidad permitida, desmarcar los últimos
+            if (checkedCount > newQuantity) {
+                let toUncheck = checkedCount - newQuantity;
+                $(checkboxes.get().reverse()).each(function() {
+                    if ($(this).prop('checked') && toUncheck > 0) {
+                        $(this).prop('checked', false);
+                        toUncheck--;
+                    }
+                });
+            }
+        }
+        
+        // Configurar eventos para checkboxes
+        $('input[name="selected_series[]"]').off('change').on('change', function() {
+            const newQuantity = parseInt($('#newQuantity').val());
+            let checkedCount = 0;
+            
+            $('input[name="selected_series[]"]').each(function() {
+                if ($(this).prop('checked')) checkedCount++;
+            });
+            
+            // Si se excede la cantidad permitida, desmarcar este checkbox
+            if (checkedCount > newQuantity && $(this).prop('checked')) {
+                $(this).prop('checked', false);
+                alert(`Solo puedes seleccionar ${newQuantity} series.`);
             }
         });
         
-        // Manejar actualización de número de comprobante
-        $('.comprobante-input').off('blur').on('blur', function() {
-            const reservaId = $(this).data('id');
-            const numeroComprobante = $(this).val();
-            console.log('Actualizar comprobante:', reservaId, numeroComprobante);
+        // Inicializar contador de selecciones
+        updateSelectedCounter();
+        
+        // Mostrar modal
+        modal.modal('show');
+        
+        // Configurar botón de guardar
+        $('#saveSeriesChanges').off('click').on('click', function() {
+            const selectedCheckboxes = $('input[name="selected_series[]"]:checked');
+            const newQuantity = parseInt($('#newQuantity').val());
+            
+            if (selectedCheckboxes.length !== newQuantity) {
+                alert(`Debes seleccionar exactamente ${newQuantity} series.`);
+                return;
+            }
+            
+            // Enviar formulario
+            $('#editSeriesForm').submit();
         });
-    }
+    });
+    
+    // Manejar envío de formularios de aprobación/rechazo
+    $('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').on('submit', function(e) {
+        // Encuentra la fila que contiene el formulario
+        const row = $(this).closest('tr');
+        // Busca el input editable del número de comprobante en la misma fila
+        const input = row.find('.comprobante-input');
+        if (input.length > 0) {
+            // Crea un campo oculto para enviar el valor
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'numero_comprobante',
+                value: input.val()
+            }).appendTo($(this));
+        }
+    });
+}
+
+    
     
     // Función para actualizar botones activos
     function updateActiveButton(activeBtn) {
@@ -397,22 +446,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return url.toString();
     }
     
-    // Obtener el ID del bingo de la URL
+    // Obtener el ID del bingo actual de la URL o variable global
     let bingoId;
-    const pathParts = window.location.pathname.split('/').filter(Boolean);
-    const bingoIndex = pathParts.indexOf('bingos');
-    if (bingoIndex >= 0 && bingoIndex + 1 < pathParts.length) {
-        bingoId = pathParts[bingoIndex + 1];
-    } else {
-        console.error('No se pudo determinar el ID del bingo desde la URL');
-        bingoId = '0'; // Valor por defecto
+    try {
+        // Intentar obtener el ID del bingo de una variable global (si existe)
+        bingoId = typeof bingo_id !== 'undefined' ? bingo_id : window.location.pathname.split('/').filter(Boolean)[2];
+    } catch (e) {
+        // Si falla, extraer de la URL
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        bingoId = pathParts[pathParts.indexOf('bingos') + 1] || '0';
     }
     
-    console.log('ID del bingo:', bingoId);
-    
-    // Definir la URL para cargar todas las reservas
+    // Definir la ruta para todas las reservas usando tabla existente
     const rutaTablaTodasReservas = `/admin/bingos/${bingoId}/reservas-tabla?tipo=todas`;
-    console.log('URL para todas las reservas:', rutaTablaTodasReservas);
     
     // Cargar inicialmente la tabla de todas las reservas
     loadTableContent(rutaTablaTodasReservas);
@@ -423,19 +469,19 @@ document.addEventListener('DOMContentLoaded', function() {
         tipoActual = 'todas';
         loadTableContent(rutaTablaTodasReservas);
     });
-    
+
     document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'comprobantes-duplicados';
         loadTableContent("{{ route('admin.comprobantesDuplicados') }}");
     });
-    
+
     document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'pedidos-duplicados';
         loadTableContent("{{ route('admin.pedidosDuplicados') }}");
     });
-    
+
     document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
         updateActiveButton(this);
         tipoActual = 'cartones-eliminados';
@@ -465,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const filteredUrl = addFiltersToUrl(baseUrl);
         
         // Cargar la tabla con la URL filtrada
-        loadTableContent(filteredUrl);
+        loadTableContent(filteredUrl, false);
     });
     
     // Evento para el botón de Limpiar filtros
@@ -490,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 baseUrl = rutaTablaTodasReservas;
         }
         
-        loadTableContent(baseUrl);
+        loadTableContent(baseUrl, false);
     });
     
     // Permitir filtrar con Enter en los campos de texto
