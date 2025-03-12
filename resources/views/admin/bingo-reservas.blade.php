@@ -329,75 +329,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         else if (tipo === 'cartones-eliminados') {
-            // Buscar reservas con cartones eliminados/modificados
-            const filasModificadas = [];
+            // Simplemente buscar reservas con estado "rechazado"
+            let filasRechazadas = [];
             
             dataTable.rows().every(function(rowIdx) {
                 const fila = this.node();
+                // Obtener el texto de la columna de estado (columna 10)
+                const estadoCell = $(fila).find('td:eq(10)');
+                const estadoTexto = estadoCell.text().trim().toLowerCase();
                 
-                // Buscar indicios de modificación en las series o cantidad
-                // 1. Verificar si el botón "Editar Series" tiene el atributo data-modificado
-                const botonEditar = $(fila).find('.edit-series');
-                
-                // 2. También, podemos verificar si hay diferencias entre series originales y actuales
-                let seriesModificadas = false;
-                
-                try {
-                    // Verificar si la fila tiene alguna marca de modificación (clase o atributo)
-                    // Nota: en una implementación real, necesitarías tener algún indicador en los datos
-                    // que muestre que los cartones fueron modificados/eliminados
-                    
-                    // Aquí implemento una lógica basada en lo que puedo ver en el HTML:
-                    // - Busco cualquier indicador visual en la fila
-                    // - Verifico si la celda de series tiene alguna marca especial
-                    const celdaSeries = $(fila).find('td:eq(5)');
-                    const textoSeries = celdaSeries.text().trim();
-                    
-                    // Verificar si hay texto que indique modificación
-                    seriesModificadas = textoSeries.includes('modificado') || 
-                                        textoSeries.includes('eliminado') ||
-                                        celdaSeries.hasClass('text-warning') ||
-                                        celdaSeries.hasClass('text-danger');
-                                        
-                    // También verificar si el estado es "rechazado", lo que podría indicar cartones eliminados
-                    const estado = $(fila).find('td:eq(10)').text().trim().toLowerCase();
-                    if (estado === 'rechazado') {
-                        seriesModificadas = true;
-                    }
-                    
-                    // Verificar si la cantidad de cartones actual es diferente de la original
-                    // (esto requeriría tener ese dato disponible)
-                    const cantidadOriginal = botonEditar.data('cantidad-original');
-                    const cantidadActual = parseInt($(fila).find('td:eq(4)').text().trim());
-                    
-                    if (cantidadOriginal && cantidadOriginal !== cantidadActual) {
-                        seriesModificadas = true;
-                    }
-                    
-                    // Verificar si hay algún atributo data-* que indique modificación
-                    if ($(fila).data('modificado') || 
-                        botonEditar.data('modificado') || 
-                        seriesModificadas) {
-                        filasModificadas.push(rowIdx);
-                    }
-                    
-                    // Alternativa: si no hay una marca clara, podemos usar un enfoque heurístico
-                    // y considerar que cualquier reserva con estado "rechazado" o que tenga botón 
-                    // "Editar Series" ha sido modificada
-                    if (estado === 'rechazado' || botonEditar.length > 0) {
-                        filasModificadas.push(rowIdx);
-                    }
-                    
-                } catch (e) {
-                    console.error('Error al verificar modificaciones:', e);
+                // Si tiene la clase 'bg-danger' o el texto contiene 'rechazado'
+                if (estadoTexto.includes('rechazado') || estadoCell.find('.badge.bg-danger').length > 0) {
+                    filasRechazadas.push(rowIdx);
                 }
             });
             
-            // Aplicar filtro si se encontraron filas modificadas
-            if (filasModificadas.length > 0) {
-                // Mostrar solo las filas con cartones modificados/eliminados
+            if (filasRechazadas.length > 0) {
+                // Mostrar solo las filas con estado rechazado
                 dataTable.rows().every(function(rowIdx) {
-                    if (!filasModificadas.includes(rowIdx)) {
+                    if (!filasRechazadas.includes(rowIdx)) {
                         $(this.node()).addClass('d-none');
                     } else {
                         $(this.node()).removeClass('d-none').addClass('carton-eliminado');
@@ -405,10 +355,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 dataTable.draw();
             } else {
-                // No hay cartones eliminados identificados
+                // No hay reservas rechazadas
                 dataTable.rows().nodes().to$().addClass('d-none');
                 dataTable.draw();
-                $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-warning">No se identificaron cartones eliminados usando los criterios actuales.</div>');
+                $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-danger">No se encontraron reservas con estado rechazado.</div>');
             }
         }
     }
@@ -478,6 +428,91 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 currentSeriesDiv.text('No hay series disponibles');
             }
+            
+            // Función para actualizar contador de seleccionados
+            function updateSelectedCounter() {
+                const checkedCount = $('input[name="selected_series[]"]:checked').length;
+                const newQuantity = parseInt($('#newQuantity').val());
+                
+                if (checkedCount > newQuantity) {
+                    let toUncheck = checkedCount - newQuantity;
+                    $($('input[name="selected_series[]"]:checked').get().reverse()).each(function() {
+                        if (toUncheck > 0) {
+                            $(this).prop('checked', false);
+                            toUncheck--;
+                        }
+                    });
+                }
+            }
+            
+            // Manejar cambio en la cantidad de cartones
+            $('#newQuantity').off('change').on('change', function() {
+                const newQuantity = parseInt($(this).val());
+                
+                // Actualizar el total estimado
+                const newTotal = newQuantity * bingoPrice;
+                $('#currentTotal').text(new Intl.NumberFormat('es-CL').format(newTotal));
+                
+                // Actualizar contador
+                updateSelectedCounter();
+            });
+            
+            // Añadir listeners a los checkboxes
+            $('input[name="selected_series[]"]').off('change').on('change', function() {
+                const newQuantity = parseInt($('#newQuantity').val());
+                const checkedCount = $('input[name="selected_series[]"]:checked').length;
+                
+                if (checkedCount > newQuantity && $(this).is(':checked')) {
+                    $(this).prop('checked', false);
+                    alert(`Solo puedes seleccionar ${newQuantity} series.`);
+                }
+            });
+            
+            // Inicializar contador
+            updateSelectedCounter();
+            
+            // Mostrar modal
+            modal.modal('show');
+            
+            // Manejar clic en el botón de guardar
+            $('#saveSeriesChanges').off('click').on('click', function() {
+                const selectedCheckboxes = $('input[name="selected_series[]"]:checked');
+                const newQuantity = parseInt($('#newQuantity').val());
+                
+                if (selectedCheckboxes.length !== newQuantity) {
+                    alert(`Debes seleccionar exactamente ${newQuantity} series.`);
+                    return;
+                }
+                
+                // Mostrar indicador de carga
+                $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...');
+                
+                // Enviar formulario
+                $('#editSeriesForm').submit();
+            });
+        });
+        
+        // Manejar evento de formularios de aprobación/rechazo
+        $('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').off('submit').on('submit', function() {
+            const row = $(this).closest('tr');
+            const input = row.find('.comprobante-input');
+            if (input.length) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'numero_comprobante',
+                    value: input.val()
+                }).appendTo(this);
+            }
+        });
+        
+        // Manejar actualización de número de comprobante
+        $('.comprobante-input').off('blur').on('blur', function() {
+            const reservaId = $(this).data('id');
+            const numeroComprobante = $(this).val();
+            console.log('Actualizar comprobante:', reservaId, numeroComprobante);
+            // Aquí puedes implementar el guardado vía AJAX si lo necesitas
+        });
+    }
             
             // Función para actualizar contador de seleccionados
             function updateSelectedCounter() {
