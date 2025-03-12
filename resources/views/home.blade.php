@@ -190,57 +190,68 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
-           /* Estilos para notificaciones de error */
-        .notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            max-width: 350px;
-            z-index: 1050;
-        }
+ /* Estilos para notificaciones */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    max-width: 350px;
+    z-index: 1050;
+}
 
-        .notification {
-            background-color: #FFEEEE;
-            border-left: 4px solid #FF0000;
-            color: #FF0000;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            font-weight: bold;
-            animation: slideIn 0.5s ease-out;
-        }
+.notification {
+    background-color: #FFEEEE;
+    border-left: 4px solid #FF0000;
+    color: #FF0000;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    font-weight: bold;
+    animation: slideIn 0.5s ease-out;
+}
 
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
+/* Estilos más específicos para notificaciones de éxito */
+.notification.success-notification {
+    background-color: #EEFFEE !important;
+    border-left: 4px solid #28a745 !important;
+    color: #28a745 !important;
+}
 
-        .notification-title {
-            margin-top: 0;
-            margin-bottom: 5px;
-            font-size: 18px;
-        }
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
 
-        .notification-message {
-            margin: 0;
-        }
+.notification-title {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 18px;
+}
 
-        .notification-close {
-            float: right;
-            background: none;
-            border: none;
-            color: #FF0000;
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-        }
+.notification-message {
+    margin: 0;
+}
+
+.notification-close {
+    float: right;
+    background: none;
+    border: none;
+    color: #FF0000;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.success-notification .notification-close {
+    color: #28a745 !important;
+}
 
         .whatsapp-float {
     position: fixed;
@@ -512,20 +523,42 @@
 
                 <!-- Paso 3 -->
                 <h4 class="paso-title text-center mb-2">Paso 3</h4>
-                <p class="text-start mb-3">Realiza el pago y toma una captura del comprobante</p>
-                <div class="bg-black p-3 rounded mb-4">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="text-verde mb-2 fw-bold">Nequi: <span class="text-white">{{ $numeroContacto }}</span></div>
-                            <div class="text-verde mb-2 fw-bold">Daviplata: <span class="text-white">{{ $numeroContacto }}</span></div>
-                            <div class="text-verde mb-3 fw-bold">Transfiya: <span class="text-white">{{ $numeroContacto }}</span></div>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div><span class="text-amarillo fw-bold">Total a pagar:</span></div>
-                                <div class="text-end fw-bold" id="totalPagar">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</div>
-                            </div>
-                        </div>
-                    </div>
+<p class="text-start mb-3">Realiza el pago y toma una captura del comprobante</p>
+<div class="bg-black p-3 rounded mb-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="text-verde fw-bold">
+                    Nequi: <span class="text-white">{{ $numeroContacto }}</span>
                 </div>
+                <button type="button" class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroContacto }}', event)">
+                    Copiar
+                </button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="text-verde fw-bold">
+                    Daviplata: <span class="text-white">{{ $numeroContacto }}</span>
+                </div>
+                <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroContacto }}', event)">
+                    Copiar
+                </button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="text-verde fw-bold">
+                    Transfiya: <span class="text-white">{{ $numeroContacto }}</span>
+                </div>
+                <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroContacto }}', event)">
+                    Copiar
+                </button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <div><span class="text-amarillo fw-bold">Total a pagar:</span></div>
+                <div class="text-end fw-bold" id="totalPagar">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
                 <!-- Paso 4 -->
                 <h4 class="paso-title text-center mb-2">Paso 4</h4>
@@ -972,6 +1005,79 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+function copiarNumero(numero, event) {
+    // Prevenir cualquier comportamiento predeterminado
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    // Copiar el número al portapapeles
+    navigator.clipboard.writeText(numero)
+        .then(() => {
+            // Mostrar notificación de éxito
+            showSuccessNotification('Éxito', 'Número copiado');
+        })
+        .catch(err => {
+            console.error('Error al copiar: ', err);
+        });
+        
+    // Retornar false para evitar propagación adicional
+    return false;
+}
+
+// Función para mostrar notificaciones de éxito (verde)
+function showSuccessNotification(title, message) {
+    // Crear contenedor de notificaciones si no existe
+    let container = document.querySelector('.notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'notification-container';
+        document.body.appendChild(container);
+    }
+    
+    // Crear la notificación
+    const notification = document.createElement('div');
+    notification.className = 'notification success-notification'; // Aseguramos la clase para estilo verde
+    notification.style.backgroundColor = '#EEFFEE'; // Forzar color de fondo
+    notification.style.borderLeftColor = '#28a745'; // Forzar color de borde
+    notification.style.color = '#28a745'; // Forzar color de texto
+    
+    // Agregar botón de cierre
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'notification-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.color = '#28a745'; // Forzar color del botón de cierre
+    closeBtn.addEventListener('click', function() {
+        container.removeChild(notification);
+    });
+    
+    // Agregar título
+    const titleElement = document.createElement('h5');
+    titleElement.className = 'notification-title';
+    titleElement.textContent = title;
+    
+    // Agregar mensaje
+    const messageElement = document.createElement('p');
+    messageElement.className = 'notification-message';
+    messageElement.innerHTML = message;
+    
+    // Ensamblar la notificación
+    notification.appendChild(closeBtn);
+    notification.appendChild(titleElement);
+    notification.appendChild(messageElement);
+    
+    // Agregar al contenedor
+    container.appendChild(notification);
+    
+    // Auto-eliminar después de 3 segundos (más corto para notificaciones de éxito)
+    setTimeout(function() {
+        if (container.contains(notification)) {
+            container.removeChild(notification);
+        }
+    }, 3000);
+}
 </script>
 
 </body>
