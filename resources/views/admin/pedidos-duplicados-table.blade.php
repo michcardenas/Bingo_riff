@@ -36,17 +36,6 @@
                 @else
                 {{ $seriesData }}
                 @endif
-                <button type="button" 
-                    class="btn btn-sm btn-info edit-series mt-1" 
-                    data-id="{{ $reserva->id }}"
-                    data-bingo-id="{{ $reserva->bingo_id ?? 0 }}"
-                    data-nombre="{{ $reserva->nombre }}"
-                    data-cantidad="{{ $reserva->cantidad }}"
-                    data-total="{{ $reserva->total }}"
-                    data-bingo-precio="{{ $reserva->bingo->precio ?? 0 }}"
-                    data-series="{{ is_array($seriesData) ? json_encode($seriesData) : $seriesData }}">
-                    <i class="bi bi-pencil-square"></i> Editar Series
-                </button>
             </td>
             <td>
                 @if($reserva->bingo)
@@ -92,6 +81,19 @@
                 @endif
             </td>
             <td>
+                @if($reserva->estado == 'revision' || $reserva->estado == 'aprobado')
+                    <button type="button" class="btn btn-sm btn-warning mb-1 edit-series"
+                        data-id="{{ $reserva->id }}"
+                        data-nombre="{{ $reserva->nombre }}"
+                        data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}"
+                        data-cantidad="{{ $reserva->cantidad }}"
+                        data-total="{{ $reserva->total }}"
+                        data-bingo-id="{{ $reserva->bingo_id }}"
+                        data-bingo-precio="{{ $reserva->bingo ? $reserva->bingo->precio : 0 }}">
+                        <i class="bi bi-pencil-square"></i> Editar Series
+                    </button>
+                @endif
+
                 @if($reserva->estado == 'revision')
                 <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline">
                     @csrf
