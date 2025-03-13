@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
-        body {
+body {
             background-color: #000;
             color: #fff;
             font-family: 'Poppins', sans-serif;
@@ -92,6 +92,7 @@
         .bingo-container {
             background-color: #121212;
             border-radius: 8px;
+            padding: 0; /* Quitamos padding para maximizar espacio */
         }
 
         .form-control {
@@ -174,139 +175,156 @@
             margin-top: 1rem;
         }
 
-        /* Estilos para el contenedor de video vertical */
+        /* Estilos para el contenedor de video vertical - FORMATO TELÉFONO */
         .video-vertical-container {
-            max-width: 500px;
-            height: 700px; /* Altura significativamente mayor para video vertical */
+            width: 100%; /* Ancho del 95% del contenedor para dejar un pequeño margen */
+            max-width: 400px; /* Ancho máximo para simular un teléfono */
+            height: auto; /* Auto para mantener proporción */
+            aspect-ratio: 9/16; /* Proporción de aspecto de teléfono vertical (16:9 invertido) */
             margin: 0 auto;
-            margin-top: 20px;
+            margin-top: 10px;
+            margin-bottom: 20px;
             position: relative;
+            padding: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .video-vertical-container iframe {
             width: 100%;
             height: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
         }
 
- /* Estilos para notificaciones */
-.notification-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    max-width: 350px;
-    z-index: 1050;
-}
+        /* Estilos para notificaciones */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            max-width: 350px;
+            z-index: 1050;
+        }
 
-.notification {
-    background-color: #FFEEEE;
-    border-left: 4px solid #FF0000;
-    color: #FF0000;
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 4px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    font-weight: bold;
-    animation: slideIn 0.5s ease-out;
-}
+        .notification {
+            background-color: #FFEEEE;
+            border-left: 4px solid #FF0000;
+            color: #FF0000;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            animation: slideIn 0.5s ease-out;
+        }
 
-/* Estilos más específicos para notificaciones de éxito */
-.notification.success-notification {
-    background-color: #EEFFEE !important;
-    border-left: 4px solid #28a745 !important;
-    color: #28a745 !important;
-}
+        /* Estilos más específicos para notificaciones de éxito */
+        .notification.success-notification {
+            background-color: #EEFFEE !important;
+            border-left: 4px solid #28a745 !important;
+            color: #28a745 !important;
+        }
 
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
 
-.notification-title {
-    margin-top: 0;
-    margin-bottom: 5px;
-    font-size: 18px;
-}
+        .notification-title {
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
 
-.notification-message {
-    margin: 0;
-}
+        .notification-message {
+            margin: 0;
+        }
 
-.notification-close {
-    float: right;
-    background: none;
-    border: none;
-    color: #FF0000;
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
-}
+        .notification-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #FF0000;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
 
-.success-notification .notification-close {
-    color: #28a745 !important;
-}
+        .success-notification .notification-close {
+            color: #28a745 !important;
+        }
 
         .whatsapp-float {
-    position: fixed;
-    width: 80px;
-    height: 80px;
-    bottom: 40px;
-    right: 40px;
-    background-color: #25d366;
-    color: #FFF;
-    border-radius: 50px;
-    text-align: center;
-    font-size: 40px;
-    box-shadow: 3px 3px 6px rgba(0,0,0,0.3);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
+            position: fixed;
+            width: 80px;
+            height: 80px;
+            bottom: 40px;
+            right: 40px;
+            background-color: #25d366;
+            color: #FFF;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 40px;
+            box-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
 
-.whatsapp-float:hover {
-    background-color: #128C7E;
-    color: white;
-    transform: scale(1.1);
-    box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
-}
+        .whatsapp-float:hover {
+            background-color: #128C7E;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
+        }
 
-/* Efecto de pulso para llamar más la atención */
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
-    }
-}
+        /* Efecto de pulso para llamar más la atención */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+            }
+        }
 
-.whatsapp-float {
-    animation: pulse 2s infinite;
-}
+        .whatsapp-float {
+            animation: pulse 2s infinite;
+        }
 
-/* Media query para dispositivos móviles */
-@media screen and (max-width: 767px) {
-    .whatsapp-float {
-        width: 65px;
-        height: 65px;
-        bottom: 30px;
-        right: 30px;
-        font-size: 35px;
-    }
-}
+        /* Media query para dispositivos móviles */
+        @media screen and (max-width: 767px) {
+            .whatsapp-float {
+                width: 65px;
+                height: 65px;
+                bottom: 30px;
+                right: 30px;
+                font-size: 35px;
+            }
+            
+            .video-vertical-container {
+                width: 100%;
+                max-width: 467px; /* Ligeramente más estrecho en móviles */
+                min-height: 600px; /* Altura mínima para asegurar que se vea bien */
+            }
+        }
 
         @media (min-width: 768px) {
             .bingo-container {
@@ -355,8 +373,8 @@
             }
 
             .video-vertical-container {
-            height: 600px; /* Ajustar altura para dispositivos más pequeños */
-            max-width: 100%;
+                max-width: 458px; /* Tamaño ideal para simular un teléfono */
+                min-height: 650px; /* Altura mínima para tablets */
             }
         }
 
@@ -368,11 +386,18 @@
             .bingo-cerrado-container {
                 max-width: 600px;
             }
+            
+            .video-vertical-container {
+                max-width: 568px; /* Ligeramente más ancho en desktop */
+                min-height: 700px; /* Altura mínima para desktop */
+            }
         }
 
         @media (max-width: 480px) {
             .video-vertical-container {
-                height: 500px; /* Ajustar altura para móviles */
+                width: 103%; /* Casi todo el ancho en móviles pequeños */
+                max-width: 400px; /* Limitado para mantener proporción */
+                min-height: 550px; /* Altura mínima para móviles pequeños */
             }
         }
 
