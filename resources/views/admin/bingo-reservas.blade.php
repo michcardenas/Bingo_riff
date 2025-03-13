@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Establecer URL del formulario
             const form = $('#editSeriesForm');
-            form.attr('action', `${basePath}/reservas/${reservaId}/update-series`);
+            form.attr('action', `${basePath}/admin/reservas/${reservaId}/update-series`);
             
             // Mostrar series actuales y crear checkboxes
             const currentSeriesDiv = $('#currentSeries');
