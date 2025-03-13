@@ -36,6 +36,17 @@
     @else
         {{ $seriesData }}
     @endif
+    <button type="button" 
+        class="btn btn-sm btn-info edit-series mt-1" 
+        data-id="{{ $reserva->id }}"
+        data-bingo-id="{{ $reserva->bingo_id ?? 0 }}"
+        data-nombre="{{ $reserva->nombre }}"
+        data-cantidad="{{ $reserva->cantidad }}"
+        data-total="{{ $reserva->total }}"
+        data-bingo-precio="{{ $reserva->bingo->precio ?? 0 }}"
+        data-series="{{ is_array($seriesData) ? json_encode($seriesData) : $seriesData }}">
+        <i class="bi bi-pencil-square"></i> Editar Series
+    </button>
 </td>
 <td>
                 @if($reserva->bingo)
