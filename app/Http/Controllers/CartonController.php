@@ -167,7 +167,7 @@ class CartonController extends Controller
 
         // Convertir el número a entero para quitar ceros iniciales
         $numeroSinCeros = intval($numero);
-        $rutaCompleta = storage_path('app/private/public/Tablas bingo RIFFY/' . $numeroSinCeros . '.pdf');
+        $rutaCompleta = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroSinCeros . '.pdf');
 
         if (!file_exists($rutaCompleta)) {
             Log::warning("Archivo de cartón no encontrado: $rutaCompleta");
