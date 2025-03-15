@@ -304,10 +304,32 @@ class BingoController extends Controller
         
         if ($request->filled('serie')) {
             $serie = $request->serie;
-            $query->where(function($q) use ($serie) {
-                $q->where('series', 'LIKE', '%"' . $serie . '"%')
-                  ->orWhere('series', 'LIKE', '%' . $serie . '%');
+            \Log::info('Aplicando filtro por serie exacta: ' . $serie);
+            
+            // Crear el patrón exacto que buscamos en la base de datos
+            // Básicamente buscamos: ["0001"] o algo que incluya ese patrón exacto
+            $serieFormateada = '"[\\"' . $serie . '\\"]"';
+            $serieEnArray = '[\\"' . $serie . '\\"';  // Para cuando es parte de un array más grande
+            
+            $query->where(function ($q) use ($serie, $serieFormateada, $serieEnArray) {
+                // Opción 1: Serie exacta - coincide con todo el campo (para series individuales)
+                $q->where('series', $serieFormateada);
+                
+                // Opción 2: Serie como parte de un array más grande
+                $q->orWhere('series', 'LIKE', '%' . $serieEnArray . '%');
+                
+                // Registrar los patrones que estamos buscando
+                \Log::info('Patrones de búsqueda:', [
+                    'serie_original' => $serie,
+                    'patron_exacto' => $serieFormateada,
+                    'patron_array' => $serieEnArray
+                ]);
             });
+            
+            // Log para ver la consulta generada
+            \Log::info('SQL después del filtro de serie: ' . $query->toSql(), [
+                'bindings' => $query->getBindings()
+            ]);
         }
         
         // Ordenar por fecha de creación descendente

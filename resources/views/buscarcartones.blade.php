@@ -248,8 +248,40 @@
     animation: pulse 2s infinite;
 }
 
+/* Estilos para el contenedor de video vertical - FORMATO TELÉFONO */
+.video-vertical-container {
+            width: 100%; /* Ancho del 95% del contenedor para dejar un pequeño margen */
+            max-width: 400px; /* Ancho máximo para simular un teléfono */
+            height: auto; /* Auto para mantener proporción */
+            aspect-ratio: 9/16; /* Proporción de aspecto de teléfono vertical (16:9 invertido) */
+            margin: 0 auto;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            position: relative;
+            padding: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-vertical-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
 /* Media query para dispositivos móviles */
 @media screen and (max-width: 767px) {
+
+    .nav-link-custom {
+            font-size: 14px;
+        }
+        
     .whatsapp-float {
         width: 65px;
         height: 65px;
@@ -257,7 +289,58 @@
         right: 30px;
         font-size: 35px;
     }
+
+    .video-vertical-container {
+                width: 100%;
+                max-width: 467px; /* Ligeramente más estrecho en móviles */
+                min-height: 600px; /* Altura mínima para asegurar que se vea bien */
+            }
 }
+
+        /* Media query para dispositivos móviles */
+        @media screen and (max-width: 767px) {
+            .nav-link-custom {
+            font-size: 14px;
+        }
+
+            .whatsapp-float {
+                width: 65px;
+                height: 65px;
+                bottom: 30px;
+                right: 30px;
+                font-size: 35px;
+            }
+            
+            .video-vertical-container {
+                width: 100%;
+                max-width: 467px; /* Ligeramente más estrecho en móviles */
+                min-height: 600px; /* Altura mínima para asegurar que se vea bien */
+            }
+        }
+
+        @media (min-width: 768px) {
+            .video-vertical-container {
+                max-width: 458px; /* Tamaño ideal para simular un teléfono */
+                min-height: 650px; /* Altura mínima para tablets */
+            }
+        }
+
+        @media (min-width: 992px) {            
+            .video-vertical-container {
+                max-width: 568px; /* Ligeramente más ancho en desktop */
+                min-height: 700px; /* Altura mínima para desktop */
+            }
+        }
+
+        @media (max-width: 480px) {
+            
+
+            .video-vertical-container {
+                width: 103%; /* Casi todo el ancho en móviles pequeños */
+                max-width: 400px; /* Limitado para mantener proporción */
+                min-height: 550px; /* Altura mínima para móviles pequeños */
+            }
+        }
     </style>
 </head>
 
@@ -277,13 +360,13 @@
         <div class="container d-flex justify-content-between align-items-center">
             <!-- Logo -->
             <div class="logo-container">
-                <a href="{{ route('home') }}">
+                <a href="https://bingoriffy.com">
                     <img src="{{ asset('images/RiffyLogo.png') }}" alt="RIFFY Bingo" id="riffy-logo" style="height: 70px;">
                 </a>
             </div>
             <!-- Enlaces -->
             <div>
-                <a href="{{ route('home') }}" class="text-white text-decoration-none me-3 nav-link-custom">Comprar mi cartón</a>
+                <a href="{{ route('home') }}" class="text-white text-decoration-none me-3 nav-link-custom">Comprar</a>
                 <a href="{{ route('cartones.index') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
                 @if($enlaces->grupo_whatsapp)
                 <a href="{{ $enlaces->grupo_whatsapp }}" target="_blank" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
@@ -390,25 +473,22 @@
             </div>
             @endif
 
-            <!-- Sección de ayuda -->
-            <div class="help-container">
-                <h2 class="help-title">¿Como descargar tus cartones y jugar?</h2>
-                @if($video2 && $video2 != '#')
-                <div class="ratio ratio-16x9 mt-2" style="max-width: 640px; margin: 0 auto;">
-                    <iframe
-                        src="{{ str_replace('watch?v=', 'embed/', $video2) }}"
-                        title="Tutorial de descarga y juego"
-                        frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen>
-                    </iframe>
-                </div>
-                @else
-                <span class="video-link">video 2 aquí</span>
-                @endif
+        <!-- Sección de ayuda -->
+        <div class="help-container">
+            <h2 class="help-title">¿Como descargar tus cartones y jugar?</h2>
+            @if($video2 && $video2 != '#')
+            <div class="video-vertical-container">
+                <iframe
+                    src="{{ str_replace('watch?v=', 'embed/', $video2) }}"
+                    title="Tutorial de descarga y juego"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen>
+                </iframe>
             </div>
+            @else
+            <span class="video-link">video 2 aquí</span>
+            @endif
         </div>
-    </div>
 
     <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $telefonoAtencion) }}" class="whatsapp-float" target="_blank">

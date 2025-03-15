@@ -140,6 +140,10 @@
 
         /* Media query para dispositivos móviles */
         @media screen and (max-width: 767px) {
+            .nav-link-custom {
+            font-size: 14px;
+        }
+
             .whatsapp-float {
                 width: 65px;
                 height: 65px;
@@ -194,13 +198,13 @@
         <div class="container d-flex justify-content-between align-items-center">
             <!-- Logo -->
             <div class="logo-container">
-                <a href="{{ route('home') }}">
+                <a href="https://bingoriffy.com">
                     <img src="{{ asset('images/RiffyLogo.png') }}" alt="RIFFY Bingo" id="riffy-logo" style="height: 70px;">
                 </a>
             </div>
             <!-- Enlaces -->
             <div>
-                <a href="{{ route('home') }}" class="text-white text-decoration-none me-3 nav-link-custom">Comprar mi cartón</a>
+                <a href="{{ route('home') }}" class="text-white text-decoration-none me-3 nav-link-custom">Comprar</a>
                 <a href="{{ route('cartones.index') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
                 @if($enlaces->grupo_whatsapp)
                 <a href="{{ $enlaces->grupo_whatsapp }}" target="_blank" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>

@@ -19,12 +19,15 @@ class BingoAdminController extends Controller
      */
     public function index()
     {
-        // Obtener todos los bingos con el conteo de reservas, ordenados por ID descendente
-        $bingos = Bingo::withCount('reservas')->orderBy('id', 'desc')->get();
-
+        // Obtener solo los bingos visibles (visible = 1) con el conteo de reservas, ordenados por ID descendente
+        $bingos = Bingo::where('visible', 1)
+            ->withCount('reservas')
+            ->orderBy('id', 'desc')
+            ->get();
+    
         return view('admin.index', compact('bingos'));
     }
-
+    
     public function create()
     {
         return view('admin.create');
@@ -194,43 +197,50 @@ class BingoAdminController extends Controller
     }
 
     public function reservasPorBingo(Request $request, $id)
-{
-    // Obtener el bingo
-    $bingo = Bingo::findOrFail($id);
+    {
+        // Obtener el bingo
+        $bingo = Bingo::findOrFail($id);
 
-    // Obtener estadísticas
-    $reservas = Reserva::where('bingo_id', $id)->get();
-    $totalParticipantes = $reservas->count();
-    $totalCartones = $reservas->sum('cantidad');
-    $totalAprobadas = $reservas->where('estado', 'aprobado')->count();
-    $totalPendientes = $reservas->where('estado', 'revision')->count();
+        // Obtener estadísticas
+        $reservas = Reserva::where('bingo_id', $id)->get();
+        $totalParticipantes = $reservas->count();
+        $totalCartones = $reservas->sum('cantidad');
+        $totalAprobadas = $reservas->where('estado', 'aprobado')->count();
+        $totalPendientes = $reservas->where('estado', 'revision')->count();
 
-    // Si está utilizando la nueva vista parcial y AJAX
-    if ($request->ajax()) {
-        return view('admin.bingo-reservas', compact('reservas', 'bingo'));
+        // Si está utilizando la nueva vista parcial y AJAX
+        if ($request->ajax()) {
+            return view('admin.bingo-reservas', compact('reservas', 'bingo'));
+        }
+
+        // De lo contrario, devolver la vista completa
+        return view('admin.bingo-reservas', compact(
+            'bingo',
+            'reservas',
+            'totalParticipantes',
+            'totalCartones',
+            'totalAprobadas',
+            'totalPendientes'
+        ));
     }
-
-    // De lo contrario, devolver la vista completa
-    return view('admin.bingo-reservas', compact(
-        'bingo',
-        'reservas',
-        'totalParticipantes',
-        'totalCartones',
-        'totalAprobadas',
-        'totalPendientes'
-    ));
-}
 
     /**
      * Mostrar tabla parcial de reservas filtradas
      */
     public function reservasPorBingoTabla(Request $request, $id)
     {
+        // Log de inicio
+        \Log::info('Iniciando búsqueda de reservas para bingo ID: ' . $id, [
+            'request_params' => $request->all()
+        ]);
+        
         $bingo = Bingo::findOrFail($id);
         $query = Reserva::where('bingo_id', $id);
     
         // Filtrar por tipo
         $tipo = $request->tipo ?? 'todas';
+        \Log::info('Filtrando por tipo: ' . $tipo);
+        
         if ($tipo === 'aprobadas') {
             $query->where('estado', 'aprobado');
         } elseif ($tipo === 'pendientes') {
@@ -241,30 +251,60 @@ class BingoAdminController extends Controller
     
         // Aplicar filtros adicionales
         if ($request->filled('nombre')) {
+            \Log::info('Aplicando filtro por nombre: ' . $request->nombre);
             $query->where('nombre', 'LIKE', '%' . $request->nombre . '%');
         }
     
         if ($request->filled('celular')) {
+            \Log::info('Aplicando filtro por celular: ' . $request->celular);
             $query->where('celular', 'LIKE', '%' . $request->celular . '%');
         }
     
         if ($request->filled('serie')) {
             $serie = $request->serie;
-            $query->where(function ($q) use ($serie) {
-                $q->where('series', 'LIKE', '%"' . $serie . '"%')
-                    ->orWhere('series', 'LIKE', '%' . $serie . '%');
+            \Log::info('Aplicando filtro por serie exacta: ' . $serie);
+            
+            // Crear el patrón exacto que buscamos en la base de datos
+            // Básicamente buscamos: ["0001"] o algo que incluya ese patrón exacto
+            $serieFormateada = '"[\\"' . $serie . '\\"]"';
+            $serieEnArray = '[\\"' . $serie . '\\"';  // Para cuando es parte de un array más grande
+            
+            $query->where(function ($q) use ($serie, $serieFormateada, $serieEnArray) {
+                // Opción 1: Serie exacta - coincide con todo el campo (para series individuales)
+                $q->where('series', $serieFormateada);
+                
+                // Opción 2: Serie como parte de un array más grande
+                $q->orWhere('series', 'LIKE', '%' . $serieEnArray . '%');
+                
+                // Registrar los patrones que estamos buscando
+                \Log::info('Patrones de búsqueda:', [
+                    'serie_original' => $serie,
+                    'patron_exacto' => $serieFormateada,
+                    'patron_array' => $serieEnArray
+                ]);
             });
+            
+            // Log para ver la consulta generada
+            \Log::info('SQL después del filtro de serie: ' . $query->toSql(), [
+                'bindings' => $query->getBindings()
+            ]);
         }
+        
     
         // Ordenar por fecha de creación descendente
         $reservas = $query->orderBy('created_at', 'desc')->paginate(15);
-    
+        
+        // Log del total de resultados
+        \Log::info('Total de reservas encontradas: ' . $reservas->total());
+        
         // Si es una solicitud AJAX, devolver solo la tabla
         if ($request->ajax()) {
+            \Log::info('Retornando vista parcial (AJAX)');
             return view('admin.reservas-tabla', compact('reservas', 'bingo'));
         }
     
         // De lo contrario, redirigir a la vista completa
+        \Log::info('Redirigiendo a vista completa de reservas');
         return redirect()->route('bingos.reservas', $id);
     }
 
@@ -292,12 +332,12 @@ class BingoAdminController extends Controller
     {
         try {
             // Añadir logs para depuración
-            \Log::info('Iniciando proceso de limpieza de bingos');
-
-            // Verificar si hay bingos para eliminar
+            \Log::info('Iniciando proceso de ocultamiento de bingos');
+    
+            // Verificar si hay bingos para ocultar
             $bingoCount = Bingo::count();
-            \Log::info("Número de bingos encontrados antes de limpiar: {$bingoCount}");
-
+            \Log::info("Número de bingos encontrados antes de ocultar: {$bingoCount}");
+    
             // Comprobar conexión a la base de datos
             try {
                 \DB::connection()->getPdo();
@@ -307,37 +347,25 @@ class BingoAdminController extends Controller
                 return redirect()->route('bingos.index')
                     ->with('error', 'Error de conexión a la base de datos: ' . $e->getMessage());
             }
-
-            // Verificar restricciones de clave foránea
-            $foreignKeyChecks = \DB::select("SHOW CREATE TABLE bingos");
-            \Log::info('Estructura de la tabla bingos: ', $foreignKeyChecks);
-
-            // Intentar desactivar temporalmente las restricciones de clave foránea
-            \DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            \Log::info('Restricciones de clave foránea desactivadas');
-
-            // Ejecutar el truncate
-            Bingo::truncate();
-            \Log::info('Truncate ejecutado correctamente');
-
-            // Reactivar las restricciones
-            \DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            \Log::info('Restricciones de clave foránea reactivadas');
-
-            // Verificar si se eliminaron los bingos
-            $bingoCountAfter = Bingo::count();
-            \Log::info("Número de bingos después de limpiar: {$bingoCountAfter}");
-
+    
+            // Actualizar todos los bingos para marcarlos como ocultos (visible = 0)
+            $actualizados = Bingo::query()->update(['visible' => 0]);
+            \Log::info("Se han ocultado {$actualizados} bingos");
+    
+            // Verificar si se ocultaron los bingos
+            $bingosVisibles = Bingo::where('visible', 1)->count();
+            \Log::info("Número de bingos visibles después de ocultar: {$bingosVisibles}");
+    
             return redirect()->route('bingos.index')
-                ->with('success', 'Todos los registros de bingos han sido eliminados correctamente.');
+                ->with('success', 'Todos los bingos han sido ocultados correctamente.');
         } catch (\Exception $e) {
             // Log detallado del error
-            \Log::error('Error al limpiar los registros: ' . $e->getMessage());
+            \Log::error('Error al ocultar los bingos: ' . $e->getMessage());
             \Log::error('Línea: ' . $e->getLine() . ' en ' . $e->getFile());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
-
+    
             return redirect()->route('bingos.index')
-                ->with('error', 'Error al limpiar los registros: ' . $e->getMessage());
+                ->with('error', 'Error al ocultar los bingos: ' . $e->getMessage());
         }
     }
 
