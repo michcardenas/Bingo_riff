@@ -60,15 +60,52 @@
     </div>
 
     <div class="container mb-4">
-        <div class="row">
-            <div class="col-12 d-flex justify-content-between">
-                <a href="{{ route('bingos.index') }}" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left"></i> Volver al Panel
-                </a>
+    <div class="row">
+        <div class="col-12 d-flex justify-content-between">
+            <a href="{{ route('bingos.index') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Volver al Panel
+            </a>
+            <button type="button" id="btnBorrarClientes" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Borrar Clientes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para borrar clientes -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill"></i> <strong>ADVERTENCIA:</strong> Esta acción es irreversible.
+                </div>
+                <p>Estás a punto de eliminar <strong>TODOS</strong> los registros de la tabla clientes.</p>
+                <p>Esta acción no se puede deshacer y resultará en la pérdida permanente de todos los datos de clientes.</p>
+                
+                <!-- Campo de confirmación para mayor seguridad -->
+                <div class="form-group mt-3">
+                    <label for="confirmText">Para confirmar, escribe "BORRAR TODOS LOS CLIENTES" en el campo de abajo:</label>
+                    <input type="text" class="form-control bg-dark text-white border-danger mt-2" id="confirmText" placeholder="Escribe aquí para confirmar">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteClientsForm" action="{{ route('admin.borrarClientes') }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" id="confirmDeleteBtn" class="btn btn-danger" disabled>
+                        <i class="bi bi-trash"></i> Eliminar Todos los Clientes
+                    </button>
+                </form>
             </div>
         </div>
     </div>
-
+</div>
     <!-- Contenedor para la tabla (se actualizará dinámicamente) -->
     <div class="container" id="tableContent">
         {{-- Incluimos inicialmente la tabla original --}}
@@ -564,6 +601,203 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Configurar el botón de borrar clientes y el modal de confirmación
+    const btnBorrarClientes = document.getElementById('btnBorrarClientes');
+    if (btnBorrarClientes) {
+        btnBorrarClientes.addEventListener('click', function() {
+            // Intentar múltiples métodos para abrir el modal
+            try {
+                // Método 1: Usando la clase bootstrap.Modal si está disponible
+                if (typeof bootstrap !== 'undefined') {
+                    const modalElement = document.getElementById('confirmDeleteModal');
+                    if (modalElement) {
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                        console.log('Modal abierto con bootstrap.Modal');
+                    } else {
+                        console.error('Elemento modal no encontrado');
+                    }
+                }
+                // Método 2: Usando jQuery si está disponible
+                else if (typeof $ !== 'undefined') {
+                    $('#confirmDeleteModal').modal('show');
+                    console.log('Modal abierto con jQuery');
+                }
+                // Método 3: Manipulación directa del DOM
+                else {
+                    const modalElement = document.getElementById('confirmDeleteModal');
+                    if (modalElement) {
+                        modalElement.classList.add('show');
+                        modalElement.style.display = 'block';
+                        document.body.classList.add('modal-open');
+                        
+                        // Crear backdrop si no existe
+                        let backdrop = document.querySelector('.modal-backdrop');
+                        if (!backdrop) {
+                            backdrop = document.createElement('div');
+                            backdrop.className = 'modal-backdrop fade show';
+                            document.body.appendChild(backdrop);
+                        }
+                        console.log('Modal abierto con manipulación DOM directa');
+                    } else {
+                        console.error('Elemento modal no encontrado');
+                    }
+                }
+            } catch (error) {
+                console.error('Error al abrir el modal:', error);
+                alert('Error al abrir el modal de confirmación. Por favor, intenta nuevamente.');
+            }
+        });
+    }
+    
+    // Configurar la validación del texto de confirmación
+    const confirmText = document.getElementById('confirmText');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
+    if (confirmText && confirmDeleteBtn) {
+        confirmText.addEventListener('input', function() {
+            if (this.value === 'BORRAR TODOS LOS CLIENTES') {
+                confirmDeleteBtn.disabled = false;
+            } else {
+                confirmDeleteBtn.disabled = true;
+            }
+        });
+    }
+    
+    // Configurar el formulario de eliminación
+    const deleteClientsForm = document.getElementById('deleteClientsForm');
+    if (deleteClientsForm) {
+        deleteClientsForm.addEventListener('submit', function(event) {
+            // Última verificación antes de enviar
+            if (confirmText.value !== 'BORRAR TODOS LOS CLIENTES') {
+                event.preventDefault();
+                alert('Por favor, confirma la acción escribiendo el texto exacto.');
+                return false;
+            }
+            
+            // Si todo está correcto, mostrar indicador de carga
+            confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Eliminando...';
+            confirmDeleteBtn.disabled = true;
+            return true;
+        });
+    }
 });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // Wait a bit to ensure all DOM elements are fully loaded and rendered
+    setTimeout(function() {
+        // Find the delete button by ID or selector
+        const btnBorrarClientes = document.getElementById('btnBorrarClientes') || 
+                                  document.querySelector('[data-action="borrar-clientes"]');
+        
+        if (btnBorrarClientes) {
+            console.log('Delete button found');
+            
+            btnBorrarClientes.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Delete button clicked');
+                
+                // Find the modal element
+                const modalElement = document.getElementById('confirmDeleteModal');
+                
+                if (!modalElement) {
+                    console.error('Modal element not found in DOM');
+                    alert('Error: Modal de confirmación no encontrado.');
+                    return;
+                }
+                
+                // Try to open modal based on available libraries
+                if (typeof bootstrap !== 'undefined') {
+                    try {
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                        console.log('Modal opened with Bootstrap');
+                    } catch (error) {
+                        console.error('Error opening modal with Bootstrap:', error);
+                    }
+                } else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
+                    try {
+                        $(modalElement).modal('show');
+                        console.log('Modal opened with jQuery');
+                    } catch (error) {
+                        console.error('Error opening modal with jQuery:', error);
+                    }
+                } else {
+                    // Fallback method: manually show the modal
+                    try {
+                        modalElement.style.display = 'block';
+                        modalElement.classList.add('show');
+                        document.body.classList.add('modal-open');
+                        
+                        // Add backdrop
+                        const backdrop = document.createElement('div');
+                        backdrop.className = 'modal-backdrop fade show';
+                        document.body.appendChild(backdrop);
+                        
+                        console.log('Modal opened manually');
+                        
+                        // Handle close buttons within the modal
+                        const closeButtons = modalElement.querySelectorAll('[data-dismiss="modal"], .btn-close, .close');
+                        closeButtons.forEach(button => {
+                            button.addEventListener('click', function() {
+                                modalElement.style.display = 'none';
+                                modalElement.classList.remove('show');
+                                document.body.classList.remove('modal-open');
+                                const existingBackdrop = document.querySelector('.modal-backdrop');
+                                if (existingBackdrop) {
+                                    existingBackdrop.remove();
+                                }
+                            });
+                        });
+                    } catch (error) {
+                        console.error('Error manually opening modal:', error);
+                    }
+                }
+            });
+        } else {
+            console.error('Delete button not found in DOM');
+            // List all buttons to help identify the correct one
+            console.log('Available buttons:', 
+                Array.from(document.querySelectorAll('button'))
+                    .map(b => ({ id: b.id, text: b.textContent, classes: b.className }))
+            );
+        }
+        
+        // Set up confirmation text validation
+        const confirmText = document.getElementById('confirmText');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        
+        if (confirmText && confirmDeleteBtn) {
+            confirmText.addEventListener('input', function() {
+                confirmDeleteBtn.disabled = (this.value !== 'BORRAR TODOS LOS CLIENTES');
+            });
+            
+            // Initialize button state
+            confirmDeleteBtn.disabled = true;
+        }
+        
+        // Set up delete form submission
+        const deleteClientsForm = document.getElementById('deleteClientsForm');
+        if (deleteClientsForm) {
+            deleteClientsForm.addEventListener('submit', function(event) {
+                if (!confirmText || confirmText.value !== 'BORRAR TODOS LOS CLIENTES') {
+                    event.preventDefault();
+                    alert('Por favor, confirma la acción escribiendo el texto exacto.');
+                    return false;
+                }
+                
+                // Show loading indicator
+                if (confirmDeleteBtn) {
+                    confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Eliminando...';
+                    confirmDeleteBtn.disabled = true;
+                }
+                
+                return true;
+            });
+        }
+    }, 500); // Short delay to ensure DOM is fully loaded
+});
+    </script>
 @endsection

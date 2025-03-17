@@ -27,7 +27,7 @@ class CartonController extends Controller
     }
 
     /**
-     * Busca cartones por número de teléfono.
+     * Busca cartones por número de teléfono y filtra los bingos archivados.
      */
     public function buscar(Request $request)
     {
@@ -39,7 +39,6 @@ class CartonController extends Controller
         Log::info('Búsqueda iniciada para teléfono: ' . $telefono);
 
         // Buscar reservas asociadas al número de teléfono
-        // IMPORTANTE: Quitamos el filtro de eliminado=0 para mostrar todos
         $reservas = Reserva::where('celular', $telefono)
             ->get();
 
@@ -54,11 +53,21 @@ class CartonController extends Controller
             // Obtener información del bingo asociado
             $bingoNombre = 'No asignado';
             $bingoId = null;
+            $bingoEstado = null;
+            
             if ($reserva->bingo_id && $reserva->bingo) {
                 $bingoNombre = $reserva->bingo->nombre;
                 $bingoId = $reserva->bingo_id;
+                $bingoEstado = $reserva->bingo->estado;
+                
+                // Saltar esta reserva si el bingo está archivado
+                if (strtolower($bingoEstado) === 'archivado') {
+                    Log::info('Saltando reserva para bingo archivado: ' . $bingoNombre);
+                    continue;
+                }
             }
-            Log::info('Bingo asociado: ' . $bingoNombre);
+            
+            Log::info('Bingo asociado: ' . $bingoNombre . ', Estado: ' . ($bingoEstado ?? 'N/A'));
 
             // Si hay series registradas, procesarlas
             if (!empty($reserva->series)) {
@@ -67,16 +76,18 @@ class CartonController extends Controller
 
                 if (is_array($seriesArray)) {
                     foreach ($seriesArray as $serie) {
+                        // Solo agregar si no está asociado a un bingo archivado
                         $cartones->push([
                             'numero' => $serie,
-                            'estado' => $reserva->estado, // Incluimos el estado tal cual viene de la base de datos
+                            'estado' => $reserva->estado,
                             'nombre' => $reserva->nombre,
                             'fecha_creacion' => $reserva->created_at->format('d/m/Y'),
                             'tipo_sorteo' => 'Principal',
                             'id_reserva' => $reserva->id,
                             'bingo_nombre' => $bingoNombre,
                             'bingo_id' => $bingoId,
-                            'eliminado' => $reserva->eliminado // Añadimos el campo eliminado para referencia
+                            'bingo_estado' => $bingoEstado, // Agregamos el estado del bingo para referencia en la vista
+                            'eliminado' => $reserva->eliminado
                         ]);
                         Log::info('Cartón agregado: ' . $serie . ' para bingo: ' . $bingoNombre . ', Estado: ' . $reserva->estado);
                     }
@@ -88,7 +99,7 @@ class CartonController extends Controller
             }
         }
 
-        Log::info('Total de cartones encontrados: ' . $cartones->count());
+        Log::info('Total de cartones encontrados (después de filtrar archivados): ' . $cartones->count());
         
         // Obtener número de contacto para WhatsApp
         $enlaces = Enlace::first();
@@ -102,14 +113,15 @@ class CartonController extends Controller
     }
 
   /**
-     * Descarga el cartón si está aprobado, agregando una segunda página con la marca de agua.
-     * Incluye verificación para bingos cerrados (máx 24 horas de disponibilidad) y archivados (no permite descarga)
+     * Descarga el cartón si está aprobado.
+     * Solo permite descargar si el bingo está 'abierto'.
+     * No permite descargar si el bingo está 'cerrado' o 'archivado'.
      */
     public function descargar($numero, $bingoId = null)
     {
         Log::info("Iniciando descarga de cartón: $numero, Bingo ID: $bingoId");
     
-        // 🔹 **Eliminar ceros a la izquierda**
+        // Eliminar ceros a la izquierda
         $numeroSinCeros = ltrim($numero, '0');
     
         // Buscar reservas aprobadas
@@ -137,31 +149,21 @@ class CartonController extends Controller
             return redirect()->back()->with('error', 'El cartón no existe o no está aprobado.');
         }
 
-        // Verificar si el bingo está archivado - no permite descarga en ningún caso
+        // Verificar el estado del bingo
         if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
             $bingo = $reservaEncontrada->bingo;
+            $bingoEstado = strtolower($bingo->estado);
             
             // Verificar si el bingo está archivado
-            if (strtolower($bingo->estado) === 'archivado') {
+            if ($bingoEstado === 'archivado') {
                 Log::warning("Intento de descarga de cartón {$numero} para bingo archivado");
                 return redirect()->back()->with('error', 'Este cartón pertenece a un bingo archivado y no puede ser descargado.');
             }
             
-            // VERIFICACIÓN EXISTENTE: Verificar si el bingo está cerrado y el tiempo desde su cierre
-            if (strtolower($bingo->estado) !== 'abierto') {
-                // Determinar la fecha de cierre (usando fecha_cierre o updated_at como respaldo)
-                $fechaCierre = $bingo->fecha_cierre ? Carbon::parse($bingo->fecha_cierre) : Carbon::parse($bingo->updated_at);
-                $ahora = Carbon::now();
-                $diferenciaHoras = $fechaCierre->diffInHours($ahora);
-                
-                // Si han pasado más de 24 horas desde el cierre
-                if ($diferenciaHoras > 24) {
-                    Log::warning("Intento de descarga de cartón {$numero} para bingo cerrado hace más de 24 horas");
-                    return redirect()->back()->with('error', 'La descarga de este cartón ha expirado. Los cartones solo están disponibles por 24 horas después del cierre del bingo.');
-                }
-                
-                // Si está dentro del período válido, registrar en el log
-                Log::info("Descarga de cartón {$numero} para bingo cerrado dentro del período válido ({$diferenciaHoras} horas desde el cierre)");
+            // Verificar si el bingo está cerrado - ya no se permite descarga
+            if ($bingoEstado !== 'abierto') {
+                Log::warning("Intento de descarga de cartón {$numero} para bingo cerrado");
+                return redirect()->back()->with('error', 'Este cartón pertenece a un bingo cerrado y ya no puede ser descargado.');
             }
         }
 
@@ -174,11 +176,11 @@ class CartonController extends Controller
             return redirect()->back()->with('error', 'No se encontró el archivo del cartón.');
         }
     
-        // 🔹 **Preparar el nombre del archivo**
+        // Preparar el nombre del archivo
         $nombreArchivo = "Carton-RIFFY-{$numeroSinCeros}";
     
-        // 🔹 **Descargar directamente**
-        Log::info("Descargando cartón sin página adicional de marca de agua: $numeroSinCeros");
+        // Descargar directamente
+        Log::info("Descargando cartón: $numeroSinCeros");
         return response()->download($rutaCompleta, "{$nombreArchivo}.pdf");
     }
 

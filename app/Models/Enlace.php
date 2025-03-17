@@ -17,5 +17,9 @@ class Enlace extends Model
         'video_1',
         'video_2',
         'grupo_whatsapp',
+        'numero_nequi',
+        'numero_daviplata',
+        'numero_transfiya',
+        'mostrar_boton_whatsapp'
     ];
 }

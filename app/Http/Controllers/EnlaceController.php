@@ -14,7 +14,7 @@ class EnlaceController extends Controller
     {
         // Obtenemos el primer registro o creamos uno nuevo si no existe
         $enlaces = Enlace::first() ?? new Enlace();
-        
+
         // Ruta ajustada a la ubicación real de la vista
         return view('admin.enlaces', compact('enlaces'));
     }
@@ -28,10 +28,19 @@ class EnlaceController extends Controller
         $validated = $request->validate([
             'numero_contacto' => 'nullable|string|max:20',
             'telefono_atencion' => 'nullable|string|max:20',
+            'numero_nequi' => 'nullable|string|max:20',
+            'numero_daviplata' => 'nullable|string|max:20',
+            'numero_transfiya' => 'nullable|string|max:20',
             'video_1' => 'nullable|url|max:255',
             'video_2' => 'nullable|url|max:255',
             'grupo_whatsapp' => 'nullable|url|max:255',
+            'mostrar_boton_whatsapp' => 'boolean',
         ]);
+
+        // Para manejar el checkbox cuando no está marcado (no se envía)
+        if (!$request->has('mostrar_boton_whatsapp')) {
+            $validated['mostrar_boton_whatsapp'] = false;
+        }
 
         // Formatear el número de WhatsApp con prefijo +57 si está presente
         if (!empty($validated['telefono_atencion']) && !str_starts_with($validated['telefono_atencion'], '+57')) {

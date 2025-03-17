@@ -51,6 +51,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::delete('/admin/borrar-clientes', [BingoAdminController::class, 'truncateClientes'])->name('admin.borrarClientes');
+
+
     // Rutas de administrador (ahora dentro del middleware auth para protegerlas)
     Route::prefix('admin')->group(function () {
         Route::get('/bingos', [BingoAdminController::class, 'index'])->name('bingos.index');

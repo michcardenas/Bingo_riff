@@ -82,7 +82,7 @@ class BingoController extends Controller
                 'json' => $comprobanteStr
             ]);
 
-            // 4. Asignar series automáticamente - usando nuestro método mejorado para evitar duplicados
+            // 4. Asignar series automáticamente y orden_bingo
             $series = [];
             $reservaCreada = null;
 
@@ -96,7 +96,17 @@ class BingoController extends Controller
 
                     Log::info('Series asignadas para los cartones', ['series' => $series]);
 
-                    // 5. Crear la reserva, guardando también las series (como JSON)
+                    // Calculamos el próximo valor de orden_bingo para este bingo específico
+                    $maxOrdenBingo = Reserva::where('bingo_id', $bingo->id)->max('orden_bingo') ?? 0;
+                    $nuevoOrdenBingo = $maxOrdenBingo + 1;
+
+                    Log::info('Calculado nuevo orden_bingo', [
+                        'bingo_id' => $bingo->id,
+                        'max_orden_actual' => $maxOrdenBingo,
+                        'nuevo_orden' => $nuevoOrdenBingo
+                    ]);
+
+                    // 5. Crear la reserva, guardando también las series (como JSON) y orden_bingo
                     $reservaData = [
                         'nombre'             => $validated['nombre'],
                         'celular'            => $validated['celular'],
@@ -107,13 +117,17 @@ class BingoController extends Controller
                         'estado'             => 'revision',
                         'numero_comprobante' => null,
                         'bingo_id'           => $bingo->id,
+                        'orden_bingo'        => $nuevoOrdenBingo, // Nuevo campo
                     ];
 
                     Log::info('Datos para crear la reserva', $reservaData);
 
                     $reservaCreada = Reserva::create($reservaData);
 
-                    Log::info('Reserva creada correctamente', ['reserva_id' => $reservaCreada->id]);
+                    Log::info('Reserva creada correctamente', [
+                        'reserva_id' => $reservaCreada->id,
+                        'orden_bingo' => $reservaCreada->orden_bingo
+                    ]);
                 });
             } catch (\Exception $e) {
                 Log::error('Error en la transacción DB', [
@@ -125,6 +139,7 @@ class BingoController extends Controller
 
             Log::info('Proceso de reserva completado exitosamente', [
                 'reserva_id' => $reservaCreada ? $reservaCreada->id : null,
+                'orden_bingo' => $reservaCreada ? $reservaCreada->orden_bingo : null,
                 'series' => $series
             ]);
 
@@ -132,7 +147,8 @@ class BingoController extends Controller
             return redirect()->route('reservado')
                 ->with('success', '¡Reserva realizada correctamente!')
                 ->with('series', $series)
-                ->with('bingo', $bingo->nombre);
+                ->with('bingo', $bingo->nombre)
+                ->with('orden', $reservaCreada->orden_bingo); // Pasamos también el orden
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Error de validación', [
                 'errors' => $e->errors(),
@@ -150,7 +166,8 @@ class BingoController extends Controller
                 ->with('error', 'Ocurrió un error al procesar tu reserva. Por favor, intenta nuevamente.');
         }
     }
-        private function asignarSeries($bingoId, $cantidad)
+        
+    private function asignarSeries($bingoId, $cantidad)
     {
         $bingo = Bingo::findOrFail($bingoId);
         $seriesAsignadas = [];
@@ -204,7 +221,8 @@ class BingoController extends Controller
             $numero = $maxNumero + 1;
             
             while (count($nuevosNumeros) < $seriesFaltantes) {
-                $seriePadded = str_pad($numero, 4, '0', STR_PAD_LEFT);
+                // Cambiar el padding a 6 cifras en lugar de 4
+                $seriePadded = str_pad($numero, 6, '0', STR_PAD_LEFT);
                 
                 // Verificar si esta serie ya existe o ya fue asignada
                 if (!in_array($seriePadded, $seriesExistentes) && !in_array($seriePadded, $seriesAsignadas)) {
@@ -332,8 +350,8 @@ class BingoController extends Controller
             ]);
         }
         
-        // Ordenar por fecha de creación descendente
-        $reservas = $query->orderBy('created_at', 'desc')->paginate(15);
+        // Ordenar por orden_bingo para mostrar en orden de reserva
+        $reservas = $query->orderBy('orden_bingo', 'asc')->paginate(15);
         
         // Si es una solicitud AJAX, devolver solo la tabla
         if ($request->ajax()) {
@@ -343,6 +361,40 @@ class BingoController extends Controller
         // De lo contrario, redirigir a la vista completa
         return redirect()->route('bingos.reservas', $id);
     }
+
+    /**
+     * Comando para actualizar el orden_bingo en reservas existentes
+     */
+    public function actualizarOrdenBingo($bingoId)
+    {
+        try {
+            DB::beginTransaction();
+            
+            // Obtener todas las reservas del bingo ordenadas por fecha
+            $reservas = Reserva::where('bingo_id', $bingoId)
+                ->orderBy('created_at')
+                ->get();
+            
+            $contador = 1;
+            
+            foreach ($reservas as $reserva) {
+                $reserva->orden_bingo = $contador;
+                $reserva->save();
+                $contador++;
+            }
+            
+            DB::commit();
+            
+            return redirect()->back()->with('success', "Se actualizó el orden de {($contador-1)} reservas para este bingo.");
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error actualizando orden_bingo', [
+                'bingo_id' => $bingoId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return redirect()->back()->with('error', 'Ocurrió un error al actualizar el orden de las reservas.');
+        }
+    }
 }
-
-

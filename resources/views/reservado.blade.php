@@ -94,8 +94,8 @@
 
         .whatsapp-float {
             position: fixed;
-            width: 80px;
-            height: 80px;
+            width: 60px;
+            height: 60px;
             bottom: 40px;
             right: 40px;
             background-color: #25d366;
@@ -103,7 +103,7 @@
             border-radius: 50px;
             text-align: center;
             font-size: 40px;
-            box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 3px 3px 6px rgba(0,0,0,0.3);
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -116,26 +116,7 @@
             background-color: #128C7E;
             color: white;
             transform: scale(1.1);
-            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
-        }
-
-        /* Efecto de pulso para llamar más la atención */
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
-            }
-
-            70% {
-                box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
-            }
-        }
-
-        .whatsapp-float {
-            animation: pulse 2s infinite;
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
         }
 
         /* Media query para dispositivos móviles */
@@ -252,9 +233,11 @@
     </div>
 
     <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
+@if($enlaces->mostrar_boton_whatsapp ?? true)
     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $telefonoAtencion) }}" class="whatsapp-float" target="_blank">
         <i class="fab fa-whatsapp"></i>
     </a>
+@endif
 
     <!-- Bootstrap JS -->
     <script

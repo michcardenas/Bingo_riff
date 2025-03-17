@@ -24,6 +24,22 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
+
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '1291210271938936');
+    fbq('track', 'Purchase');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=1291210271938936&ev=PageView&noscript=1"
+    /></noscript>
     <style>
 body {
             background-color: #000;
@@ -267,8 +283,8 @@ body {
 
         .whatsapp-float {
             position: fixed;
-            width: 80px;
-            height: 80px;
+            width: 60px;
+            height: 60px;
             bottom: 40px;
             right: 40px;
             background-color: #25d366;
@@ -290,23 +306,6 @@ body {
             color: white;
             transform: scale(1.1);
             box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
-        }
-
-        /* Efecto de pulso para llamar más la atención */
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
-            }
-            70% {
-                box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
-            }
-        }
-
-        .whatsapp-float {
-            animation: pulse 2s infinite;
         }
 
         /* Media query para dispositivos móviles */
@@ -439,6 +438,11 @@ body {
         // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
         $numeroContacto = $enlaces->numero_contacto ?? '3235903774'; // Número para pagos (original)
         $telefonoAtencion = $enlaces->telefono_atencion ?? $numeroContacto; // Teléfono de atención (nuevo)
+        
+        // Nuevos métodos de pago con respaldo al número de contacto
+        $numeroNequi = $enlaces->numero_nequi ?? $numeroContacto;
+        $numeroDaviplata = $enlaces->numero_daviplata ?? $numeroContacto;
+        $numeroTransfiya = $enlaces->numero_transfiya ?? $numeroContacto;
     @endphp
 
     <!-- Cabecera -->
@@ -562,25 +566,25 @@ body {
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <div class="text-verde fw-bold">
-                    Nequi: <span class="text-white">{{ $numeroContacto }}</span>
+                    Nequi: <span class="text-white">{{ $numeroNequi }}</span>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroContacto }}', event)">
+                <button type="button" class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroNequi }}', event)">
                     Copiar
                 </button>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <div class="text-verde fw-bold">
-                    Daviplata: <span class="text-white">{{ $numeroContacto }}</span>
+                    Daviplata: <span class="text-white">{{ $numeroDaviplata }}</span>
                 </div>
-                <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroContacto }}', event)">
+                <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroDaviplata }}', event)">
                     Copiar
                 </button>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="text-verde fw-bold">
-                    Transfiya: <span class="text-white">{{ $numeroContacto }}</span>
+                    Transfiya: <span class="text-white">{{ $numeroTransfiya }}</span>
                 </div>
-                <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroContacto }}', event)">
+                <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroTransfiya }}', event)">
                     Copiar
                 </button>
             </div>
@@ -651,11 +655,12 @@ body {
         </div>
     </div>
 
-    <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
+<!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
+@if($enlaces->mostrar_boton_whatsapp ?? true)
     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $telefonoAtencion) }}" class="whatsapp-float" target="_blank">
         <i class="fab fa-whatsapp"></i>
     </a>
-
+@endif
 
     <!-- Bootstrap JS -->
     <script

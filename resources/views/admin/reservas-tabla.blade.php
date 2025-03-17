@@ -23,7 +23,7 @@
           data-nombre="{{ $reserva->nombre }}" 
           data-celular="{{ $reserva->celular }}"
           data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}">
-        <td>{{ $reserva->id }}</td>
+        <td class="fw-bold">{{ $reserva->orden_bingo ?? 'N/A' }}</td>
         <td>{{ $reserva->nombre }}</td>
         <td>{{ $reserva->celular }}</td>
         <td>{{ $reserva->created_at->format('d/m/Y H:i') }}</td>

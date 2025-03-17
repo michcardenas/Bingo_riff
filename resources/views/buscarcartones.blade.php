@@ -205,55 +205,42 @@
         }
 
         .whatsapp-float {
-    position: fixed;
-    width: 80px;
-    height: 80px;
-    bottom: 40px;
-    right: 40px;
-    background-color: #25d366;
-    color: #FFF;
-    border-radius: 50px;
-    text-align: center;
-    font-size: 40px;
-    box-shadow: 3px 3px 6px rgba(0,0,0,0.3);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            bottom: 40px;
+            right: 40px;
+            background-color: #25d366;
+            color: #FFF;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 40px;
+            box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
 
-.whatsapp-float:hover {
-    background-color: #128C7E;
-    color: white;
-    transform: scale(1.1);
-    box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
-}
+        .whatsapp-float:hover {
+            background-color: #128C7E;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+        }
 
-/* Efecto de pulso para llamar más la atención */
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
-    }
-}
-
-.whatsapp-float {
-    animation: pulse 2s infinite;
-}
-
-/* Estilos para el contenedor de video vertical - FORMATO TELÉFONO */
-.video-vertical-container {
-            width: 100%; /* Ancho del 95% del contenedor para dejar un pequeño margen */
-            max-width: 400px; /* Ancho máximo para simular un teléfono */
-            height: auto; /* Auto para mantener proporción */
-            aspect-ratio: 9/16; /* Proporción de aspecto de teléfono vertical (16:9 invertido) */
+        /* Estilos para el contenedor de video vertical - FORMATO TELÉFONO */
+        .video-vertical-container {
+            width: 100%;
+            /* Ancho del 95% del contenedor para dejar un pequeño margen */
+            max-width: 400px;
+            /* Ancho máximo para simular un teléfono */
+            height: auto;
+            /* Auto para mantener proporción */
+            aspect-ratio: 9/16;
+            /* Proporción de aspecto de teléfono vertical (16:9 invertido) */
             margin: 0 auto;
             margin-top: 10px;
             margin-bottom: 20px;
@@ -275,33 +262,12 @@
             bottom: 0;
         }
 
-/* Media query para dispositivos móviles */
-@media screen and (max-width: 767px) {
-
-    .nav-link-custom {
-            font-size: 14px;
-        }
-        
-    .whatsapp-float {
-        width: 65px;
-        height: 65px;
-        bottom: 30px;
-        right: 30px;
-        font-size: 35px;
-    }
-
-    .video-vertical-container {
-                width: 100%;
-                max-width: 467px; /* Ligeramente más estrecho en móviles */
-                min-height: 600px; /* Altura mínima para asegurar que se vea bien */
-            }
-}
-
         /* Media query para dispositivos móviles */
         @media screen and (max-width: 767px) {
+
             .nav-link-custom {
-            font-size: 14px;
-        }
+                font-size: 14px;
+            }
 
             .whatsapp-float {
                 width: 65px;
@@ -310,35 +276,67 @@
                 right: 30px;
                 font-size: 35px;
             }
-            
+
             .video-vertical-container {
                 width: 100%;
-                max-width: 467px; /* Ligeramente más estrecho en móviles */
-                min-height: 600px; /* Altura mínima para asegurar que se vea bien */
+                max-width: 467px;
+                /* Ligeramente más estrecho en móviles */
+                min-height: 600px;
+                /* Altura mínima para asegurar que se vea bien */
+            }
+        }
+
+        /* Media query para dispositivos móviles */
+        @media screen and (max-width: 767px) {
+            .nav-link-custom {
+                font-size: 14px;
+            }
+
+            .whatsapp-float {
+                width: 65px;
+                height: 65px;
+                bottom: 30px;
+                right: 30px;
+                font-size: 35px;
+            }
+
+            .video-vertical-container {
+                width: 100%;
+                max-width: 467px;
+                /* Ligeramente más estrecho en móviles */
+                min-height: 600px;
+                /* Altura mínima para asegurar que se vea bien */
             }
         }
 
         @media (min-width: 768px) {
             .video-vertical-container {
-                max-width: 458px; /* Tamaño ideal para simular un teléfono */
-                min-height: 650px; /* Altura mínima para tablets */
+                max-width: 458px;
+                /* Tamaño ideal para simular un teléfono */
+                min-height: 650px;
+                /* Altura mínima para tablets */
             }
         }
 
-        @media (min-width: 992px) {            
+        @media (min-width: 992px) {
             .video-vertical-container {
-                max-width: 568px; /* Ligeramente más ancho en desktop */
-                min-height: 700px; /* Altura mínima para desktop */
+                max-width: 568px;
+                /* Ligeramente más ancho en desktop */
+                min-height: 700px;
+                /* Altura mínima para desktop */
             }
         }
 
         @media (max-width: 480px) {
-            
+
 
             .video-vertical-container {
-                width: 103%; /* Casi todo el ancho en móviles pequeños */
-                max-width: 400px; /* Limitado para mantener proporción */
-                min-height: 550px; /* Altura mínima para móviles pequeños */
+                width: 103%;
+                /* Casi todo el ancho en móviles pequeños */
+                max-width: 400px;
+                /* Limitado para mantener proporción */
+                min-height: 550px;
+                /* Altura mínima para móviles pequeños */
             }
         }
     </style>
@@ -350,7 +348,7 @@
     $enlaces = App\Models\Enlace::first() ?? new App\Models\Enlace();
     $grupoWhatsapp = $enlaces->grupo_whatsapp ?? '#'; // Valor por defecto
     $video2 = $enlaces->video_2 ?? '#'; // Valor por defecto para el video 2
-    
+
     // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
     $telefonoAtencion = $enlaces->telefono_atencion ?? ($enlaces->numero_contacto ?? '3235903774');
     @endphp
@@ -431,6 +429,7 @@
             </div>
             @endif
 
+            <!-- Reemplaza la parte de la tabla en la vista -->
             <table class="cartones-table">
                 <thead>
                     <tr>
@@ -444,19 +443,30 @@
                     @foreach($cartones as $carton)
                     <tr class="carton-row {{ $carton['estado'] }}">
                         <td>{{ $carton['nombre'] ?? 'Usuario' }}</td>
-                        <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}">{{ $carton['bingo_nombre'] ?? 'Sin asignar' }}</td>
+                        <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}" data-bingo-estado="{{ $carton['bingo_estado'] ?? '' }}">{{ $carton['bingo_nombre'] ?? 'Sin asignar' }}</td>
                         <td>{{ $carton['numero'] }}</td>
                         <td class="carton-estado" data-estado="{{ $carton['estado'] }}">
                             @if($carton['estado'] == 'aprobado')
                             <span class="estado-aprobado">Aprobado</span>
-                            <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="ms-2 download-link">
+                            @if(isset($carton['bingo_estado']) && strtolower($carton['bingo_estado']) == 'abierto')
+                            <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="ms-2 download-link" title="Descargar cartón">
                                 <i class="fas fa-download download-icon"></i>
                             </a>
+                            @elseif(isset($carton['bingo_estado']) && strtolower($carton['bingo_estado']) == 'cerrado')
+                            <a href="javascript:void(0)" class="ms-2" title="Este cartón pertenece a un bingo cerrado y no puede ser descargado" onclick="alert('Este cartón pertenece a un bingo cerrado y no puede ser descargado.')">
+                                <i class="fas fa-lock download-icon"></i>
+                            </a>
+                            <span class="tiempo-descarga tiempo-rojo">Bingo cerrado</span>
+                            @else
+                            <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="ms-2 download-link" title="Descargar cartón">
+                                <i class="fas fa-download download-icon"></i>
+                            </a>
+                            @endif
                             @elseif($carton['estado'] == 'revision')
                             <span class="estado-revision">Revisión</span>
                             @elseif($carton['estado'] == 'rechazado')
                             <span class="estado-rechazado">Rechazado</span>
-                            <a href="#" class="ms-2 contactar-admin" data-carton="{{ $carton['numero'] }}" data-whatsapp="{{ $telefonoAtencion }}">
+                            <a href="#" class="ms-2 contactar-admin" data-carton="{{ $carton['numero'] }}" data-whatsapp="{{ $numeroContacto }}">
                                 <i class="fab fa-whatsapp text-success"></i>
                             </a>
                             @else
@@ -473,252 +483,260 @@
             </div>
             @endif
 
-        <!-- Sección de ayuda -->
-        <div class="help-container">
-            <h2 class="help-title">¿Como descargar tus cartones y jugar?</h2>
-            @if($video2 && $video2 != '#')
-            <div class="video-vertical-container">
-                <iframe
-                    src="{{ str_replace('watch?v=', 'embed/', $video2) }}"
-                    title="Tutorial de descarga y juego"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen>
-                </iframe>
+            <!-- Sección de ayuda -->
+            <div class="help-container">
+                <h2 class="help-title">¿Como descargar tus cartones y jugar?</h2>
+                @if($video2 && $video2 != '#')
+                <div class="video-vertical-container">
+                    <iframe
+                        src="{{ str_replace('watch?v=', 'embed/', $video2) }}"
+                        title="Tutorial de descarga y juego"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen>
+                    </iframe>
+                </div>
+                @else
+                <span class="video-link">video 2 aquí</span>
+                @endif
             </div>
-            @else
-            <span class="video-link">video 2 aquí</span>
+
+            <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
+            @if($enlaces->mostrar_boton_whatsapp ?? true)
+            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $telefonoAtencion) }}" class="whatsapp-float" target="_blank">
+                <i class="fab fa-whatsapp"></i>
+            </a>
             @endif
-        </div>
 
-    <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
-    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $telefonoAtencion) }}" class="whatsapp-float" target="_blank">
-        <i class="fab fa-whatsapp"></i>
-    </a>
+            <!-- Bootstrap JS -->
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Inicializar verificación de cartones con indicador visual
+                    verificarEstadoBingos();
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar verificación de cartones con indicador visual
-            verificarEstadoBingos();
-
-            // Agregar evento a los botones de contactar admin
-            const contactarBtns = document.querySelectorAll('.contactar-admin');
-            contactarBtns.forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const cartonNumero = this.getAttribute('data-carton');
-                    const adminWhatsapp = this.getAttribute('data-whatsapp') || "3235903774";
-                    const mensaje = `Hola, necesito ayuda con mi cartón rechazado #${cartonNumero}.`;
-                    // Limpiar número de WhatsApp de cualquier carácter no numérico
-                    const whatsappNumero = adminWhatsapp.replace(/[^0-9]/g, '');
-                    const whatsappUrl = `https://wa.me/${whatsappNumero}?text=${encodeURIComponent(mensaje)}`;
-                    window.open(whatsappUrl, '_blank');
+                    // Agregar evento a los botones de contactar admin
+                    const contactarBtns = document.querySelectorAll('.contactar-admin');
+                    contactarBtns.forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const cartonNumero = this.getAttribute('data-carton');
+                            const adminWhatsapp = this.getAttribute('data-whatsapp') || "3235903774";
+                            const mensaje = `Hola, necesito ayuda con mi cartón rechazado #${cartonNumero}.`;
+                            // Limpiar número de WhatsApp de cualquier carácter no numérico
+                            const whatsappNumero = adminWhatsapp.replace(/[^0-9]/g, '');
+                            const whatsappUrl = `https://wa.me/${whatsappNumero}?text=${encodeURIComponent(mensaje)}`;
+                            window.open(whatsappUrl, '_blank');
+                        });
+                    });
                 });
-            });
-        });
 
-        /**
-         * Verifica el estado de los bingos asociados a los cartones
-         * Prioriza mostrar el estado "archivado" sobre cualquier otro estado
-         */
-        function verificarEstadoBingos() {
-            const tablaCartones = document.querySelector('.cartones-table');
-            if (!tablaCartones) return;
+                /**
+                 * Verifica el estado de los bingos asociados a los cartones
+                 * Prioriza mostrar el estado "archivado" sobre cualquier otro estado
+                 */
+                function verificarEstadoBingos() {
+                    const tablaCartones = document.querySelector('.cartones-table');
+                    if (!tablaCartones) return;
 
-            const filas = tablaCartones.querySelectorAll('tbody tr');
+                    const filas = tablaCartones.querySelectorAll('tbody tr');
 
-            filas.forEach(function(fila) {
-                const celdaBingo = fila.querySelector('td:nth-child(2)');
-                const celdaEstado = fila.querySelector('td:nth-child(4)');
+                    filas.forEach(function(fila) {
+                        const celdaBingo = fila.querySelector('td:nth-child(2)');
+                        const celdaEstado = fila.querySelector('td:nth-child(4)');
 
-                if (!celdaBingo || !celdaEstado) return;
+                        if (!celdaBingo || !celdaEstado) return;
 
-                const bingoId = celdaBingo.getAttribute('data-bingo-id');
-                const nombreBingo = celdaBingo.textContent.trim();
-                
-                // Guardar estado original del cartón
-                const estadoOriginal = celdaEstado.getAttribute('data-estado');
+                        const bingoId = celdaBingo.getAttribute('data-bingo-id');
+                        const nombreBingo = celdaBingo.textContent.trim();
 
-                // Verificar el bingo para todos los cartones, sin importar el estado
-                if (bingoId) {
-                    consultarEstadoBingoPorId(bingoId)
-                        .then(infoBingo => procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal));
-                } else if (nombreBingo && nombreBingo !== 'Sin asignar') {
-                    consultarEstadoBingo(nombreBingo)
-                        .then(infoBingo => procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal));
+                        // Guardar estado original del cartón
+                        const estadoOriginal = celdaEstado.getAttribute('data-estado');
+
+                        // Verificar el bingo para todos los cartones, sin importar el estado
+                        if (bingoId) {
+                            consultarEstadoBingoPorId(bingoId)
+                                .then(infoBingo => procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal));
+                        } else if (nombreBingo && nombreBingo !== 'Sin asignar') {
+                            consultarEstadoBingo(nombreBingo)
+                                .then(infoBingo => procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal));
+                        }
+                    });
                 }
-            });
-        }
 
-        /**
-         * Procesa la información del bingo y actualiza la visualización del cartón
-         * Prioriza el estado "archivado" sobre cualquier otro estado
-         */
-        function procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal) {
-            if (!infoBingo) return;
-            
-            // Verificar si el bingo está archivado (esta condición tiene prioridad)
-            if (infoBingo.estado && infoBingo.estado.toLowerCase() === 'archivado') {
-                // Obtener elementos necesarios
-                const estadoSpan = celdaEstado.querySelector('span[class^="estado-"]');
-                
-                // 1. Cambiar el texto y la clase del estado
-                if (estadoSpan) {
-                    estadoSpan.textContent = 'Archivado';
-                    estadoSpan.className = '';
-                    estadoSpan.classList.add('estado-archivado');
-                }
-                
-                // 2. Si hay un enlace de WhatsApp para cartones rechazados, ocultarlo
-                const enlaceWhatsapp = celdaEstado.querySelector('.contactar-admin');
-                if (enlaceWhatsapp) {
-                    enlaceWhatsapp.style.display = 'none';
-                }
-                
-                // 3. Para cartones aprobados, cambiar el icono de descarga por un candado
-                const iconoDescarga = celdaEstado.querySelector('.fa-download');
-                if (iconoDescarga) {
-                    iconoDescarga.classList.remove('fa-download');
-                    iconoDescarga.classList.add('fa-lock');
-                    
-                    // Deshabilitar el enlace de descarga
-                    const enlaceDescarga = iconoDescarga.closest('a');
-                    if (enlaceDescarga) {
+                /**
+                 * Procesa la información del bingo y actualiza la visualización del cartón
+                 * Prioriza el estado "archivado" sobre cualquier otro estado
+                 */
+                function procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal) {
+                    if (!infoBingo) return;
+
+                    const bingoEstado = infoBingo.estado ? infoBingo.estado.toLowerCase() : '';
+                    const estadoSpan = celdaEstado.querySelector('span[class^="estado-"]');
+                    const iconoDescarga = celdaEstado.querySelector('.fa-download');
+                    const enlaceDescarga = iconoDescarga ? iconoDescarga.closest('a') : null;
+                    const enlaceWhatsapp = celdaEstado.querySelector('.contactar-admin');
+
+                    // Verificar si el bingo está archivado (no debería aparecer, pero por si acaso)
+                    if (bingoEstado === 'archivado') {
+                        // 1. Cambiar el texto y la clase del estado
+                        if (estadoSpan) {
+                            estadoSpan.textContent = 'Archivado';
+                            estadoSpan.className = '';
+                            estadoSpan.classList.add('estado-archivado');
+                        }
+
+                        // 2. Ocultar enlace de WhatsApp para cartones rechazados
+                        if (enlaceWhatsapp) {
+                            enlaceWhatsapp.style.display = 'none';
+                        }
+
+                        // 3. Para cartones aprobados, cambiar el icono de descarga por un candado
+                        if (iconoDescarga) {
+                            iconoDescarga.classList.remove('fa-download');
+                            iconoDescarga.classList.add('fa-lock');
+
+                            // Deshabilitar el enlace de descarga
+                            if (enlaceDescarga) {
+                                enlaceDescarga.setAttribute('data-original-href', enlaceDescarga.href);
+                                enlaceDescarga.href = 'javascript:void(0)';
+                                enlaceDescarga.title = 'Este cartón pertenece a un bingo archivado y no puede ser descargado';
+                                enlaceDescarga.onclick = function(e) {
+                                    e.preventDefault();
+                                    alert('Este cartón pertenece a un bingo archivado y no puede ser descargado.');
+                                };
+                            }
+                        }
+
+                        // 4. Agregar indicador visual de archivado
+                        agregarIndicadorVisual(celdaEstado, 'archivado');
+
+                        return;
+                    }
+
+                    // Si está cerrado, deshabilitar descarga
+                    if (bingoEstado === 'cerrado' && estadoOriginal === 'aprobado' && enlaceDescarga) {
+                        // Deshabilitar enlace de descarga
                         enlaceDescarga.setAttribute('data-original-href', enlaceDescarga.href);
                         enlaceDescarga.href = 'javascript:void(0)';
-                        enlaceDescarga.title = 'Este cartón pertenece a un bingo archivado y no puede ser descargado';
+                        enlaceDescarga.title = 'Este cartón pertenece a un bingo cerrado y no puede ser descargado';
+
+                        // Cambiar icono de descarga por candado
+                        if (iconoDescarga) {
+                            iconoDescarga.classList.remove('fa-download');
+                            iconoDescarga.classList.add('fa-lock');
+                        }
+
+                        // Configurar alerta al hacer clic
                         enlaceDescarga.onclick = function(e) {
                             e.preventDefault();
-                            alert('Este cartón pertenece a un bingo archivado y no puede ser descargado.');
+                            alert('Este cartón pertenece a un bingo cerrado y no puede ser descargado.');
                         };
+
+                        // Agregar indicador visual de que el bingo está cerrado
+                        agregarIndicadorVisual(celdaEstado, 'cerrado');
+                    }
+
+                    // Si está abierto, asegurarse de que sea descargable (por si hubo cambios)
+                    if (bingoEstado === 'abierto' && estadoOriginal === 'aprobado' && enlaceDescarga) {
+                        // Verificar si hay que restaurar el enlace original
+                        const originalHref = enlaceDescarga.getAttribute('data-original-href');
+                        if (originalHref) {
+                            enlaceDescarga.href = originalHref;
+                            enlaceDescarga.removeAttribute('data-original-href');
+                            enlaceDescarga.title = 'Descargar cartón';
+                            enlaceDescarga.onclick = null; // Eliminar cualquier onclick previo
+                        }
+
+                        // Asegurar que el icono sea de descarga
+                        if (iconoDescarga && iconoDescarga.classList.contains('fa-lock')) {
+                            iconoDescarga.classList.remove('fa-lock');
+                            iconoDescarga.classList.add('fa-download');
+                        }
+
+                        // Quitar cualquier indicador visual previo
+                        const indicadorExistente = celdaEstado.querySelector('.tiempo-descarga');
+                        if (indicadorExistente) {
+                            indicadorExistente.remove();
+                        }
+
+                        // Opcional: agregar indicador visual de que está disponible
+                        agregarIndicadorVisual(celdaEstado, 'disponible');
                     }
                 }
-                
-                // 4. Agregar indicador visual de archivado
-                agregarIndicadorVisual(celdaEstado, 'archivado');
-                
-                // Terminar aquí - el estado archivado tiene prioridad sobre cualquier otro
-                return;
-            }
-            
-            // Si no está archivado, verificar tiempos para cartones aprobados
-            if (estadoOriginal === 'aprobado' && infoBingo.estado && infoBingo.estado.toLowerCase() !== 'abierto') {
-                const iconoDescarga = celdaEstado.querySelector('.fa-download');
-                const enlaceDescarga = iconoDescarga ? iconoDescarga.closest('a') : null;
-                
-                if (enlaceDescarga) {
-                    const fechaCierre = new Date(infoBingo.fecha_cierre || infoBingo.updated_at);
-                    const ahora = new Date();
-                    const diferenciaMs = ahora - fechaCierre;
-                    const diferenciaHoras = diferenciaMs / (1000 * 60 * 60);
 
-                    if (diferenciaHoras > 24) {
-                        // Han pasado más de 24 horas, deshabilitar descarga
-                        enlaceDescarga.setAttribute('data-original-href', enlaceDescarga.href);
-                        enlaceDescarga.href = 'javascript:void(0)';
-                        enlaceDescarga.title = 'Este cartón ya no está disponible para descarga';
-                        enlaceDescarga.onclick = function(e) {
-                            e.preventDefault();
-                            alert('El período de descarga ha expirado. Los cartones solo están disponibles por 24 horas después de que el bingo cierra.');
-                        };
-                        
-                        iconoDescarga.classList.remove('fa-download');
-                        iconoDescarga.classList.add('fa-lock');
-                        
-                        agregarIndicadorVisual(celdaEstado, 'expirado');
-                    } else {
-                        // Mostrar tiempo restante
-                        const horasRestantes = Math.round(24 - diferenciaHoras);
-                        enlaceDescarga.title = `Disponible por ${horasRestantes} horas más`;
-                        
-                        agregarIndicadorVisual(celdaEstado, 'tiempo-restante', horasRestantes);
+                /**
+                 * Agrega un indicador visual del estado de disponibilidad del cartón
+                 */
+                function agregarIndicadorVisual(celdaEstado, tipo) {
+                    // Eliminar indicador existente si hay uno
+                    const indicadorExistente = celdaEstado.querySelector('.tiempo-descarga');
+                    if (indicadorExistente) {
+                        indicadorExistente.remove();
                     }
+
+                    // Crear el nuevo indicador
+                    const indicador = document.createElement('span');
+                    indicador.className = 'tiempo-descarga';
+
+                    if (tipo === 'archivado') {
+                        indicador.textContent = 'Bingo archivado';
+                        indicador.classList.add('tiempo-amarillo');
+                    } else if (tipo === 'cerrado') {
+                        indicador.textContent = 'Bingo cerrado';
+                        indicador.classList.add('tiempo-rojo');
+                    } else if (tipo === 'disponible') {
+                        indicador.textContent = 'Disponible';
+                        indicador.classList.add('tiempo-verde');
+                    }
+
+                    // Agregar el indicador a la celda
+                    celdaEstado.appendChild(indicador);
                 }
-            }
-        }
 
-        /**
-         * Agrega un indicador visual del estado de disponibilidad del cartón
-         */
-        function agregarIndicadorVisual(celdaEstado, tipo, horasRestantes = null) {
-            // Eliminar indicador existente si hay uno
-            const indicadorExistente = celdaEstado.querySelector('.tiempo-descarga');
-            if (indicadorExistente) {
-                indicadorExistente.remove();
-            }
+                /**
+                 * Consulta el estado de un bingo por su nombre
+                 */
+                function consultarEstadoBingo(nombreBingo) {
+                    const url = `/api/bingos/by-name?nombre=${encodeURIComponent(nombreBingo)}`;
 
-            // Crear el nuevo indicador
-            const indicador = document.createElement('span');
-            indicador.className = 'tiempo-descarga';
-
-            if (tipo === 'expirado') {
-                indicador.textContent = 'Descarga expirada';
-                indicador.classList.add('tiempo-rojo');
-            } else if (tipo === 'archivado') {
-                indicador.textContent = 'No disponible';
-                indicador.classList.add('tiempo-amarillo');
-            } else if (tipo === 'tiempo-restante') {
-                if (horasRestantes < 6) {
-                    indicador.classList.add('tiempo-rojo');
-                    indicador.textContent = `Expira en ${horasRestantes}h`;
-                } else if (horasRestantes < 12) {
-                    indicador.classList.add('tiempo-naranja');
-                    indicador.textContent = `Expira en ${horasRestantes}h`;
-                } else {
-                    indicador.classList.add('tiempo-verde');
-                    indicador.textContent = `Disponible ${horasRestantes}h más`;
-                }
-            }
-
-            // Agregar el indicador a la celda
-            celdaEstado.appendChild(indicador);
-        }
-
-        /**
-         * Consulta el estado de un bingo por su nombre
-         */
-        function consultarEstadoBingo(nombreBingo) {
-            const url = `/api/bingos/by-name?nombre=${encodeURIComponent(nombreBingo)}`;
-            
-            return fetch(url)
-                .then(function(response) {
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            console.error("Error al consultar bingo por nombre:", text);
-                            throw new Error('Error al consultar bingo');
+                    return fetch(url)
+                        .then(function(response) {
+                            if (!response.ok) {
+                                return response.text().then(text => {
+                                    console.error("Error al consultar bingo por nombre:", text);
+                                    throw new Error('Error al consultar bingo');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .catch(function(error) {
+                            console.error("Error detallado:", error);
+                            return null;
                         });
-                    }
-                    return response.json();
-                })
-                .catch(function(error) {
-                    console.error("Error detallado:", error);
-                    return null;
-                });
-        }
+                }
 
-        /**
-         * Consulta el estado de un bingo por su ID
-         */
-        function consultarEstadoBingoPorId(bingoId) {
-            const url = `/api/bingos/${bingoId}`;
-            
-            return fetch(url)
-                .then(function(response) {
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            console.error("Error al consultar bingo por ID:", text);
-                            throw new Error('Error al consultar bingo');
+                /**
+                 * Consulta el estado de un bingo por su ID
+                 */
+                function consultarEstadoBingoPorId(bingoId) {
+                    const url = `/api/bingos/${bingoId}`;
+
+                    return fetch(url)
+                        .then(function(response) {
+                            if (!response.ok) {
+                                return response.text().then(text => {
+                                    console.error("Error al consultar bingo por ID:", text);
+                                    throw new Error('Error al consultar bingo');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .catch(function(error) {
+                            console.error("Error detallado:", error);
+                            return null;
                         });
-                    }
-                    return response.json();
-                })
-                .catch(function(error) {
-                    console.error("Error detallado:", error);
-                    return null;
-                });
-        }
-    </script>
+                }
+            </script>
 </body>
 
 </html>
