@@ -210,20 +210,68 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para configurar eventos en la tabla
     function setupTableEvents() {
+        console.log('Configurando eventos de tabla');
+        
         // Configurar eventos para botones de editar series
         document.querySelectorAll('.edit-series').forEach(button => {
+            console.log('Encontrado botón de editar series:', button);
+            button.removeEventListener('click', handleEditSeries); // Eliminar listeners anteriores para evitar duplicados
             button.addEventListener('click', handleEditSeries);
         });
         
         // Configurar eventos para formularios de aprobación/rechazo
         document.querySelectorAll('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').forEach(form => {
+            form.removeEventListener('submit', handleFormSubmit); // Eliminar listeners anteriores
             form.addEventListener('submit', handleFormSubmit);
+        });
+        
+        // Verificación adicional para botones de editar series
+        if (document.querySelectorAll('.edit-series').length === 0) {
+            console.warn('No se encontraron botones de editar series. Intentando con selector alternativo.');
+            // Intentar con selectores alternativos que podrían estar en uso
+            document.querySelectorAll('[data-action="edit-series"], .btn-edit-series, button[data-bs-target="#editSeriesModal"]').forEach(button => {
+                console.log('Encontrado botón alternativo:', button);
+                button.removeEventListener('click', handleEditSeries);
+                button.addEventListener('click', handleEditSeries);
+            });
+        }
+    }
+    
+    // Función para reinicializar botones de editar
+    function reinitializeEditButtons() {
+        console.log('Reinicializando botones de editar series');
+        
+        // Buscar todos los posibles botones de editar series
+        const editButtons = document.querySelectorAll('.edit-series, [data-action="edit-series"], .btn-edit-series, button[data-bs-target="#editSeriesModal"]');
+        
+        console.log(`Encontrados ${editButtons.length} botones de editar`);
+        
+        editButtons.forEach(button => {
+            // Eliminar eventos anteriores para evitar duplicación
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+            
+            // Añadir el evento de clic
+            newButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Botón de editar series clickeado');
+                handleEditSeries.call(this);
+            });
         });
     }
     
     // Manejador para el evento de editar series
     function handleEditSeries() {
+        console.log('Ejecutando handleEditSeries');
+        
         const modal = document.getElementById('editSeriesModal');
+        
+        if (!modal) {
+            console.error('No se encontró el modal de editar series');
+            alert('Error: No se encontró el modal para editar series.');
+            return;
+        }
+        
         const seriesData = this.getAttribute('data-series');
         let series = [];
 
@@ -243,21 +291,39 @@ document.addEventListener('DOMContentLoaded', function() {
         const total = parseInt(this.getAttribute('data-total'));
         const bingoPrice = parseInt(this.getAttribute('data-bingo-precio'));
 
+        console.log('Datos obtenidos:', { reservaId, bingoId, cantidad, total, bingoPrice });
+
         // Completar datos del formulario
-        document.getElementById('reserva_id').value = reservaId;
-        document.getElementById('bingo_id').value = bingoId;
-        document.getElementById('clientName').textContent = this.getAttribute('data-nombre');
-        document.getElementById('newQuantity').value = cantidad;
-        document.getElementById('newQuantity').setAttribute('max', Array.isArray(series) ? series.length : 1);
-        document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(total);
+        const reservaIdInput = document.getElementById('reserva_id');
+        if (reservaIdInput) reservaIdInput.value = reservaId;
+        
+        const bingoIdInput = document.getElementById('bingo_id');
+        if (bingoIdInput) bingoIdInput.value = bingoId;
+        
+        const clientNameElem = document.getElementById('clientName');
+        if (clientNameElem) clientNameElem.textContent = this.getAttribute('data-nombre');
+        
+        const newQuantityInput = document.getElementById('newQuantity');
+        if (newQuantityInput) {
+            newQuantityInput.value = cantidad;
+            newQuantityInput.setAttribute('max', Array.isArray(series) ? series.length : 1);
+        }
+        
+        const currentTotalElem = document.getElementById('currentTotal');
+        if (currentTotalElem) currentTotalElem.textContent = new Intl.NumberFormat('es-CL').format(total);
 
         // Establecer URL del formulario
         const form = document.getElementById('editSeriesForm');
-        form.action = `/admin/reservas/${reservaId}/update-series`;
+        if (form) form.action = `/admin/reservas/${reservaId}/update-series`;
 
         // Mostrar series actuales y crear checkboxes
         const currentSeriesDiv = document.getElementById('currentSeries');
         const seriesCheckboxesDiv = document.getElementById('seriesCheckboxes');
+
+        if (!currentSeriesDiv || !seriesCheckboxesDiv) {
+            console.error('No se encontraron los contenedores para las series');
+            return;
+        }
 
         // Limpiar contenido previo
         currentSeriesDiv.innerHTML = '';
@@ -307,16 +373,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Manejar cambio en la cantidad de cartones
-        const newQuantityInput = document.getElementById('newQuantity');
-        newQuantityInput.removeEventListener('change', handleQuantityChange);
-        newQuantityInput.addEventListener('change', handleQuantityChange);
+        if (newQuantityInput) {
+            newQuantityInput.removeEventListener('change', handleQuantityChange);
+            newQuantityInput.addEventListener('change', handleQuantityChange);
+        }
 
         function handleQuantityChange() {
             const newQuantity = parseInt(this.value);
             
             // Actualizar el total estimado
             const newTotal = newQuantity * bingoPrice;
-            document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+            const currentTotalElement = document.getElementById('currentTotal');
+            if (currentTotalElement) {
+                currentTotalElement.textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+            }
 
             // Actualizar contador
             updateSelectedCounter();
@@ -325,7 +395,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Función para actualizar contador de seleccionados
         function updateSelectedCounter() {
             const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
+            const newQuantityElement = document.getElementById('newQuantity');
+            if (!newQuantityElement) return;
+            
+            const newQuantity = parseInt(newQuantityElement.value);
             let checkedCount = 0;
 
             checkboxes.forEach(cb => {
@@ -352,7 +425,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         function handleCheckboxChange() {
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
+            const newQuantityElement = document.getElementById('newQuantity');
+            if (!newQuantityElement) return;
+            
+            const newQuantity = parseInt(newQuantityElement.value);
             const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
             let checkedCount = 0;
 
@@ -370,34 +446,74 @@ document.addEventListener('DOMContentLoaded', function() {
         // Inicializar contador
         updateSelectedCounter();
 
+        console.log('Abriendo modal de editar series');
         // Mostrar modal
         if (typeof bootstrap !== 'undefined') {
             // Si Bootstrap está disponible
-            const modalInstance = new bootstrap.Modal(modal);
-            modalInstance.show();
+            try {
+                const modalInstance = new bootstrap.Modal(modal);
+                modalInstance.show();
+                console.log('Modal abierto con Bootstrap');
+            } catch (error) {
+                console.error('Error al abrir modal con Bootstrap:', error);
+                abrirModalManualmente(modal);
+            }
         } else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
             // Si jQuery está disponible
-            $(modal).modal('show');
+            try {
+                $(modal).modal('show');
+                console.log('Modal abierto con jQuery');
+            } catch (error) {
+                console.error('Error al abrir modal con jQuery:', error);
+                abrirModalManualmente(modal);
+            }
         } else {
             // Mostrar modal manualmente
-            modal.style.display = 'block';
-            modal.classList.add('show');
-            document.body.classList.add('modal-open');
-            
-            // Añadir backdrop
-            const backdrop = document.createElement('div');
-            backdrop.className = 'modal-backdrop fade show';
-            document.body.appendChild(backdrop);
+            abrirModalManualmente(modal);
+        }
+
+        // Función para abrir el modal manualmente
+        function abrirModalManualmente(modalElement) {
+            try {
+                modalElement.style.display = 'block';
+                modalElement.classList.add('show');
+                document.body.classList.add('modal-open');
+                
+                // Añadir backdrop
+                const backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                document.body.appendChild(backdrop);
+                console.log('Modal abierto manualmente');
+                
+                // Manejar botones de cierre
+                modalElement.querySelectorAll('[data-bs-dismiss="modal"], .btn-close, .close, .btn-secondary').forEach(button => {
+                    button.addEventListener('click', function() {
+                        modalElement.style.display = 'none';
+                        modalElement.classList.remove('show');
+                        document.body.classList.remove('modal-open');
+                        const existingBackdrop = document.querySelector('.modal-backdrop');
+                        if (existingBackdrop) existingBackdrop.remove();
+                    });
+                });
+            } catch (error) {
+                console.error('Error al abrir modal manualmente:', error);
+                alert('Error al abrir el modal. Por favor, intenta nuevamente.');
+            }
         }
 
         // Manejar clic en el botón de guardar
         const saveButton = document.getElementById('saveSeriesChanges');
-        saveButton.removeEventListener('click', handleSaveClick);
-        saveButton.addEventListener('click', handleSaveClick);
+        if (saveButton) {
+            saveButton.removeEventListener('click', handleSaveClick);
+            saveButton.addEventListener('click', handleSaveClick);
+        }
 
         function handleSaveClick() {
             const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
+            const newQuantityElement = document.getElementById('newQuantity');
+            if (!newQuantityElement) return;
+            
+            const newQuantity = parseInt(newQuantityElement.value);
 
             if (selectedCheckboxes.length !== newQuantity) {
                 alert(`Debes seleccionar exactamente ${newQuantity} series.`);
@@ -405,7 +521,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Enviar formulario
-            document.getElementById('editSeriesForm').submit();
+            const editSeriesForm = document.getElementById('editSeriesForm');
+            if (editSeriesForm) editSeriesForm.submit();
         }
     }
     
@@ -508,6 +625,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Mostrar indicador de carga
         const tableContainer = document.getElementById('tableContent');
+        if (!tableContainer) {
+            console.error('No se encontró el contenedor tableContent');
+            return;
+        }
+        
         const loadingHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
         tableContainer.innerHTML = loadingHTML;
         
@@ -521,13 +643,20 @@ document.addEventListener('DOMContentLoaded', function() {
             currentTable = null;
         }
         
+        console.log('Cargando contenido de URL:', url);
+        
         // Hacer la petición AJAX
         fetch(url, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.text())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            return response.text();
+        })
         .then(html => {
             // Actualizar el contenido
             tableContainer.innerHTML = html;
@@ -536,6 +665,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (document.querySelector('.table')) {
                 // Reinicializar DataTable
                 initializeDataTable();
+                
+                // Reinicializar botones de editar series
+                setTimeout(() => {
+                    reinitializeEditButtons();
+                }, 200);
                 
                 // Restaurar los valores de los filtros
                 const nombreInput = document.getElementById('nombre');
@@ -566,6 +700,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Hacer la función loadTableContent global para acceder desde el evento window.load
+    window.loadTableContent = loadTableContent;
+    
     // Actualizar estado activo de los botones basado en la URL
     function updateActiveButtons(url) {
         // Resetear todos los botones a estado no activo
@@ -576,22 +713,39 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Activar el botón correspondiente según la URL
         if (url.includes('comprobantesDuplicados')) {
-            document.getElementById('btnComprobanteDuplicado').classList.add('btn-primary');
-            document.getElementById('btnComprobanteDuplicado').classList.remove('btn-secondary');
+            const btn = document.getElementById('btnComprobanteDuplicado');
+            if (btn) {
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-secondary');
+            }
         } else if (url.includes('pedidosDuplicados')) {
-            document.getElementById('btnPedidoDuplicado').classList.add('btn-primary');
-            document.getElementById('btnPedidoDuplicado').classList.remove('btn-secondary');
+            const btn = document.getElementById('btnPedidoDuplicado');
+            if (btn) {
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-secondary');
+            }
         } else if (url.includes('cartonesEliminados')) {
-            document.getElementById('btnCartonesEliminados').classList.add('btn-primary');
-            document.getElementById('btnCartonesEliminados').classList.remove('btn-secondary');
+            const btn = document.getElementById('btnCartonesEliminados');
+            if (btn) {
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-secondary');
+            }
         } else {
-            document.getElementById('btnOriginal').classList.add('btn-primary');
-            document.getElementById('btnOriginal').classList.remove('btn-secondary');
+            const btn = document.getElementById('btnOriginal');
+            if (btn) {
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-secondary');
+            }
         }
     }
     
     // Inicializar DataTable al cargar la página
     initializeDataTable();
+    
+    // Asegurar que los botones de editar series funcionan después de la inicialización
+    setTimeout(() => {
+        reinitializeEditButtons();
+    }, 500);
     
     // Asignar eventos a los botones para cargar diferentes vistas - Método 1
     document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(btn => {
@@ -717,6 +871,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             modalElement.classList.remove('show');
                             document.body.classList.remove('modal-open');
                             const existingBackdrop = document.querySelector('.modal-backdrop');
+                            if (modalElement.style.display = 'none';
+                            modalElement.classList.remove('show');
+                            document.body.classList.remove('modal-open');
+                            const existingBackdrop = document.querySelector('.modal-backdrop');
                             if (existingBackdrop) {
                                 existingBackdrop.remove();
                             }
@@ -806,6 +964,33 @@ document.addEventListener('DOMContentLoaded', function() {
 // Ejecutar después de cargar todo para asegurar funcionamiento en producción
 window.addEventListener('load', function() {
     console.log('Window fully loaded - checking UI components');
+    
+    // Verificar si los botones de editar series están funcionando
+    setTimeout(() => {
+        if (typeof reinitializeEditButtons === 'function') {
+            reinitializeEditButtons();
+        } else {
+            console.warn('La función reinitializeEditButtons no está disponible en el ámbito global');
+            // Reinicializar botones manualmente
+            document.querySelectorAll('.edit-series, [data-action="edit-series"], .btn-edit-series, button[data-bs-target="#editSeriesModal"]').forEach(button => {
+                const newButton = button.cloneNode(true);
+                button.parentNode.replaceChild(newButton, button);
+                
+                newButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Botón de editar series clickeado (desde window.load)');
+                    
+                    // Intentar acceder a la función handleEditSeries
+                    if (typeof handleEditSeries === 'function') {
+                        handleEditSeries.call(this);
+                    } else {
+                        console.error('La función handleEditSeries no está disponible');
+                        alert('Error: No se puede editar las series en este momento.');
+                    }
+                });
+            });
+        }
+    }, 1500);
     
     // Verificar si los botones principales están correctamente configurados
     setTimeout(function() {
