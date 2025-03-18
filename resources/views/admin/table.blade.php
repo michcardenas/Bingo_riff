@@ -17,7 +17,7 @@
     </thead>
     <tbody id="reservas-tbody">
         @forelse($reservas as $reserva)
-        <tr class="reserva-row"
+        <tr>
             data-estado="{{ $reserva->estado }}"
             data-nombre="{{ $reserva->nombre }}"
             data-celular="{{ $reserva->celular }}"
