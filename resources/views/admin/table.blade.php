@@ -136,7 +136,7 @@
     </tbody>
 </table>
 
-<!-- Modal para editar series -->
+<!-- Modal para editar series - Versión corregida -->
 <div class="modal fade" id="editSeriesModal" tabindex="-1" aria-labelledby="editSeriesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content bg-dark text-white">
