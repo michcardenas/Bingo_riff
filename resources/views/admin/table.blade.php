@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tableContainer.addEventListener('submit', handleTableContainerSubmit);
     }
     
-        function handleTableContainerClick(e) {
+    function handleTableContainerClick(e) {
         // Verificar si el clic fue en un botón edit-series o su icono hijo
         const editButton = e.target.closest('.edit-series');
         if (editButton) {
