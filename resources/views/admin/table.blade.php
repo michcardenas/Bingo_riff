@@ -181,10 +181,12 @@
 <!-- Agregar script para el filtrado -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Variables globales
     let reservasTable = null;
     let tipoActual = 'todas';
+    let modalInstance = null;
     
-    // Inicializar DataTable directamente en la tabla existente
+    // ===== INICIALIZACIÓN DE DATATABLES =====
     function initializeDataTable() {
         // Seleccionar la tabla principal
         const table = document.querySelector('table');
@@ -217,10 +219,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     $('.dataTables_wrapper .page-link').addClass('bg-dark text-white border-secondary');
                     
                     console.log('DataTable inicializado correctamente');
-                    // Configurar eventos para elementos dentro de la tabla después de inicialización
-                    setupTableEvents();
                 }
             });
+            
+            // Importante: Agregar evento para cuando se redibuje la tabla (cambio de página, filtro, etc.)
+            reservasTable.on('draw.dt', function() {
+                console.log('Tabla redibujada - configurando eventos');
+                setupTableEvents();
+            });
+            
+            // Configurar eventos después de la inicialización inicial
+            setupTableEvents();
             
             console.log('DataTable inicializado con éxito');
         } catch (error) {
@@ -228,22 +237,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Función para configurar eventos en la tabla
+    // ===== CONFIGURACIÓN DE EVENTOS =====
     function setupTableEvents() {
-        // Configurar eventos para botones de editar series
-        document.querySelectorAll('.edit-series').forEach(button => {
-            button.addEventListener('click', handleEditSeries);
-        });
+        // Usar delegación de eventos para manejar elementos dinámicos
+        const tableContainer = document.getElementById('tableContent') || document.body;
         
-        // Configurar eventos para formularios de aprobación/rechazo
-        document.querySelectorAll('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').forEach(form => {
-            form.addEventListener('submit', handleFormSubmit);
-        });
+        // Remover listeners previos para evitar duplicados (solo si es necesario)
+        tableContainer.removeEventListener('click', handleTableContainerClick);
+        tableContainer.removeEventListener('submit', handleTableContainerSubmit);
+        
+        // Agregar nuevos listeners con delegación de eventos
+        tableContainer.addEventListener('click', handleTableContainerClick);
+        tableContainer.addEventListener('submit', handleTableContainerSubmit);
     }
     
-    // Manejador para el evento de editar series
-    function handleEditSeries() {
+    function handleTableContainerClick(e) {
+        // Verificar si el clic fue en un botón edit-series o su icono hijo
+        const editButton = e.target.closest('.edit-series');
+        if (editButton) {
+            handleEditSeries.call(editButton, e);
+        }
+        
+        // Agregar aquí otros elementos que necesiten manejo de clics
+    }
+    
+    function handleTableContainerSubmit(e) {
+        // Verificar si el submit fue de un formulario de aprobar/rechazar
+        if (e.target.matches('form[action*="aprobar"], form[action*="rechazar"]')) {
+            handleFormSubmit.call(e.target, e);
+        }
+    }
+    
+    // ===== MODAL DE EDICIÓN DE SERIES =====
+    function handleEditSeries(event) {
+        console.log('Abriendo modal de edición de series');
         const modal = document.getElementById('editSeriesModal');
+        
+        if (!modal) {
+            console.error('Error: No se encontró el modal #editSeriesModal en el DOM');
+            return;
+        }
+        
         const seriesData = this.getAttribute('data-series');
         let series = [];
 
@@ -262,6 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const cantidad = parseInt(this.getAttribute('data-cantidad'));
         const total = parseInt(this.getAttribute('data-total'));
         const bingoPrice = parseInt(this.getAttribute('data-bingo-precio'));
+        const updateUrl = this.getAttribute('data-update-url');
 
         // Completar datos del formulario
         document.getElementById('reserva_id').value = reservaId;
@@ -271,13 +306,23 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('newQuantity').setAttribute('max', Array.isArray(series) ? series.length : 1);
         document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(total);
 
-        // Establecer URL del formulario usando el atributo data-update-url
+        // Establecer URL del formulario
         const form = document.getElementById('editSeriesForm');
-        form.action = this.getAttribute('data-update-url');
+        if (updateUrl) {
+            form.action = updateUrl;
+        } else {
+            // Si data-update-url no está disponible, usar una ruta por defecto
+            form.action = `/admin/reservas/${reservaId}/actualizarSeries`;
+        }
 
         // Mostrar series actuales y crear checkboxes
         const currentSeriesDiv = document.getElementById('currentSeries');
         const seriesCheckboxesDiv = document.getElementById('seriesCheckboxes');
+
+        if (!currentSeriesDiv || !seriesCheckboxesDiv) {
+            console.error('Error: No se encontraron los contenedores para las series');
+            return;
+        }
 
         // Limpiar contenido previo
         currentSeriesDiv.innerHTML = '';
@@ -326,94 +371,123 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSeriesDiv.textContent = 'No hay series disponibles';
         }
 
-        // Manejar cambio en la cantidad de cartones
+        // Configurar evento de cambio de cantidad
+        setupQuantityChangeHandler(bingoPrice);
+        
+        // Configurar eventos para los checkboxes
+        setupCheckboxesHandlers();
+        
+        // Configurar evento para el botón de guardar
+        setupSaveButtonHandler();
+
+        // Mostrar modal utilizando Bootstrap 5
+        try {
+            modalInstance = new bootstrap.Modal(modal);
+            modalInstance.show();
+        } catch (error) {
+            console.error('Error al mostrar el modal:', error);
+            // Intento alternativo si hay un error con Bootstrap
+            modal.style.display = 'block';
+            modal.classList.add('show');
+        }
+    }
+    
+    function setupQuantityChangeHandler(bingoPrice) {
         const newQuantityInput = document.getElementById('newQuantity');
-        newQuantityInput.removeEventListener('change', handleQuantityChange);
-        newQuantityInput.addEventListener('change', handleQuantityChange);
+        if (newQuantityInput) {
+            // Remover listeners previos para evitar duplicados
+            newQuantityInput.removeEventListener('change', handleQuantityChange);
+            newQuantityInput.addEventListener('change', handleQuantityChange);
+        }
 
         function handleQuantityChange() {
             const newQuantity = parseInt(this.value);
             
             // Actualizar el total estimado
             const newTotal = newQuantity * bingoPrice;
-            document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+            const currentTotalElement = document.getElementById('currentTotal');
+            if (currentTotalElement) {
+                currentTotalElement.textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+            }
 
-            // Actualizar contador
+            // Actualizar contador y validar selecciones
             updateSelectedCounter();
         }
-
-        // Función para actualizar contador de seleccionados
-        function updateSelectedCounter() {
-            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
-            let checkedCount = 0;
-
-            checkboxes.forEach(cb => {
-                if (cb.checked) checkedCount++;
-            });
-
-            // Verificar si se están seleccionando más series de las permitidas
-            if (checkedCount > newQuantity) {
-                // Desmarcar los últimos checkboxes seleccionados para que coincida con la cantidad
-                let toUncheck = checkedCount - newQuantity;
-                for (let i = checkboxes.length - 1; i >= 0 && toUncheck > 0; i--) {
-                    if (checkboxes[i].checked) {
-                        checkboxes[i].checked = false;
-                        toUncheck--;
-                    }
-                }
-            }
-        }
-
+    }
+    
+    function setupCheckboxesHandlers() {
         // Añadir listeners a los checkboxes
         document.querySelectorAll('input[name="selected_series[]"]').forEach(checkbox => {
             checkbox.removeEventListener('change', handleCheckboxChange);
             checkbox.addEventListener('change', handleCheckboxChange);
         });
+    }
+    
+    function handleCheckboxChange() {
+        const newQuantity = parseInt(document.getElementById('newQuantity').value);
+        const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+        let checkedCount = 0;
 
-        function handleCheckboxChange() {
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
-            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
-            let checkedCount = 0;
+        checkboxes.forEach(cb => {
+            if (cb.checked) checkedCount++;
+        });
 
-            checkboxes.forEach(cb => {
-                if (cb.checked) checkedCount++;
-            });
-
-            // Si se excede la cantidad permitida, desmarcar este checkbox
-            if (checkedCount > newQuantity && this.checked) {
-                this.checked = false;
-                alert(`Solo puedes seleccionar ${newQuantity} series.`);
-            }
-        }
-
-        // Inicializar contador
-        updateSelectedCounter();
-
-        // Mostrar modal
-        const modalInstance = new bootstrap.Modal(modal);
-        modalInstance.show();
-
-        // Manejar clic en el botón de guardar
-        const saveButton = document.getElementById('saveSeriesChanges');
-        saveButton.removeEventListener('click', handleSaveClick);
-        saveButton.addEventListener('click', handleSaveClick);
-
-        function handleSaveClick() {
-            const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
-
-            if (selectedCheckboxes.length !== newQuantity) {
-                alert(`Debes seleccionar exactamente ${newQuantity} series.`);
-                return;
-            }
-
-            // Enviar formulario
-            document.getElementById('editSeriesForm').submit();
+        // Si se excede la cantidad permitida, desmarcar este checkbox
+        if (checkedCount > newQuantity && this.checked) {
+            this.checked = false;
+            alert(`Solo puedes seleccionar ${newQuantity} series.`);
         }
     }
     
-    // Manejador para evento de envío de formularios
+    function updateSelectedCounter() {
+        const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+        const newQuantity = parseInt(document.getElementById('newQuantity').value);
+        let checkedCount = 0;
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) checkedCount++;
+        });
+
+        // Verificar si se están seleccionando más series de las permitidas
+        if (checkedCount > newQuantity) {
+            // Desmarcar los últimos checkboxes seleccionados para que coincida con la cantidad
+            let toUncheck = checkedCount - newQuantity;
+            for (let i = checkboxes.length - 1; i >= 0 && toUncheck > 0; i--) {
+                if (checkboxes[i].checked) {
+                    checkboxes[i].checked = false;
+                    toUncheck--;
+                }
+            }
+        }
+    }
+    
+    function setupSaveButtonHandler() {
+        const saveButton = document.getElementById('saveSeriesChanges');
+        if (saveButton) {
+            saveButton.removeEventListener('click', handleSaveClick);
+            saveButton.addEventListener('click', handleSaveClick);
+        }
+    }
+
+    function handleSaveClick() {
+        const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
+        const newQuantity = parseInt(document.getElementById('newQuantity').value);
+
+        if (selectedCheckboxes.length !== newQuantity) {
+            alert(`Debes seleccionar exactamente ${newQuantity} series.`);
+            return;
+        }
+
+        // Enviar formulario
+        const form = document.getElementById('editSeriesForm');
+        if (form) {
+            form.submit();
+        } else {
+            console.error('Error: No se encontró el formulario para enviar');
+        }
+    }
+    
+    // ===== MANEJO DE FORMULARIOS =====
     function handleFormSubmit(event) {
         // Encuentra la fila que contiene el formulario
         const row = this.closest('tr');
@@ -429,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Función para aplicar filtros
+    // ===== FILTRADO DE DATOS =====
     function aplicarFiltros() {
         const nombre = document.getElementById('nombre')?.value.trim() || '';
         const celular = document.getElementById('celular')?.value.trim() || '';
@@ -480,7 +554,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Función para mostrar mensaje de "No hay resultados" si DataTable falla
+    function limpiarFiltros() {
+        // Limpiar campos de texto
+        document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
+            if (input) input.value = '';
+        });
+        
+        // Limpiar filtros de DataTable
+        if (reservasTable) {
+            try {
+                reservasTable.search('').columns().search('').draw();
+            } catch (error) {
+                console.error("Error al limpiar filtros:", error);
+                // Si hay error, reinicializar DataTable
+                initializeDataTable();
+            }
+        }
+    }
+    
     function showNoResultsMessage() {
         const table = document.querySelector('.table');
         if (table) {
@@ -505,26 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Función para limpiar filtros
-    function limpiarFiltros() {
-        // Limpiar campos de texto
-        document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
-            if (input) input.value = '';
-        });
-        
-        // Limpiar filtros de DataTable
-        if (reservasTable) {
-            try {
-                reservasTable.search('').columns().search('').draw();
-            } catch (error) {
-                console.error("Error al limpiar filtros:", error);
-                // Si hay error, reinicializar DataTable
-                initializeDataTable();
-            }
-        }
-    }
-    
-    // Función para cargar contenido de tabla vía AJAX
+    // ===== CARGA DE CONTENIDO VÍA AJAX =====
     function loadTableContent(url, actualizarFiltros = true) {
         // Guardar los valores actuales de los filtros si existen en la página
         const filtros = {
@@ -533,8 +605,16 @@ document.addEventListener('DOMContentLoaded', function() {
             serie: document.getElementById('serie')?.value || ''
         };
         
+        // Guardar referencia al modal para preservarlo
+        const modalElement = document.getElementById('editSeriesModal');
+        
         // Mostrar indicador de carga
         const tableContainer = document.getElementById('tableContent');
+        if (!tableContainer) {
+            console.error('Error: No se encontró el contenedor de la tabla #tableContent');
+            return;
+        }
+        
         const loadingHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
         tableContainer.innerHTML = loadingHTML;
         
@@ -566,6 +646,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = html;
             
+            // Preservar el modal original (eliminarlo de la respuesta para evitar duplicados)
+            const newModalElement = tempDiv.querySelector('#editSeriesModal');
+            if (newModalElement) {
+                newModalElement.remove();
+            }
+            
             // Buscar si hay filas de datos (excluyendo encabezados y filas de "no hay resultados")
             const hasDataRows = Array.from(tempDiv.querySelectorAll('table tbody tr')).some(tr => {
                 // Ignorar filas con ID específicos que usamos para mensajes
@@ -585,7 +671,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Si hay contenido válido, actualizar el contenedor
-            tableContainer.innerHTML = html;
+            tableContainer.innerHTML = tempDiv.innerHTML;
+            
+            // Añadir nuevamente el modal original si existía
+            if (modalElement) {
+                // Verificar si ya está en el DOM para evitar duplicados
+                if (!document.getElementById('editSeriesModal')) {
+                    document.body.appendChild(modalElement);
+                }
+            }
             
             // Verificar si hay tabla antes de inicializar DataTable
             if (document.querySelector('table')) {
@@ -634,60 +728,106 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Actualizar estado activo de los botones basado en la URL
     function updateActiveButtons(url) {
         // Resetear todos los botones a estado no activo
         document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(btn => {
-            btn.classList.remove('btn-primary');
-            btn.classList.add('btn-secondary');
+            if (btn) {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            }
         });
         
         // Activar el botón correspondiente según la URL
+        let activeButtonId = 'btnOriginal';
+        
         if (url.includes('comprobantesDuplicados')) {
-            document.getElementById('btnComprobanteDuplicado').classList.add('btn-primary');
-            document.getElementById('btnComprobanteDuplicado').classList.remove('btn-secondary');
+            activeButtonId = 'btnComprobanteDuplicado';
         } else if (url.includes('pedidosDuplicados')) {
-            document.getElementById('btnPedidoDuplicado').classList.add('btn-primary');
-            document.getElementById('btnPedidoDuplicado').classList.remove('btn-secondary');
+            activeButtonId = 'btnPedidoDuplicado';
         } else if (url.includes('cartonesEliminados')) {
-            document.getElementById('btnCartonesEliminados').classList.add('btn-primary');
-            document.getElementById('btnCartonesEliminados').classList.remove('btn-secondary');
-        } else {
-            document.getElementById('btnOriginal').classList.add('btn-primary');
-            document.getElementById('btnOriginal').classList.remove('btn-secondary');
+            activeButtonId = 'btnCartonesEliminados';
+        }
+        
+        const activeButton = document.getElementById(activeButtonId);
+        if (activeButton) {
+            activeButton.classList.add('btn-primary');
+            activeButton.classList.remove('btn-secondary');
         }
     }
+    
+    // ===== INICIALIZACIÓN Y ASIGNACIÓN DE EVENTOS =====
     
     // Inicializar DataTable al cargar la página
     initializeDataTable();
     
     // Asignar eventos a los botones para cargar diferentes vistas
-    document.getElementById('btnOriginal').addEventListener('click', function() {
-        loadTableContent("{{ route('reservas.index') }}");
-    });
+    const btnOriginal = document.getElementById('btnOriginal');
+    if (btnOriginal) {
+        btnOriginal.addEventListener('click', function() {
+            const route = this.getAttribute('data-route') || "/admin/reservas";
+            loadTableContent(route);
+        });
+    }
 
-    document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
-        loadTableContent("{{ route('admin.comprobantesDuplicados') }}");
-    });
+    const btnComprobanteDuplicado = document.getElementById('btnComprobanteDuplicado');
+    if (btnComprobanteDuplicado) {
+        btnComprobanteDuplicado.addEventListener('click', function() {
+            const route = this.getAttribute('data-route') || "/admin/comprobantesDuplicados";
+            loadTableContent(route);
+        });
+    }
 
-    document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
-        loadTableContent("{{ route('admin.pedidosDuplicados') }}");
-    });
+    const btnPedidoDuplicado = document.getElementById('btnPedidoDuplicado');
+    if (btnPedidoDuplicado) {
+        btnPedidoDuplicado.addEventListener('click', function() {
+            const route = this.getAttribute('data-route') || "/admin/pedidosDuplicados";
+            loadTableContent(route);
+        });
+    }
 
-    document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
-        loadTableContent("{{ route('admin.cartonesEliminados') }}");
-    });
+    const btnCartonesEliminados = document.getElementById('btnCartonesEliminados');
+    if (btnCartonesEliminados) {
+        btnCartonesEliminados.addEventListener('click', function() {
+            const route = this.getAttribute('data-route') || "/admin/cartonesEliminados";
+            loadTableContent(route);
+        });
+    }
     
     // Asignar eventos a los botones de filtro
-    document.getElementById('btnFiltrar').addEventListener('click', aplicarFiltros);
-    document.getElementById('btnLimpiar').addEventListener('click', limpiarFiltros);
+    const btnFiltrar = document.getElementById('btnFiltrar');
+    if (btnFiltrar) {
+        btnFiltrar.addEventListener('click', aplicarFiltros);
+    }
+    
+    const btnLimpiar = document.getElementById('btnLimpiar');
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', limpiarFiltros);
+    }
     
     // Permitir filtrar con Enter en los campos de texto
     document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                aplicarFiltros();
+        if (input) {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    aplicarFiltros();
+                }
+            });
+        }
+    });
+    
+    // Asegurar que el modal se cierre correctamente
+    const modalCloseButtons = document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close');
+    modalCloseButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            if (modalInstance) {
+                modalInstance.hide();
+            } else {
+                const modal = document.getElementById('editSeriesModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    modal.classList.remove('show');
+                }
             }
         });
     });
