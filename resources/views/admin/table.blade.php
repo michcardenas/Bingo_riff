@@ -4,8 +4,7 @@
             <th>ID</th>
             <th>Nombre</th>
             <th>Celular</th>
-            <th>Fecha</th>
-            <th># Cartones</th>
+            <th>Cantidad</th>
             <th>Series</th>
             <th>Bingo</th>
             <th>Total</th>
@@ -15,47 +14,44 @@
             <th>Acciones</th>
         </tr>
     </thead>
-    <tbody id="reservas-tbody">
+    <tbody>
         @forelse($reservas as $reserva)
-        <tr class="reserva-row" 
-            data-estado="{{ $reserva->estado }}" 
-            data-nombre="{{ $reserva->nombre }}" 
-            data-celular="{{ $reserva->celular }}"
-            data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}">
-            <td>{{ $reserva->id }}</td>
+        <tr>
+            <td>{{ $reserva->orden_bingo ?? 'N/A' }}</td>
             <td>{{ $reserva->nombre }}</td>
             <td>{{ $reserva->celular }}</td>
-            <td>{{ $reserva->created_at->format('d/m/Y H:i') }}</td>
             <td>{{ $reserva->cantidad }}</td>
             <td>
-                @php
-                $seriesData = $reserva->series;
-
-                // Verificar si es una cadena JSON y convertirla a array si es necesario
-                if (is_string($seriesData) && json_decode($seriesData) !== null) {
-                $seriesData = json_decode($seriesData, true);
-                }
-                @endphp
-
-                @if(is_array($seriesData))
-                {{ implode(', ', $seriesData) }}
-                @else
-                {{ $seriesData }}
-                @endif
-            </td>
-            <td>
+    @php
+        $seriesData = $reserva->series;
+        
+        // Verificar si es una cadena JSON y convertirla a array si es necesario
+        if (is_string($seriesData) && json_decode($seriesData) !== null) {
+            $seriesData = json_decode($seriesData, true);
+        }
+    @endphp
+    
+    @if(is_array($seriesData))
+        {{ implode(', ', $seriesData) }}
+    @else
+        {{ $seriesData }}
+    @endif
+</td>
+<td>
                 @if($reserva->bingo)
-                {{ $reserva->bingo->nombre }}
+                    {{ $reserva->bingo->nombre }}
                 @else
-                <span class="text-warning">Sin asignar</span>
+                    <span class="text-warning">Sin asignar</span>
                 @endif
             </td>
             <td>${{ number_format($reserva->total, 0, ',', '.') }} Pesos</td>
             <td>
-                @if($reserva->comprobante)
+            @if($reserva->comprobante)
                 @php
+                // Decodifica el JSON; si ya es array, lo usa tal cual
                 $comprobantes = is_array($reserva->comprobante) ? $reserva->comprobante : json_decode($reserva->comprobante, true);
                 @endphp
+
                 @if(is_array($comprobantes) && count($comprobantes) > 0)
                 @foreach($comprobantes as $index => $comprobante)
                 <a href="{{ asset('storage/' . $comprobante) }}" target="_blank" class="btn btn-sm btn-light">
@@ -70,67 +66,59 @@
                 @endif
             </td>
             <td>
-                @if($reserva->estado == 'revision')
-                <input type="text" class="form-control form-control-sm bg-dark text-white border-light comprobante-input" value="{{ $reserva->numero_comprobante ?? '' }}">
-                @else
-                <input type="text" class="form-control form-control-sm bg-dark text-white border-light" value="{{ $reserva->numero_comprobante ?? '' }}">
-                @endif
+                <input type="text" class="form-control form-control-sm bg-dark text-white border-light" 
+                       value="{{ $reserva->numero_comprobante ?? '' }}" readonly>
             </td>
             <td>
                 @if($reserva->estado == 'revision')
-                <span class="badge bg-warning text-dark">Revisión</span>
+                    <span class="badge bg-warning text-dark">Revisión</span>
                 @elseif($reserva->estado == 'aprobado')
-                <span class="badge bg-success">Aprobado</span>
+                    <span class="badge bg-success">Aprobado</span>
                 @elseif($reserva->estado == 'rechazado')
-                <span class="badge bg-danger">Rechazado</span>
+                    <span class="badge bg-danger">Rechazado</span>
                 @else
-                <span class="badge bg-secondary">{{ ucfirst($reserva->estado) }}</span>
+                    <span class="badge bg-secondary">{{ ucfirst($reserva->estado) }}</span>
                 @endif
             </td>
             <td>
-                <!-- Botón para editar series -->
                 @if($reserva->estado == 'revision' || $reserva->estado == 'aprobado')
-                <button type="button" class="btn btn-sm btn-warning mb-1 edit-series"
-                    data-id="{{ $reserva->id }}"
-                    data-update-url="{{ route('reservas.update-series', $reserva->id) }}"
-                    data-nombre="{{ $reserva->nombre }}"
-                    data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}"
-                    data-cantidad="{{ $reserva->cantidad }}"
-                    data-total="{{ $reserva->total }}"
-                    data-bingo-id="{{ $reserva->bingo_id }}"
-                    data-bingo-precio="{{ $reserva->bingo ? $reserva->bingo->precio : 0 }}">
-                    <i class="bi bi-pencil-square"></i> Editar Series
-                </button>
+                    <button type="button" class="btn btn-sm btn-warning mb-1 edit-series"
+                        data-id="{{ $reserva->id }}"
+                        data-nombre="{{ $reserva->nombre }}"
+                        data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}"
+                        data-cantidad="{{ $reserva->cantidad }}"
+                        data-total="{{ $reserva->total }}"
+                        data-bingo-id="{{ $reserva->bingo_id }}"
+                        data-bingo-precio="{{ $reserva->bingo ? $reserva->bingo->precio : 0 }}">
+                        <i class="bi bi-pencil-square"></i> Editar Series
+                    </button>
                 @endif
 
                 @if($reserva->estado == 'revision')
-                <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline aprobar-form mt-1">
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
-                </form>
-                <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
-                </form>
+                    <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
+                    </form>
+                    <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                    </form>
                 @elseif($reserva->estado == 'aprobado')
-                <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline mt-1">
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
-                </form>
+                    <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                    </form>
                 @elseif($reserva->estado == 'rechazado')
-                <span class="text-white">Rechazado</span>
+                    <span class="text-white">Rechazado</span>
                 @endif
             </td>
         </tr>
         @empty
-        <tr id="no-results-row" style="display: none;">
-            <td colspan="12" class="text-center">No hay reservas que coincidan con los filtros seleccionados.</td>
-        </tr>
-        <tr id="empty-row">
-            <td colspan="12" class="text-center">No hay reservas registradas.</td>
+        <tr>
+            <td colspan="11" class="text-center">No hay cartones eliminados.</td>
         </tr>
         @endforelse
     </tbody>
