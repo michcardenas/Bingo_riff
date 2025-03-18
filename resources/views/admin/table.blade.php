@@ -17,7 +17,7 @@
     <tbody>
         @forelse($reservas as $reserva)
         <tr>
-            <td>{{ $reserva->id }}</td>
+            <td>{{ $reserva->orden_bingo ?? 'N/A' }}</td>
             <td>{{ $reserva->nombre }}</td>
             <td>{{ $reserva->celular }}</td>
             <td>{{ $reserva->cantidad }}</td>
