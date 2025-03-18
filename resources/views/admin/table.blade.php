@@ -182,7 +182,7 @@
 
 <!-- Agregar script para el filtrado -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+   document.addEventListener('DOMContentLoaded', function() {
     // Variables globales
     let reservasTable = null;
     let tipoActual = 'todas';
@@ -481,48 +481,484 @@
             this.appendChild(hiddenInput);
         }
     }
-
-    // Resto del código (filtros, loadTableContent, etc.)
-    // ...
-
-    // Inicializar DataTable al cargar la página
-    initializeDataTable();
-
-    // Asignar eventos a los botones para cargar diferentes vistas
-    document.getElementById('btnOriginal')?.addEventListener('click', function() {
-        loadTableContent("{{ route('reservas.index') }}");
-    });
-
-    document.getElementById('btnComprobanteDuplicado')?.addEventListener('click', function() {
-        loadTableContent("{{ route('admin.comprobantesDuplicados') }}");
-    });
-
-    document.getElementById('btnPedidoDuplicado')?.addEventListener('click', function() {
-        loadTableContent("{{ route('admin.pedidosDuplicados') }}");
-    });
-
-    document.getElementById('btnCartonesEliminados')?.addEventListener('click', function() {
-        loadTableContent("{{ route('admin.cartonesEliminados') }}");
-    });
-
-    // Asignar eventos a los botones de filtro
-    document.getElementById('btnFiltrar')?.addEventListener('click', aplicarFiltros);
-    document.getElementById('btnLimpiar')?.addEventListener('click', limpiarFiltros);
-
-    // Permitir filtrar con Enter en los campos de texto
-    document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
-        input?.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                aplicarFiltros();
+    
+    // ===== FILTRADO DE DATOS =====
+    function aplicarFiltros() {
+        const nombre = document.getElementById('nombre')?.value.trim() || '';
+        const celular = document.getElementById('celular')?.value.trim() || '';
+        const serie = document.getElementById('serie')?.value.trim() || '';
+        
+        console.log("Aplicando filtros:", { nombre, celular, serie });
+        
+        // Filtrar usando DataTable API
+        if (reservasTable) {
+            try {
+                // Limpiar filtros actuales
+                reservasTable.search('').columns().search('').draw();
+                
+                // Si hay valor de serie, usarlo como búsqueda global
+                if (serie) {
+                    reservasTable.search(serie).draw();
+                    return;
+                }
+                
+                // Para los demás filtros, aplicar por columna
+                let filtrosAplicados = false;
+                
+                if (nombre) {
+                    // Verificar si la columna existe antes de intentar filtrar
+                    if (reservasTable.columns(1).nodes().length > 0) {
+                        reservasTable.columns(1).search(nombre, true, false);
+                        filtrosAplicados = true;
+                    }
+                }
+                
+                if (celular) {
+                    // Verificar si la columna existe antes de intentar filtrar
+                    if (reservasTable.columns(2).nodes().length > 0) {
+                        reservasTable.columns(2).search(celular, true, false);
+                        filtrosAplicados = true;
+                    }
+                }
+                
+                // Dibujar la tabla con los filtros aplicados
+                reservasTable.draw();
+            } catch (error) {
+                console.error("Error al aplicar filtros:", error);
+                showNoResultsMessage();
+            }
+        } else {
+            console.error("DataTable no está inicializado correctamente");
+            showNoResultsMessage();
+        }
+    }
+    
+    function limpiarFiltros() {
+        // Limpiar campos de texto
+        document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
+            if (input) input.value = '';
+        });
+        
+        // Limpiar filtros de DataTable
+        if (reservasTable) {
+            try {
+                reservasTable.search('').columns().search('').draw();
+            } catch (error) {
+                console.error("Error al limpiar filtros:", error);
+                // Si hay error, reinicializar DataTable
+                initializeDataTable();
+            }
+        }
+    }
+    
+    function showNoResultsMessage() {
+        const table = document.querySelector('.table');
+        if (table) {
+            const tbody = table.querySelector('tbody');
+            if (tbody) {
+                // Contar el número de columnas en la tabla
+                const headerCells = table.querySelectorAll('thead th');
+                const colCount = headerCells.length || 1;
+                
+                // Crear una fila con mensaje
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.setAttribute('colspan', colCount);
+                td.className = 'text-center py-3';
+                td.textContent = "No hay resultados que concuerden con tu filtro";
+                tr.appendChild(td);
+                
+                // Reemplazar contenido de tbody
+                tbody.innerHTML = '';
+                tbody.appendChild(tr);
+            }
+        }
+    }
+    
+    // ===== CARGA DE CONTENIDO VÍA AJAX =====
+    function loadTableContent(url, actualizarFiltros = true) {
+        // Guardar los valores actuales de los filtros si existen en la página
+        const filtros = {
+            nombre: document.getElementById('nombre')?.value || '',
+            celular: document.getElementById('celular')?.value || '',
+            serie: document.getElementById('serie')?.value || ''
+        };
+        
+        // Guardar referencia al modal para preservarlo
+        const modalElement = document.getElementById('editSeriesModal');
+        
+        // Mostrar indicador de carga
+        const tableContainer = document.getElementById('tableContent');
+        if (!tableContainer) {
+            console.error('Error: No se encontró el contenedor de la tabla #tableContent');
+            return;
+        }
+        
+        const loadingHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
+        tableContainer.innerHTML = loadingHTML;
+        
+        // Destruir DataTable existente si existe
+        if (reservasTable !== null) {
+            try {
+                reservasTable.destroy();
+            } catch (error) {
+                console.error("Error al destruir DataTable:", error);
+            }
+            reservasTable = null;
+        }
+        
+        // Hacer la petición AJAX
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            // Si el HTML está vacío, mostrar mensaje
+            if (html.trim() === '') {
+                tableContainer.innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
+                return;
+            }
+            
+            // Verificar si el contenido contiene una tabla con datos
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // Preservar el modal original (eliminarlo de la respuesta para evitar duplicados)
+            const newModalElement = tempDiv.querySelector('#editSeriesModal');
+            if (newModalElement) {
+                newModalElement.remove();
+            }
+            
+            // Buscar si hay filas de datos (excluyendo encabezados y filas de "no hay resultados")
+            const hasDataRows = Array.from(tempDiv.querySelectorAll('table tbody tr')).some(tr => {
+                // Ignorar filas con ID específicos que usamos para mensajes
+                if (tr.id === 'no-results-row' || tr.id === 'empty-row') {
+                    return false;
+                }
+                
+                // Excluir filas que tienen mensaje de "no hay resultados"
+                const text = tr.textContent.trim().toLowerCase();
+                return !text.includes('no hay') && !text.includes('no se encontraron');
+            });
+            
+            if (!hasDataRows) {
+                // Si no hay filas con datos, mostrar un mensaje personalizado
+                tableContainer.innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
+                return;
+            }
+            
+            // Si hay contenido válido, actualizar el contenedor
+            tableContainer.innerHTML = tempDiv.innerHTML;
+            
+            // Añadir nuevamente el modal original si existía
+            if (modalElement) {
+                // Verificar si ya está en el DOM para evitar duplicados
+                if (!document.getElementById('editSeriesModal')) {
+                    document.body.appendChild(modalElement);
+                }
+            }
+            
+            // Verificar si hay tabla antes de inicializar DataTable
+            if (document.querySelector('table')) {
+                // Reinicializar DataTable usando la función existente
+                initializeDataTable();
+                
+                // Restaurar los valores de los filtros
+                const nombreInput = document.getElementById('nombre');
+                const celularInput = document.getElementById('celular');
+                const serieInput = document.getElementById('serie');
+                
+                if (nombreInput) nombreInput.value = filtros.nombre;
+                if (celularInput) celularInput.value = filtros.celular;
+                if (serieInput) serieInput.value = filtros.serie;
+                
+                // Aplicar filtros si había alguno activo
+                if (filtros.nombre || filtros.celular || filtros.serie) {
+                    setTimeout(() => {
+                        aplicarFiltros();
+                    }, 100); // Pequeño retraso para asegurar que DataTable está listo
+                }
+            } else {
+                // Si no hay tabla, mostrar mensaje informativo
+                tableContainer.innerHTML = '<div class="alert alert-info">No hay datos disponibles para mostrar.</div>';
+            }
+            
+            // Actualizar botones activos
+            updateActiveButtons(url);
+            
+            // Si se debe actualizar el tipo actual basado en la URL
+            if (actualizarFiltros) {
+                if (url.includes('comprobantesDuplicados')) {
+                    tipoActual = 'comprobantes-duplicados';
+                } else if (url.includes('pedidosDuplicados')) {
+                    tipoActual = 'pedidos-duplicados';
+                } else if (url.includes('cartonesEliminados')) {
+                    tipoActual = 'cartones-eliminados';
+                } else {
+                    tipoActual = 'todas';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando contenido:', error);
+            tableContainer.innerHTML = '<div class="alert alert-danger">Error al cargar los datos. Por favor, intenta nuevamente.</div>';
+        });
+    }
+    
+    function updateActiveButtons(url) {
+        // Resetear todos los botones a estado no activo
+        document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(btn => {
+            if (btn) {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
             }
         });
-    });
-
-    // Asegurar que el modal se cierre correctamente
-    document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close').forEach(button => {
-        button.addEventListener('click', function() {
+        
+        // Activar el botón correspondiente según la URL
+        let activeButtonId = 'btnOriginal';
+        
+        if (url.includes('comprobantesDuplicados')) {
+            activeButtonId = 'btnComprobanteDuplicado';
+        } else if (url.includes('pedidosDuplicados')) {
+            activeButtonId = 'btnPedidoDuplicado';
+        } else if (url.includes('cartonesEliminados')) {
+            activeButtonId = 'btnCartonesEliminados';
+        }
+        
+        const activeButton = document.getElementById(activeButtonId);
+        if (activeButton) {
+            activeButton.classList.add('btn-primary');
+            activeButton.classList.remove('btn-secondary');
+        }
+    }
+    
+    // ===== MANEJO DE MODAL PARA BORRAR TODOS LOS CLIENTES =====
+    function openDeleteAllClientsModal() {
+        const modal = document.getElementById('confirmDeleteModal');
+        if (!modal) {
+            console.error('Error: No se encontró el modal #confirmDeleteModal');
+            return;
+        }
+        
+        // Limpiar el campo de confirmación
+        const confirmTextInput = document.getElementById('confirmText');
+        if (confirmTextInput) {
+            confirmTextInput.value = '';
+        }
+        
+        // Deshabilitar el botón de confirmación
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.disabled = true;
+        }
+        
+        // Mostrar el modal
+        try {
+            const confirmDeleteModal = new bootstrap.Modal(modal);
+            confirmDeleteModal.show();
+        } catch (error) {
+            console.error('Error al mostrar el modal:', error);
+            // Alternativa si hay error con Bootstrap
+            modal.style.display = 'block';
+            modal.classList.add('show');
+        }
+        
+        // Configurar el evento para el campo de texto de confirmación
+        setupConfirmDeleteValidation();
+    }
+    
+    function setupConfirmDeleteValidation() {
+        const confirmTextInput = document.getElementById('confirmText');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const expectedText = "BORRAR TODOS LOS CLIENTES";
+        
+        if (!confirmTextInput || !confirmDeleteBtn) {
+            console.error('Error: No se encontraron los elementos necesarios para la validación');
+            return;
+        }
+        
+        // Remover listener previo para evitar duplicados
+        confirmTextInput.removeEventListener('input', handleConfirmTextInput);
+        
+        // Agregar nuevo listener
+        confirmTextInput.addEventListener('input', handleConfirmTextInput);
+        
+        function handleConfirmTextInput() {
+            // Habilitar el botón solo si el texto coincide exactamente
+            const inputText = confirmTextInput.value.trim();
+            confirmDeleteBtn.disabled = (inputText !== expectedText);
+            
+            // Cambiar estilo del campo dependiendo si es correcto
+            if (inputText === expectedText) {
+                confirmTextInput.classList.add('is-valid');
+                confirmTextInput.classList.remove('is-invalid');
+            } else if (inputText.length > 0) {
+                confirmTextInput.classList.add('is-invalid');
+                confirmTextInput.classList.remove('is-valid');
+            } else {
+                confirmTextInput.classList.remove('is-valid', 'is-invalid');
+            }
+        }
+        
+        // Configurar evento para el formulario de eliminación
+        const deleteClientsForm = document.getElementById('deleteClientsForm');
+        if (deleteClientsForm) {
+            // Remover listener previo
+            deleteClientsForm.removeEventListener('submit', handleDeleteAllClientsSubmit);
+            
+            // Agregar nuevo listener
+            deleteClientsForm.addEventListener('submit', handleDeleteAllClientsSubmit);
+        }
+    }
+    
+    function handleDeleteAllClientsSubmit(event) {
+        const confirmTextInput = document.getElementById('confirmText');
+        const expectedText = "BORRAR TODOS LOS CLIENTES";
+        
+        // Verificación adicional de seguridad
+        if (!confirmTextInput || confirmTextInput.value.trim() !== expectedText) {
+            event.preventDefault();
+            alert('Por favor, confirma la eliminación escribiendo el texto exacto solicitado.');
+            return false;
+        }
+        
+        // Si todo está correcto, se enviará el formulario normalmente
+        console.log('Enviando formulario para eliminar todos los clientes...');
+        
+        // Opcionalmente, cerrar el modal después de enviar
+        try {
+            const modal = document.getElementById('confirmDeleteModal');
+            const modalInstance = bootstrap.Modal.getInstance(modal);
             if (modalInstance) {
+                modalInstance.hide();
+            }
+        } catch (error) {
+            console.error('Error al cerrar el modal:', error);
+        }
+    }
+    
+    // ===== MANEJO DE ELIMINACIÓN DE CLIENTES =====
+    function handleDeleteCliente(event) {
+        event.preventDefault();
+        
+        // Obtener el ID y nombre del cliente desde los atributos de datos
+        const clienteId = this.getAttribute('data-id');
+        const clienteNombre = this.getAttribute('data-nombre') || 'este cliente';
+        
+        if (!clienteId) {
+            console.error('Error: No se encontró el ID del cliente para eliminar');
+            return;
+        }
+        
+        // Mostrar confirmación antes de eliminar
+        if (confirm(`¿Estás seguro de que deseas eliminar a ${clienteNombre}? Esta acción no se puede deshacer.`)) {
+            // Crear y enviar formulario dinámicamente
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
+            
+            // Construir URL de eliminación
+            let deleteUrl = this.getAttribute('data-url');
+            if (!deleteUrl) {
+                // Construir URL por defecto si no se proporciona
+                deleteUrl = `/admin/clientes/${clienteId}`;
+            }
+            
+            form.action = deleteUrl;
+            
+            // Agregar token CSRF
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+            }
+            
+            // Agregar método DELETE
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            form.appendChild(methodInput);
+            
+            // Añadir formulario al DOM y enviarlo
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    
+    // ===== INICIALIZACIÓN Y ASIGNACIÓN DE EVENTOS =====
+    
+    // Inicializar DataTable al cargar la página
+    initializeDataTable();
+    
+    // Asignar eventos a los botones para cargar diferentes vistas
+    const btnOriginal = document.getElementById('btnOriginal');
+    if (btnOriginal) {
+        btnOriginal.addEventListener('click', function() {
+            const route = this.getAttribute('data-route') || "/admin/reservas";
+            loadTableContent(route);
+        });
+    }
+
+    const btnComprobanteDuplicado = document.getElementById('btnComprobanteDuplicado');
+    if (btnComprobanteDuplicado) {
+        btnComprobanteDuplicado.addEventListener('click', function() {
+            const route = this.getAttribute('data-route') || "/admin/comprobantesDuplicados";
+            loadTableContent(route);
+        });
+    }
+
+    const btnPedidoDuplicado = document.getElementById('btnPedidoDuplicado');
+    if (btnPedidoDuplicado) {
+        btnPedidoDuplicado.addEventListener('click', function() {
+            const route = this.getAttribute('data-route') || "/admin/pedidosDuplicados";
+            loadTableContent(route);
+        });
+    }
+
+    const btnCartonesEliminados = document.getElementById('btnCartonesEliminados');
+    if (btnCartonesEliminados) {
+        btnCartonesEliminados.addEventListener('click', function() {
+            const route = this.getAttribute('data-route') || "/admin/cartonesEliminados";
+            loadTableContent(route);
+        });
+    }
+    
+    // Asignar eventos a los botones de filtro
+    const btnFiltrar = document.getElementById('btnFiltrar');
+    if (btnFiltrar) {
+        btnFiltrar.addEventListener('click', aplicarFiltros);
+    }
+    
+    const btnLimpiar = document.getElementById('btnLimpiar');
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', limpiarFiltros);
+    }
+    
+    // Permitir filtrar con Enter en los campos de texto
+    document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
+        if (input) {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    aplicarFiltros();
+                }
+            });
+        }
+    });
+    
+    // Asegurar que el modal se cierre correctamente
+    const modalCloseButtons = document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close');
+    modalCloseButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const modalId = this.closest('.modal')?.id;
+            
+            if (modalId === 'editSeriesModal' && modalInstance) {
                 try {
                     modalInstance.hide();
                 } catch (error) {
@@ -534,8 +970,38 @@
                         modal.classList.remove('show');
                     }
                 }
+            } else if (modalId === 'confirmDeleteModal') {
+                try {
+                    const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal'));
+                    if (confirmModal) {
+                        confirmModal.hide();
+                    } else {
+                        const modal = document.getElementById('confirmDeleteModal');
+                        if (modal) {
+                            modal.style.display = 'none';
+                            modal.classList.remove('show');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al cerrar modal:', error);
+                    const modal = document.getElementById('confirmDeleteModal');
+                    if (modal) {
+                        modal.style.display = 'none';
+                        modal.classList.remove('show');
+                    }
+                }
+            } else {
+                const modal = this.closest('.modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    modal.classList.remove('show');
+                }
             }
         });
     });
-});
+    
+    // Configurar validación para borrar todos los clientes si el modal ya está en el DOM
+    if (document.getElementById('confirmDeleteModal')) {
+        setupConfirmDeleteValidation();
+    }
 </script>
