@@ -242,17 +242,43 @@ document.addEventListener('DOMContentLoaded', function() {
     
   // Manejador para el evento de editar series
 function handleEditSeries() {
-    console.log('🔍 DEBUG: Iniciando handleEditSeries');
+    console.log('🔍 DEBUG: Iniciando handleEditSeries con this:', this);
+    console.log('🔍 DEBUG: Clase del elemento que disparó el evento:', this.className);
+    console.log('🔍 DEBUG: ID del elemento que disparó el evento:', this.id);
     
     try {
         const modal = document.getElementById('editSeriesModal');
         if (!modal) {
-            console.error('🛑 ERROR: No se encontró el elemento #editSeriesModal');
+            console.error('🛑 ERROR CRÍTICO: No se encontró el elemento #editSeriesModal');
+            // Verificar si hay otros modales en la página
+            const otherModals = document.querySelectorAll('.modal');
+            console.log('🔍 DEBUG: Otros modales encontrados:', otherModals.length);
+            otherModals.forEach((m, i) => {
+                console.log(`🔍 DEBUG: Modal ${i} - ID: ${m.id}, Clase: ${m.className}`);
+            });
             return;
         }
         
+        console.log('🔍 DEBUG: Modal encontrado correctamente:', modal);
+        console.log('🔍 DEBUG: Clase del modal:', modal.className);
+        
+        // Verificar elementos clave dentro del modal
+        console.log('🔍 DEBUG: Estructura del modal:');
+        console.log('  - Contiene .modal-dialog:', !!modal.querySelector('.modal-dialog'));
+        console.log('  - Contiene .modal-content:', !!modal.querySelector('.modal-content'));
+        console.log('  - Contiene .modal-body:', !!modal.querySelector('.modal-body'));
+        console.log('  - Contiene formulario:', !!modal.querySelector('form'));
+        
         const seriesData = this.getAttribute('data-series');
         console.log('🔍 DEBUG: data-series obtenido:', seriesData);
+        
+        // Inspeccionar todos los atributos data-* del elemento
+        console.log('🔍 DEBUG: Todos los atributos data-* del elemento:');
+        Array.from(this.attributes)
+            .filter(attr => attr.name.startsWith('data-'))
+            .forEach(attr => {
+                console.log(`  - ${attr.name}: ${attr.value}`);
+            });
         
         const reservaId = this.getAttribute('data-id');
         const bingoId = this.getAttribute('data-bingo-id');
@@ -280,6 +306,9 @@ function handleEditSeries() {
         } catch (e) {
             console.error('🛑 ERROR al parsear series:', e);
             console.log('🔍 DEBUG: Intentando método alternativo de parseo');
+            console.log('🔍 DEBUG: Tipo de seriesData:', typeof seriesData);
+            console.log('🔍 DEBUG: Valor de seriesData:', seriesData);
+            
             // Si las series no están en formato JSON, intentar convertirlas desde string
             if (typeof seriesData === 'string') {
                 series = seriesData.split(',').map(item => item.trim());
@@ -289,63 +318,108 @@ function handleEditSeries() {
 
         // Completar datos del formulario
         const reservaIdElement = document.getElementById('reserva_id');
-        if (!reservaIdElement) {
-            console.error('🛑 ERROR: No se encontró el elemento #reserva_id');
-        } else {
+        console.log('🔍 DEBUG: Elemento #reserva_id encontrado:', !!reservaIdElement);
+        
+        if (reservaIdElement) {
             reservaIdElement.value = reservaId;
+        } else {
+            console.error('🛑 ERROR: No se encontró el elemento #reserva_id');
+            logMissingElements(['reserva_id']);
+        }
+        
+        // Función para buscar elementos faltantes e indicar posible selector correcto
+        function logMissingElements(ids) {
+            console.log('🔍 DEBUG: Buscando elementos similares para los IDs faltantes:');
+            ids.forEach(id => {
+                // Buscar por nombre similar
+                const similarNameElements = document.querySelectorAll(`[name*="${id}"], [id*="${id}"]`);
+                console.log(`  - Elementos con nombre/id similar a ${id}:`, similarNameElements.length);
+                similarNameElements.forEach((el, i) => {
+                    console.log(`    * Elemento ${i}: tag=${el.tagName}, id=${el.id}, name=${el.name}, class=${el.className}`);
+                });
+                
+                // Buscar inputs en general
+                const allInputs = document.querySelectorAll('input, select, textarea');
+                console.log('  - Total de inputs/selects/textareas en la página:', allInputs.length);
+            });
         }
         
         const bingoIdElement = document.getElementById('bingo_id');
-        if (!bingoIdElement) {
-            console.error('🛑 ERROR: No se encontró el elemento #bingo_id');
-        } else {
+        console.log('🔍 DEBUG: Elemento #bingo_id encontrado:', !!bingoIdElement);
+        
+        if (bingoIdElement) {
             bingoIdElement.value = bingoId;
+        } else {
+            console.error('🛑 ERROR: No se encontró el elemento #bingo_id');
+            logMissingElements(['bingo_id']);
         }
         
         const clientNameElement = document.getElementById('clientName');
-        if (!clientNameElement) {
-            console.error('🛑 ERROR: No se encontró el elemento #clientName');
-        } else {
+        console.log('🔍 DEBUG: Elemento #clientName encontrado:', !!clientNameElement);
+        
+        if (clientNameElement) {
             clientNameElement.textContent = this.getAttribute('data-nombre');
+        } else {
+            console.error('🛑 ERROR: No se encontró el elemento #clientName');
+            logMissingElements(['clientName', 'cliente', 'nombre']);
         }
         
         const newQuantityElement = document.getElementById('newQuantity');
-        if (!newQuantityElement) {
-            console.error('🛑 ERROR: No se encontró el elemento #newQuantity');
-        } else {
+        console.log('🔍 DEBUG: Elemento #newQuantity encontrado:', !!newQuantityElement);
+        
+        if (newQuantityElement) {
             newQuantityElement.value = cantidad;
             newQuantityElement.setAttribute('max', Array.isArray(series) ? series.length : 1);
+        } else {
+            console.error('🛑 ERROR: No se encontró el elemento #newQuantity');
+            logMissingElements(['newQuantity', 'cantidad']);
         }
         
         const currentTotalElement = document.getElementById('currentTotal');
-        if (!currentTotalElement) {
-            console.error('🛑 ERROR: No se encontró el elemento #currentTotal');
-        } else {
+        console.log('🔍 DEBUG: Elemento #currentTotal encontrado:', !!currentTotalElement);
+        
+        if (currentTotalElement) {
             currentTotalElement.textContent = new Intl.NumberFormat('es-CL').format(total);
+        } else {
+            console.error('🛑 ERROR: No se encontró el elemento #currentTotal');
+            logMissingElements(['currentTotal', 'total']);
         }
 
         // Establecer URL del formulario usando el atributo data-update-url
         const form = document.getElementById('editSeriesForm');
-        if (!form) {
-            console.error('🛑 ERROR: No se encontró el formulario #editSeriesForm');
-            return;
-        } else {
+        console.log('🔍 DEBUG: Elemento #editSeriesForm encontrado:', !!form);
+        
+        if (form) {
             const updateUrl = this.getAttribute('data-update-url');
             console.log('🔍 DEBUG: URL del formulario:', updateUrl);
             form.action = updateUrl;
+        } else {
+            console.error('🛑 ERROR: No se encontró el formulario #editSeriesForm');
+            // Buscar todos los formularios
+            const allForms = document.querySelectorAll('form');
+            console.log('🔍 DEBUG: Total de formularios en la página:', allForms.length);
+            allForms.forEach((f, i) => {
+                console.log(`  - Formulario ${i}: id=${f.id}, action=${f.action}, class=${f.className}`);
+            });
+            return;
         }
 
         // Mostrar series actuales y crear checkboxes
         const currentSeriesDiv = document.getElementById('currentSeries');
         const seriesCheckboxesDiv = document.getElementById('seriesCheckboxes');
 
+        console.log('🔍 DEBUG: Elemento #currentSeries encontrado:', !!currentSeriesDiv);
+        console.log('🔍 DEBUG: Elemento #seriesCheckboxes encontrado:', !!seriesCheckboxesDiv);
+
         if (!currentSeriesDiv) {
             console.error('🛑 ERROR: No se encontró el elemento #currentSeries');
+            logMissingElements(['currentSeries']);
             return;
         }
         
         if (!seriesCheckboxesDiv) {
             console.error('🛑 ERROR: No se encontró el elemento #seriesCheckboxes');
+            logMissingElements(['seriesCheckboxes']);
             return;
         }
 
@@ -537,10 +611,45 @@ function handleEditSeries() {
         updateSelectedCounter();
 
         // Mostrar modal
-        console.log('🔍 DEBUG: Mostrando modal');
+        console.log('🔍 DEBUG: Intentando mostrar modal');
         try {
-            const modalInstance = new bootstrap.Modal(modal);
-            modalInstance.show();
+            // Verificar si Bootstrap está disponible
+            if (typeof bootstrap === 'undefined') {
+                console.error('🛑 ERROR: Bootstrap no está definido. Verificando alternativas.');
+                
+                // Verificar si hay alguna otra biblioteca modal disponible
+                if (typeof $ !== 'undefined' && typeof $.fn.modal === 'function') {
+                    console.log('🔍 DEBUG: Encontrado jQuery con soporte para modal. Usando $(modal).modal("show")');
+                    $(modal).modal('show');
+                } else if (typeof $ !== 'undefined') {
+                    console.log('🔍 DEBUG: jQuery disponible pero sin método modal');
+                } else {
+                    console.error('🛑 ERROR: No se encontró ninguna biblioteca para mostrar el modal');
+                    // Intentar mostrar el modal cambiando atributos manualmente
+                    modal.style.display = 'block';
+                    modal.classList.add('show');
+                }
+            } else {
+                console.log('🔍 DEBUG: Bootstrap disponible, usando new bootstrap.Modal()');
+                const modalInstance = new bootstrap.Modal(modal);
+                modalInstance.show();
+            }
+            
+            // Verificar si el modal está visible
+            setTimeout(() => {
+                console.log('🔍 DEBUG: Verificando visibilidad del modal después de 500ms');
+                console.log('🔍 DEBUG: Modal style.display:', modal.style.display);
+                console.log('🔍 DEBUG: Modal classList:', modal.classList);
+                console.log('🔍 DEBUG: Modal está visible:', isElementVisible(modal));
+                
+                // Función para comprobar si un elemento está visible
+                function isElementVisible(el) {
+                    if (!el) return false;
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                }
+            }, 500);
+            
         } catch (e) {
             console.error('🛑 ERROR al mostrar el modal:', e);
         }
@@ -549,6 +658,7 @@ function handleEditSeries() {
         const saveButton = document.getElementById('saveSeriesChanges');
         if (!saveButton) {
             console.error('🛑 ERROR: No se encontró el botón #saveSeriesChanges');
+            logMissingElements(['saveSeriesChanges', 'save', 'guardar']);
         } else {
             console.log('🔍 DEBUG: Agregando event listener al botón de guardar');
             saveButton.removeEventListener('click', handleSaveClick);
@@ -596,6 +706,36 @@ function handleEditSeries() {
     }
 }
 
+// Función para configurar eventos de tabla (función original proporcionada)
+function setupTableEvents() {
+    console.log('🔍 DEBUG: Iniciando setupTableEvents');
+    
+    try {
+        // Configurar eventos para botones de editar series
+        const editButtons = document.querySelectorAll('.edit-series');
+        console.log('🔍 DEBUG: Encontrados', editButtons.length, 'botones de editar series (.edit-series)');
+        
+        editButtons.forEach((button, index) => {
+            console.log('🔍 DEBUG: Agregando event listener al botón .edit-series', index);
+            button.addEventListener('click', handleEditSeries);
+        });
+        
+        // Configurar eventos para formularios de aprobación/rechazo
+        const formSelectors = '.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]';
+        const forms = document.querySelectorAll(formSelectors);
+        console.log('🔍 DEBUG: Encontrados', forms.length, 'formularios para aprobar/rechazar');
+        
+        forms.forEach((form, index) => {
+            console.log('🔍 DEBUG: Agregando event listener al formulario de aprobación/rechazo', index);
+            form.addEventListener('submit', handleFormSubmit);
+        });
+        
+        console.log('🔍 DEBUG: setupTableEvents completado correctamente');
+    } catch (error) {
+        console.error('🛑 ERROR CRÍTICO en setupTableEvents:', error);
+    }
+}
+
 // Manejador para evento de envío de formularios
 function handleFormSubmit(event) {
     console.log('🔍 DEBUG: Iniciando handleFormSubmit');
@@ -627,36 +767,6 @@ function handleFormSubmit(event) {
         }
     } catch (error) {
         console.error('🛑 ERROR CRÍTICO en handleFormSubmit:', error);
-    }
-}
-
-// Función para configurar eventos de tabla (función original proporcionada)
-function setupTableEvents() {
-    console.log('🔍 DEBUG: Iniciando setupTableEvents');
-    
-    try {
-        // Configurar eventos para botones de editar series
-        const editButtons = document.querySelectorAll('.edit-series');
-        console.log('🔍 DEBUG: Encontrados', editButtons.length, 'botones de editar series (.edit-series)');
-        
-        editButtons.forEach((button, index) => {
-            console.log('🔍 DEBUG: Agregando event listener al botón .edit-series', index);
-            button.addEventListener('click', handleEditSeries);
-        });
-        
-        // Configurar eventos para formularios de aprobación/rechazo
-        const formSelectors = '.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]';
-        const forms = document.querySelectorAll(formSelectors);
-        console.log('🔍 DEBUG: Encontrados', forms.length, 'formularios para aprobar/rechazar');
-        
-        forms.forEach((form, index) => {
-            console.log('🔍 DEBUG: Agregando event listener al formulario de aprobación/rechazo', index);
-            form.addEventListener('submit', handleFormSubmit);
-        });
-        
-        console.log('🔍 DEBUG: setupTableEvents completado correctamente');
-    } catch (error) {
-        console.error('🛑 ERROR CRÍTICO en setupTableEvents:', error);
     }
 }
 
@@ -697,15 +807,67 @@ function initEventListeners() {
     }
 }
 
+// Función para verificar la presencia del modal en la página
+function verifyModalPresence() {
+    console.log('🔍 DEBUG: Verificando la presencia del modal en la página');
+    
+    const modal = document.getElementById('editSeriesModal');
+    if (!modal) {
+        console.error('🛑 ERROR: Modal #editSeriesModal no encontrado en la página');
+        
+        // Buscar todos los modales en la página
+        const allModals = document.querySelectorAll('.modal');
+        console.log('🔍 DEBUG: Total de modales en la página:', allModals.length);
+        
+        allModals.forEach((m, i) => {
+            console.log(`🔍 DEBUG: Modal ${i}: id=${m.id}, class=${m.className}`);
+            console.log(`🔍 DEBUG: Modal ${i} estructura:`, m.innerHTML.substring(0, 100) + '...');
+        });
+        
+        // Intentar detectar ID similar
+        const similarModals = document.querySelectorAll('[id*="series"], [id*="modal"], [class*="modal"]');
+        console.log('🔍 DEBUG: Modales con ID/clase similar:', similarModals.length);
+        
+        similarModals.forEach((m, i) => {
+            console.log(`🔍 DEBUG: Modal similar ${i}: id=${m.id}, class=${m.className}`);
+        });
+    } else {
+        console.log('🔍 DEBUG: Modal #editSeriesModal encontrado correctamente');
+        console.log('🔍 DEBUG: Estructura del modal:', modal.innerHTML.substring(0, 200) + '...');
+    }
+    
+    // Verificar elementos requeridos dentro del modal
+    const requiredElements = [
+        'reserva_id', 
+        'bingo_id', 
+        'clientName', 
+        'newQuantity', 
+        'currentTotal', 
+        'editSeriesForm',
+        'currentSeries',
+        'seriesCheckboxes',
+        'saveSeriesChanges'
+    ];
+    
+    console.log('🔍 DEBUG: Verificando elementos requeridos dentro del modal:');
+    
+    requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`🔍 DEBUG: ${id}: ${element ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
+    });
+}
+
 // Ejecutar inicialización cuando el DOM esté cargado
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔍 DEBUG: DOM completamente cargado');
+    verifyModalPresence();
     initEventListeners();
 });
 
 // También inicializar si el documento ya está cargado
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     console.log('🔍 DEBUG: Documento ya cargado, inicializando inmediatamente');
+    setTimeout(verifyModalPresence, 1000); // Esperar un segundo para asegurarse que todo esté cargado
     initEventListeners();
 }
     
