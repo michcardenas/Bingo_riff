@@ -896,61 +896,57 @@
     // Inicializar DataTable al cargar la página
     initializeDataTable();
     
-    // Asignar eventos a los botones para cargar diferentes vistas
-    const btnOriginal = document.getElementById('btnOriginal');
-    if (btnOriginal) {
-        btnOriginal.addEventListener('click', function() {
-            const route = this.getAttribute('data-route') || "/admin/reservas";
-            loadTableContent(route);
-        });
-    }
-
-    const btnComprobanteDuplicado = document.getElementById('btnComprobanteDuplicado');
-    if (btnComprobanteDuplicado) {
-        btnComprobanteDuplicado.addEventListener('click', function() {
-            const route = this.getAttribute('data-route') || "/admin/comprobantesDuplicados";
-            loadTableContent(route);
-        });
-    }
-
-    const btnPedidoDuplicado = document.getElementById('btnPedidoDuplicado');
-    if (btnPedidoDuplicado) {
-        btnPedidoDuplicado.addEventListener('click', function() {
-            const route = this.getAttribute('data-route') || "/admin/pedidosDuplicados";
-            loadTableContent(route);
-        });
-    }
-
-    const btnCartonesEliminados = document.getElementById('btnCartonesEliminados');
-    if (btnCartonesEliminados) {
-        btnCartonesEliminados.addEventListener('click', function() {
-            const route = this.getAttribute('data-route') || "/admin/cartonesEliminados";
-            loadTableContent(route);
-        });
-    }
-    
-    // Asignar eventos a los botones de filtro
-    const btnFiltrar = document.getElementById('btnFiltrar');
-    if (btnFiltrar) {
-        btnFiltrar.addEventListener('click', aplicarFiltros);
-    }
-    
-    const btnLimpiar = document.getElementById('btnLimpiar');
-    if (btnLimpiar) {
-        btnLimpiar.addEventListener('click', limpiarFiltros);
-    }
-    
-    // Permitir filtrar con Enter en los campos de texto
-    document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
-        if (input) {
-            input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    aplicarFiltros();
-                }
-            });
-        }
+// Asignar eventos a los botones para cargar diferentes vistas
+const btnOriginal = document.getElementById('btnOriginal');
+if (btnOriginal) {
+    btnOriginal.addEventListener('click', function() {
+        loadTableContent("{{ route('reservas.index') }}");
     });
+}
+
+const btnComprobanteDuplicado = document.getElementById('btnComprobanteDuplicado');
+if (btnComprobanteDuplicado) {
+    btnComprobanteDuplicado.addEventListener('click', function() {
+        loadTableContent("{{ route('admin.comprobantesDuplicados') }}");
+    });
+}
+
+const btnPedidoDuplicado = document.getElementById('btnPedidoDuplicado');
+if (btnPedidoDuplicado) {
+    btnPedidoDuplicado.addEventListener('click', function() {
+        loadTableContent("{{ route('admin.pedidosDuplicados') }}");
+    });
+}
+
+const btnCartonesEliminados = document.getElementById('btnCartonesEliminados');
+if (btnCartonesEliminados) {
+    btnCartonesEliminados.addEventListener('click', function() {
+        loadTableContent("{{ route('admin.cartonesEliminados') }}");
+    });
+}
+
+// Asignar eventos a los botones de filtro
+const btnFiltrar = document.getElementById('btnFiltrar');
+if (btnFiltrar) {
+    btnFiltrar.addEventListener('click', aplicarFiltros);
+}
+
+const btnLimpiar = document.getElementById('btnLimpiar');
+if (btnLimpiar) {
+    btnLimpiar.addEventListener('click', limpiarFiltros);
+}
+
+// Permitir filtrar con Enter en los campos de texto
+document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
+    if (input) {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                aplicarFiltros();
+            }
+        });
+    }
+});
     
     // Asegurar que el modal se cierre correctamente
     const modalCloseButtons = document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close');
