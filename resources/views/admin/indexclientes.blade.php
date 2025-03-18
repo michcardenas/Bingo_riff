@@ -477,8 +477,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para cargar contenido en el contenedor 'tableContent'
     function loadTableContent(url) {
-        console.log("Cargando contenido desde:", url);
-        
         // Guardar los valores actuales de los filtros
         const filtros = {
             nombre: document.getElementById('nombre')?.value || '',
@@ -495,65 +493,59 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentTable !== null) {
             try {
                 currentTable.destroy();
-                currentTable = null;
             } catch (error) {
                 console.error("Error al destruir DataTable:", error);
             }
+            currentTable = null;
         }
         
         // Hacer la petición AJAX
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.text();
-            })
-            .then(html => {
-                // Actualizar el contenido
-                tableContainer.innerHTML = html;
-                console.log("Contenido cargado correctamente");
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            // Actualizar el contenido
+            tableContainer.innerHTML = html;
+            
+            // Verificar si hay tabla antes de inicializar DataTable
+            if (document.querySelector('.table')) {
+                // Reinicializar DataTable
+                initializeDataTable();
                 
-                // Verificar si hay tabla antes de inicializar DataTable
-                if (document.querySelector('.table')) {
-                    // Reinicializar DataTable con un pequeño retraso para asegurar que el DOM está listo
+                // Restaurar los valores de los filtros
+                const nombreInput = document.getElementById('nombre');
+                const celularInput = document.getElementById('celular');
+                const serieInput = document.getElementById('serie');
+                
+                if (nombreInput) nombreInput.value = filtros.nombre;
+                if (celularInput) celularInput.value = filtros.celular;
+                if (serieInput) serieInput.value = filtros.serie;
+                
+                // Aplicar filtros si había alguno activo
+                if (filtros.nombre || filtros.celular || filtros.serie) {
                     setTimeout(() => {
-                        initializeDataTable();
-                        
-                        // Restaurar los valores de los filtros
-                        const nombreInput = document.getElementById('nombre');
-                        const celularInput = document.getElementById('celular');
-                        const serieInput = document.getElementById('serie');
-                        
-                        if (nombreInput) nombreInput.value = filtros.nombre;
-                        if (celularInput) celularInput.value = filtros.celular;
-                        if (serieInput) serieInput.value = filtros.serie;
-                        
-                        // Aplicar filtros si había alguno activo
-                        if (filtros.nombre || filtros.celular || filtros.serie) {
-                            setTimeout(() => {
-                                aplicarFiltros();
-                            }, 200); // Pequeño retraso para asegurar que DataTable está listo
-                        }
-                    }, 100);
-                } else {
-                    // Si no hay tabla, mostrar mensaje informativo
-                    tableContainer.innerHTML = '<div class="alert alert-info">No hay datos disponibles para mostrar.</div>';
+                        aplicarFiltros();
+                    }, 100); // Pequeño retraso para asegurar que DataTable está listo
                 }
-                
-                // Actualizar botones activos
-                updateActiveButtons(url);
-            })
-            .catch(error => {
-                console.error('Error cargando contenido:', error);
-                tableContainer.innerHTML = `<div class="alert alert-danger">Error al cargar los datos: ${error.message}. Por favor, intenta nuevamente.</div>`;
-            });
+            } else {
+                // Si no hay tabla, mostrar mensaje informativo
+                tableContainer.innerHTML = '<div class="alert alert-info">No hay datos disponibles para mostrar.</div>';
+            }
+            
+            // Actualizar botones activos
+            updateActiveButtons(url);
+        })
+        .catch(error => {
+            console.error('Error cargando contenido:', error);
+            tableContainer.innerHTML = '<div class="alert alert-danger">Error al cargar los datos. Por favor, intenta nuevamente.</div>';
+        });
     }
     
     // Actualizar estado activo de los botones basado en la URL
     function updateActiveButtons(url) {
-        console.log("Actualizando botones activos para URL:", url);
-        
         // Resetear todos los botones a estado no activo
         document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(btn => {
             btn.classList.remove('btn-primary');
@@ -580,78 +572,44 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDataTable();
     
     // Asignar eventos a los botones para cargar diferentes vistas
-    const btnOriginal = document.getElementById('btnOriginal');
-    if (btnOriginal) {
-        btnOriginal.addEventListener('click', function() {
-            console.log("Botón 'Todas las Reservas' clickeado");
-            loadTableContent("/admin/reservas");
-        });
-    } else {
-        console.error("Botón 'Todas las Reservas' no encontrado");
-    }
+    document.getElementById('btnOriginal').addEventListener('click', function() {
+        loadTableContent("{{ route('reservas.index') }}");
+    });
 
-    const btnComprobanteDuplicado = document.getElementById('btnComprobanteDuplicado');
-    if (btnComprobanteDuplicado) {
-        btnComprobanteDuplicado.addEventListener('click', function() {
-            console.log("Botón 'Comprobante Duplicado' clickeado");
-            loadTableContent("/admin/comprobantesDuplicados");
-        });
-    } else {
-        console.error("Botón 'Comprobante Duplicado' no encontrado");
-    }
+    document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
+        loadTableContent("{{ route('admin.comprobantesDuplicados') }}");
+    });
 
-    const btnPedidoDuplicado = document.getElementById('btnPedidoDuplicado');
-    if (btnPedidoDuplicado) {
-        btnPedidoDuplicado.addEventListener('click', function() {
-            console.log("Botón 'Pedido Duplicado' clickeado");
-            loadTableContent("/admin/pedidosDuplicados");
-        });
-    } else {
-        console.error("Botón 'Pedido Duplicado' no encontrado");
-    }
+    document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
+        loadTableContent("{{ route('admin.pedidosDuplicados') }}");
+    });
 
-    const btnCartonesEliminados = document.getElementById('btnCartonesEliminados');
-    if (btnCartonesEliminados) {
-        btnCartonesEliminados.addEventListener('click', function() {
-            console.log("Botón 'Cartones Eliminados' clickeado");
-            loadTableContent("/admin/cartonesEliminados");
-        });
-    } else {
-        console.error("Botón 'Cartones Eliminados' no encontrado");
-    }
+    document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
+        loadTableContent("{{ route('admin.cartonesEliminados') }}");
+    });
     
     // Asignar eventos a los botones de filtro
-    const btnFiltrar = document.getElementById('btnFiltrar');
-    if (btnFiltrar) {
-        btnFiltrar.addEventListener('click', aplicarFiltros);
-    }
-    
-    const btnLimpiar = document.getElementById('btnLimpiar');
-    if (btnLimpiar) {
-        btnLimpiar.addEventListener('click', limpiarFiltros);
-    }
+    document.getElementById('btnFiltrar').addEventListener('click', aplicarFiltros);
+    document.getElementById('btnLimpiar').addEventListener('click', limpiarFiltros);
     
     // Permitir filtrar con Enter en los campos de texto
     document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
-        if (input) {
-            input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    aplicarFiltros();
-                }
-            });
-        }
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                aplicarFiltros();
+            }
+        });
     });
     
     // Configurar el botón de borrar clientes y el modal de confirmación
     const btnBorrarClientes = document.getElementById('btnBorrarClientes');
     if (btnBorrarClientes) {
         btnBorrarClientes.addEventListener('click', function() {
-            console.log("Botón 'Borrar Clientes' clickeado");
             // Intentar múltiples métodos para abrir el modal
             try {
                 // Método 1: Usando la clase bootstrap.Modal si está disponible
-                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                if (typeof bootstrap !== 'undefined') {
                     const modalElement = document.getElementById('confirmDeleteModal');
                     if (modalElement) {
                         const modal = new bootstrap.Modal(modalElement);
@@ -662,7 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 // Método 2: Usando jQuery si está disponible
-                else if (typeof $ !== 'undefined' && $.fn.modal) {
+                else if (typeof $ !== 'undefined') {
                     $('#confirmDeleteModal').modal('show');
                     console.log('Modal abierto con jQuery');
                 }
@@ -724,6 +682,122 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         });
     }
+});
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // Wait a bit to ensure all DOM elements are fully loaded and rendered
+    setTimeout(function() {
+        // Find the delete button by ID or selector
+        const btnBorrarClientes = document.getElementById('btnBorrarClientes') || 
+                                  document.querySelector('[data-action="borrar-clientes"]');
+        
+        if (btnBorrarClientes) {
+            console.log('Delete button found');
+            
+            btnBorrarClientes.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Delete button clicked');
+                
+                // Find the modal element
+                const modalElement = document.getElementById('confirmDeleteModal');
+                
+                if (!modalElement) {
+                    console.error('Modal element not found in DOM');
+                    alert('Error: Modal de confirmación no encontrado.');
+                    return;
+                }
+                
+                // Try to open modal based on available libraries
+                if (typeof bootstrap !== 'undefined') {
+                    try {
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                        console.log('Modal opened with Bootstrap');
+                    } catch (error) {
+                        console.error('Error opening modal with Bootstrap:', error);
+                    }
+                } else if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
+                    try {
+                        $(modalElement).modal('show');
+                        console.log('Modal opened with jQuery');
+                    } catch (error) {
+                        console.error('Error opening modal with jQuery:', error);
+                    }
+                } else {
+                    // Fallback method: manually show the modal
+                    try {
+                        modalElement.style.display = 'block';
+                        modalElement.classList.add('show');
+                        document.body.classList.add('modal-open');
+                        
+                        // Add backdrop
+                        const backdrop = document.createElement('div');
+                        backdrop.className = 'modal-backdrop fade show';
+                        document.body.appendChild(backdrop);
+                        
+                        console.log('Modal opened manually');
+                        
+                        // Handle close buttons within the modal
+                        const closeButtons = modalElement.querySelectorAll('[data-dismiss="modal"], .btn-close, .close');
+                        closeButtons.forEach(button => {
+                            button.addEventListener('click', function() {
+                                modalElement.style.display = 'none';
+                                modalElement.classList.remove('show');
+                                document.body.classList.remove('modal-open');
+                                const existingBackdrop = document.querySelector('.modal-backdrop');
+                                if (existingBackdrop) {
+                                    existingBackdrop.remove();
+                                }
+                            });
+                        });
+                    } catch (error) {
+                        console.error('Error manually opening modal:', error);
+                    }
+                }
+            });
+        } else {
+            console.error('Delete button not found in DOM');
+            // List all buttons to help identify the correct one
+            console.log('Available buttons:', 
+                Array.from(document.querySelectorAll('button'))
+                    .map(b => ({ id: b.id, text: b.textContent, classes: b.className }))
+            );
+        }
+        
+        // Set up confirmation text validation
+        const confirmText = document.getElementById('confirmText');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        
+        if (confirmText && confirmDeleteBtn) {
+            confirmText.addEventListener('input', function() {
+                confirmDeleteBtn.disabled = (this.value !== 'BORRAR TODOS LOS CLIENTES');
+            });
+            
+            // Initialize button state
+            confirmDeleteBtn.disabled = true;
+        }
+        
+        // Set up delete form submission
+        const deleteClientsForm = document.getElementById('deleteClientsForm');
+        if (deleteClientsForm) {
+            deleteClientsForm.addEventListener('submit', function(event) {
+                if (!confirmText || confirmText.value !== 'BORRAR TODOS LOS CLIENTES') {
+                    event.preventDefault();
+                    alert('Por favor, confirma la acción escribiendo el texto exacto.');
+                    return false;
+                }
+                
+                // Show loading indicator
+                if (confirmDeleteBtn) {
+                    confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Eliminando...';
+                    confirmDeleteBtn.disabled = true;
+                }
+                
+                return true;
+            });
+        }
+    }, 500); // Short delay to ensure DOM is fully loaded
 });
     </script>
 @endsection
