@@ -182,7 +182,7 @@
 
 <!-- Agregar script para el filtrado -->
 <script>
-   document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
     // Variables globales
     let reservasTable = null;
     let tipoActual = 'todas';
@@ -531,36 +531,34 @@
     initializeDataTable();
 
     // Asignar eventos a los botones para cargar diferentes vistas
-    document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(button => {
-        if (button) {
-            button.addEventListener('click', function() {
-                const url = this.getAttribute('data-url');
-                if (url) {
-                    loadTableContent(url);
-                } else {
-                    console.error('Botón sin URL definida:', this.id);
-                }
-            });
-        }
+    document.getElementById('btnOriginal')?.addEventListener('click', function() { 
+        loadTableContent("{{ route('reservas.index') }}"); 
+    });
+    
+    document.getElementById('btnComprobanteDuplicado')?.addEventListener('click', function() { 
+        loadTableContent("{{ route('admin.comprobantesDuplicados') }}"); 
+    });
+    
+    document.getElementById('btnPedidoDuplicado')?.addEventListener('click', function() { 
+        loadTableContent("{{ route('admin.pedidosDuplicados') }}"); 
+    });
+    
+    document.getElementById('btnCartonesEliminados')?.addEventListener('click', function() { 
+        loadTableContent("{{ route('admin.cartonesEliminados') }}"); 
     });
 
     // Asignar eventos a los botones de filtro
-    const btnFiltrar = document.getElementById('btnFiltrar');
-    if (btnFiltrar) btnFiltrar.addEventListener('click', aplicarFiltros);
-    
-    const btnLimpiar = document.getElementById('btnLimpiar');
-    if (btnLimpiar) btnLimpiar.addEventListener('click', limpiarFiltros);
+    document.getElementById('btnFiltrar')?.addEventListener('click', aplicarFiltros);
+    document.getElementById('btnLimpiar')?.addEventListener('click', limpiarFiltros);
 
     // Permitir filtrar con Enter en los campos de texto
     document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
-        if (input) {
-            input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    aplicarFiltros();
-                }
-            });
-        }
+        input?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                aplicarFiltros();
+            }
+        });
     });
 
     // Manejar cierre del modal
