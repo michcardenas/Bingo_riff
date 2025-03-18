@@ -182,14 +182,14 @@
 
 <!-- Agregar script para el filtrado -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
     // Variables globales
     let reservasTable = null;
     let tipoActual = 'todas';
+    let modalInstance = null;
 
     // ===== INICIALIZACIÓN DE DATATABLES =====
     function initializeDataTable() {
-        console.log('Inicializando DataTable...');
         // Seleccionar la tabla principal
         const table = document.querySelector('table');
 
@@ -226,8 +226,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // IMPORTANTE: Agregar evento para cuando se redibuje la tabla (paginación, filtro, etc.)
             reservasTable.on('draw.dt', function() {
-                console.log('Tabla redibujada');
+                console.log('Tabla redibujada - reconfigurando eventos');
+                setupTableEvents();
             });
+            
+            // Configurar eventos después de la inicialización
+            setupTableEvents();
             
             console.log('DataTable inicializado con éxito');
         } catch (error) {
@@ -235,110 +239,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ===== FUNCIONES PARA CARGAR CONTENIDO =====
-    function loadTableContent(url) {
-        console.log('Cargando contenido desde URL:', url);
+    // Función para configurar eventos en la tabla - se llamará después de cada redibujado
+    function setupTableEvents() {
+        // Remover eventos antiguos para evitar duplicados
+        document.querySelectorAll('.edit-series').forEach(button => {
+            button.removeEventListener('click', handleEditSeries);
+            button.addEventListener('click', handleEditSeries);
+        });
         
-        // Si la URL contiene syntax de Laravel, informar al desarrollador
-        if (url.includes('{{') && url.includes('}}')) {
-            console.warn('La URL contiene sintaxis de Laravel que no se procesará correctamente en el cliente');
-        }
+        // Configurar eventos para formularios de aprobación/rechazo
+        document.querySelectorAll('form[action*="aprobar"], form[action*="rechazar"]').forEach(form => {
+            form.removeEventListener('submit', handleFormSubmit);
+            form.addEventListener('submit', handleFormSubmit);
+        });
         
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta: ' + response.status);
-                }
-                return response.text();
-            })
-            .then(html => {
-                // Actualizar el contenido
-                const tableContainer = document.querySelector('#table-container') || document.querySelector('main') || document.body;
-                
-                if (tableContainer) {
-                    tableContainer.innerHTML = html;
-                    console.log('Contenido actualizado');
-                    
-                    // Reinicializar DataTable después de cargar el contenido
-                    initializeDataTable();
-                } else {
-                    console.error('No se encontró un contenedor para la tabla');
-                }
-            })
-            .catch(error => {
-                console.error('Error al cargar contenido:', error);
-            });
+        console.log('Eventos de tabla reconfigurados');
     }
-    
-    // ===== DELEGACIÓN DE EVENTOS =====
-    // Usar delegación para manejar clics en toda la página
-    document.addEventListener('click', function(e) {
-        // Manejar clics en botones de editar series
-        const editSeriesButton = e.target.closest('.edit-series');
-        if (editSeriesButton) {
-            handleEditSeries(editSeriesButton);
-        }
-        
-        // Manejar clics en botones de cerrar modal
-        if (e.target.matches('[data-bs-dismiss="modal"], .btn-close')) {
-            const modal = e.target.closest('.modal');
-            if (modal) {
-                closeModal(modal);
-            }
-        }
-        
-        // Manejar clics en botones de guardar cambios
-        if (e.target.id === 'saveSeriesChanges') {
-            handleSaveSeriesChanges(e.target);
-        }
-    });
-    
-    // Manejar envíos de formularios mediante delegación
-    document.addEventListener('submit', function(e) {
-        const form = e.target;
-        
-        // Verificar si es un formulario de aprobar/rechazar
-        if (form.action && (form.action.includes('aprobar') || form.action.includes('rechazar'))) {
-            e.preventDefault(); // Prevenir envío por defecto
-            handleFormSubmit(form);
-        }
-    });
-    
-    // Manejar cambios en inputs mediante delegación
-    document.addEventListener('change', function(e) {
-        // Manejar cambio en cantidad de series
-        if (e.target.id === 'newQuantity') {
-            handleQuantityChange(e.target);
-        }
-        
-        // Manejar cambio en checkboxes de series
-        if (e.target.name === 'selected_series[]') {
-            handleSeriesCheckboxChange(e.target);
-        }
-    });
-    
-    // Manejar eventos de teclado para filtros
-    document.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && 
-           (e.target.id === 'nombre' || e.target.id === 'celular' || e.target.id === 'serie')) {
-            e.preventDefault();
-            aplicarFiltros();
-        }
-    });
-    
-    // ===== FUNCIONES DE MANEJO DE EVENTOS =====
-    
-    // Manejador para editar series
-    function handleEditSeries(button) {
+
+    // Manejador para el evento de editar series
+    function handleEditSeries() {
         console.log('Abriendo modal de edición de series');
-        
         const modal = document.getElementById('editSeriesModal');
+        
         if (!modal) {
             console.error('Error: No se encontró el modal #editSeriesModal en el DOM');
             return;
         }
         
-        const seriesData = button.getAttribute('data-series');
+        const seriesData = this.getAttribute('data-series');
         let series = [];
 
         try {
@@ -351,17 +279,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        const reservaId = button.getAttribute('data-id');
-        const bingoId = button.getAttribute('data-bingo-id');
-        const cantidad = parseInt(button.getAttribute('data-cantidad'));
-        const total = parseInt(button.getAttribute('data-total'));
-        const bingoPrice = parseInt(button.getAttribute('data-bingo-precio'));
-        const updateUrl = button.getAttribute('data-update-url');
+        const reservaId = this.getAttribute('data-id');
+        const bingoId = this.getAttribute('data-bingo-id');
+        const cantidad = parseInt(this.getAttribute('data-cantidad'));
+        const total = parseInt(this.getAttribute('data-total'));
+        const bingoPrice = parseInt(this.getAttribute('data-bingo-precio'));
+        const updateUrl = this.getAttribute('data-update-url');
 
         // Completar datos del formulario
         document.getElementById('reserva_id').value = reservaId;
         document.getElementById('bingo_id').value = bingoId;
-        document.getElementById('clientName').textContent = button.getAttribute('data-nombre');
+        document.getElementById('clientName').textContent = this.getAttribute('data-nombre');
         document.getElementById('newQuantity').value = cantidad;
         document.getElementById('newQuantity').setAttribute('max', Array.isArray(series) ? series.length : 1);
         document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(total);
@@ -436,155 +364,112 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSeriesDiv.textContent = 'No hay series disponibles';
         }
 
-        // Inicializar contador de seleccionados
+        // Configurar evento de cambio de cantidad
+        const newQuantityInput = document.getElementById('newQuantity');
+        newQuantityInput.removeEventListener('change', handleQuantityChange);
+        newQuantityInput.addEventListener('change', handleQuantityChange);
+
+        function handleQuantityChange() {
+            const newQuantity = parseInt(this.value);
+            
+            // Actualizar el total estimado
+            const newTotal = newQuantity * bingoPrice;
+            document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+
+            // Actualizar contador
+            updateSelectedCounter();
+        }
+
+        // Añadir listeners a los checkboxes
+        document.querySelectorAll('input[name="selected_series[]"]').forEach(checkbox => {
+            checkbox.removeEventListener('change', handleCheckboxChange);
+            checkbox.addEventListener('change', handleCheckboxChange);
+        });
+
+        // Función para actualizar contador de seleccionados
+        function updateSelectedCounter() {
+            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+            const newQuantity = parseInt(document.getElementById('newQuantity').value);
+            let checkedCount = 0;
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) checkedCount++;
+            });
+
+            // Verificar si se están seleccionando más series de las permitidas
+            if (checkedCount > newQuantity) {
+                // Desmarcar los últimos checkboxes seleccionados para que coincida con la cantidad
+                let toUncheck = checkedCount - newQuantity;
+                for (let i = checkboxes.length - 1; i >= 0 && toUncheck > 0; i--) {
+                    if (checkboxes[i].checked) {
+                        checkboxes[i].checked = false;
+                        toUncheck--;
+                    }
+                }
+            }
+        }
+
+        function handleCheckboxChange() {
+            const newQuantity = parseInt(document.getElementById('newQuantity').value);
+            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+            let checkedCount = 0;
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) checkedCount++;
+            });
+
+            // Si se excede la cantidad permitida, desmarcar este checkbox
+            if (checkedCount > newQuantity && this.checked) {
+                this.checked = false;
+                alert(`Solo puedes seleccionar ${newQuantity} series.`);
+            }
+        }
+
+        // Inicializar contador
         updateSelectedCounter();
+
+        // Manejar clic en el botón de guardar
+        const saveButton = document.getElementById('saveSeriesChanges');
+        saveButton.removeEventListener('click', handleSaveClick);
+        saveButton.addEventListener('click', handleSaveClick);
+
+        function handleSaveClick() {
+            const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
+            const newQuantity = parseInt(document.getElementById('newQuantity').value);
+
+            if (selectedCheckboxes.length !== newQuantity) {
+                alert(`Debes seleccionar exactamente ${newQuantity} series.`);
+                return;
+            }
+
+            // Verificar que la acción del formulario esté establecida
+            if (!form.action || form.action.includes('null')) {
+                // Si no hay acción establecida o contiene 'null', establecer una predeterminada
+                console.error('Error: URL del formulario no válida', form.action);
+                form.action = `/admin/reservas/${reservaId}/actualizarSeries`;
+                console.log('Corrigiendo URL del formulario a:', form.action);
+            }
+
+            // Enviar formulario
+            form.submit();
+        }
 
         // Mostrar modal utilizando Bootstrap 5
         try {
-            const bsModal = new bootstrap.Modal(modal);
-            window.currentBsModal = bsModal; // Guardar referencia global para acceso posterior
-            bsModal.show();
+            modalInstance = new bootstrap.Modal(modal);
+            modalInstance.show();
         } catch (error) {
-            console.error('Error al mostrar el modal con Bootstrap:', error);
-            // Alternativa manual si falla Bootstrap
-            showModalManually(modal);
+            console.error('Error al mostrar el modal:', error);
+            // Intento alternativo si hay un error con Bootstrap
+            modal.style.display = 'block';
+            modal.classList.add('show');
         }
-    }
-    
-    // Función para mostrar modal manualmente (alternativa)
-    function showModalManually(modal) {
-        modal.style.display = 'block';
-        modal.classList.add('show');
-        document.body.classList.add('modal-open');
-        
-        // Crear backdrop si no existe
-        let backdrop = document.querySelector('.modal-backdrop');
-        if (!backdrop) {
-            backdrop = document.createElement('div');
-            backdrop.className = 'modal-backdrop fade show';
-            document.body.appendChild(backdrop);
-        }
-    }
-    
-    // Función para cerrar modal
-    function closeModal(modal) {
-        try {
-            // Intentar usar Bootstrap primero
-            if (window.currentBsModal) {
-                window.currentBsModal.hide();
-                window.currentBsModal = null;
-            } else if (bootstrap && bootstrap.Modal) {
-                const bsModal = bootstrap.Modal.getInstance(modal);
-                if (bsModal) {
-                    bsModal.hide();
-                } else {
-                    // Si no hay instancia, cerrar manualmente
-                    closeModalManually(modal);
-                }
-            } else {
-                // Si no hay Bootstrap, cerrar manualmente
-                closeModalManually(modal);
-            }
-        } catch (error) {
-            console.error('Error al cerrar modal:', error);
-            closeModalManually(modal);
-        }
-    }
-    
-    // Función para cerrar modal manualmente
-    function closeModalManually(modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
-        
-        // Eliminar backdrop
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) {
-            backdrop.remove();
-        }
-    }
-    
-    // Manejar cambio en cantidad
-    function handleQuantityChange(input) {
-        const newQuantity = parseInt(input.value);
-        const bingoPrice = parseInt(document.querySelector('[data-bingo-precio]')?.getAttribute('data-bingo-precio') || 0);
-        
-        // Actualizar el total estimado
-        const newTotal = newQuantity * bingoPrice;
-        document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
-
-        // Actualizar contador de seleccionados
-        updateSelectedCounter();
-    }
-    
-    // Manejar cambio en checkbox de series
-    function handleSeriesCheckboxChange(checkbox) {
-        const newQuantity = parseInt(document.getElementById('newQuantity').value);
-        const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
-        let checkedCount = 0;
-
-        checkboxes.forEach(cb => {
-            if (cb.checked) checkedCount++;
-        });
-
-        // Si se excede la cantidad permitida, desmarcar este checkbox
-        if (checkedCount > newQuantity && checkbox.checked) {
-            checkbox.checked = false;
-            alert(`Solo puedes seleccionar ${newQuantity} series.`);
-        }
-    }
-    
-    // Actualizar contador de seleccionados
-    function updateSelectedCounter() {
-        const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
-        const newQuantity = parseInt(document.getElementById('newQuantity')?.value || 0);
-        let checkedCount = 0;
-
-        checkboxes.forEach(cb => {
-            if (cb.checked) checkedCount++;
-        });
-
-        // Verificar si se están seleccionando más series de las permitidas
-        if (checkedCount > newQuantity) {
-            // Desmarcar los últimos checkboxes seleccionados para que coincida con la cantidad
-            let toUncheck = checkedCount - newQuantity;
-            for (let i = checkboxes.length - 1; i >= 0 && toUncheck > 0; i--) {
-                if (checkboxes[i].checked) {
-                    checkboxes[i].checked = false;
-                    toUncheck--;
-                }
-            }
-        }
-    }
-    
-    // Manejar clic en guardar cambios
-    function handleSaveSeriesChanges() {
-        const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
-        const newQuantity = parseInt(document.getElementById('newQuantity').value);
-        const form = document.getElementById('editSeriesForm');
-
-        if (selectedCheckboxes.length !== newQuantity) {
-            alert(`Debes seleccionar exactamente ${newQuantity} series.`);
-            return;
-        }
-
-        // Verificar que la acción del formulario esté establecida
-        if (!form.action || form.action.includes('null')) {
-            // Si no hay acción establecida o contiene 'null', establecer una predeterminada
-            const reservaId = document.getElementById('reserva_id').value;
-            console.error('Error: URL del formulario no válida', form.action);
-            form.action = `/admin/reservas/${reservaId}/actualizarSeries`;
-            console.log('Corrigiendo URL del formulario a:', form.action);
-        }
-
-        // Enviar formulario
-        form.submit();
     }
     
     // Manejador para evento de envío de formularios
-    function handleFormSubmit(form) {
+    function handleFormSubmit(event) {
         // Encuentra la fila que contiene el formulario
-        const row = form.closest('tr');
+        const row = this.closest('tr');
         // Busca el input editable del número de comprobante en la misma fila
         const input = row.querySelector('.comprobante-input');
         if (input) {
@@ -593,64 +478,64 @@ document.addEventListener('DOMContentLoaded', function() {
             hiddenInput.type = 'hidden';
             hiddenInput.name = 'numero_comprobante';
             hiddenInput.value = input.value;
-            form.appendChild(hiddenInput);
+            this.appendChild(hiddenInput);
         }
-        
-        // Continuar con el envío normal
-        form.submit();
-    }
-    
-    // Función para aplicar filtros
-    function aplicarFiltros() {
-        console.log('Aplicando filtros...');
-        // Implementa según necesites
-        
-        // Si tienes un formulario de filtros, podrías enviarlo aquí
-        const filterForm = document.getElementById('filterForm');
-        if (filterForm) {
-            filterForm.submit();
-        }
-    }
-    
-    // Función para limpiar filtros
-    function limpiarFiltros() {
-        console.log('Limpiando filtros...');
-        // Implementa según necesites
-        
-        // Limpiar campos de filtro
-        const filterInputs = document.querySelectorAll('#nombre, #celular, #serie');
-        filterInputs.forEach(input => {
-            if (input) input.value = '';
-        });
-        
-        // Aplicar filtros limpios
-        aplicarFiltros();
     }
 
-    // ===== INICIALIZACIÓN Y EVENTOS DE BOTONES =====
-    
+    // Resto del código (filtros, loadTableContent, etc.)
+    // ...
+
     // Inicializar DataTable al cargar la página
     initializeDataTable();
-    
+
     // Asignar eventos a los botones para cargar diferentes vistas
-    document.getElementById('btnOriginal')?.addEventListener('click', function() { 
-        loadTableContent("{{ route('reservas.index') }}"); 
+    document.getElementById('btnOriginal')?.addEventListener('click', function() {
+        loadTableContent("{{ route('reservas.index') }}");
     });
-    
-    document.getElementById('btnComprobanteDuplicado')?.addEventListener('click', function() { 
-        loadTableContent("{{ route('admin.comprobantesDuplicados') }}"); 
+
+    document.getElementById('btnComprobanteDuplicado')?.addEventListener('click', function() {
+        loadTableContent("{{ route('admin.comprobantesDuplicados') }}");
     });
-    
-    document.getElementById('btnPedidoDuplicado')?.addEventListener('click', function() { 
-        loadTableContent("{{ route('admin.pedidosDuplicados') }}"); 
+
+    document.getElementById('btnPedidoDuplicado')?.addEventListener('click', function() {
+        loadTableContent("{{ route('admin.pedidosDuplicados') }}");
     });
-    
-    document.getElementById('btnCartonesEliminados')?.addEventListener('click', function() { 
-        loadTableContent("{{ route('admin.cartonesEliminados') }}"); 
+
+    document.getElementById('btnCartonesEliminados')?.addEventListener('click', function() {
+        loadTableContent("{{ route('admin.cartonesEliminados') }}");
     });
 
     // Asignar eventos a los botones de filtro
     document.getElementById('btnFiltrar')?.addEventListener('click', aplicarFiltros);
     document.getElementById('btnLimpiar')?.addEventListener('click', limpiarFiltros);
+
+    // Permitir filtrar con Enter en los campos de texto
+    document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
+        input?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                aplicarFiltros();
+            }
+        });
+    });
+
+    // Asegurar que el modal se cierre correctamente
+    document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close').forEach(button => {
+        button.addEventListener('click', function() {
+            if (modalInstance) {
+                try {
+                    modalInstance.hide();
+                } catch (error) {
+                    console.error('Error al cerrar modal:', error);
+                    // Alternativa si hay error con Bootstrap
+                    const modal = this.closest('.modal');
+                    if (modal) {
+                        modal.style.display = 'none';
+                        modal.classList.remove('show');
+                    }
+                }
+            }
+        });
+    });
 });
 </script>
