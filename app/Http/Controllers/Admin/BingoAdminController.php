@@ -19,13 +19,16 @@ class BingoAdminController extends Controller
         
         // Asegurar que tengamos la información completa de participantes
         foreach ($bingos as $bingo) {
-            // Modificado para incluir todos los estados excepto 'rechazado'
+            // Si necesitamos información más detallada
             $reservas = Reserva::where('bingo_id', $bingo->id)
-                            ->where('estado', '!=', 'rechazado')
+                            ->where(function($query) {
+                                $query->where('estado', 'aprobado')
+                                      ->orWhere('estado', 'revision');
+                            })
                             ->where('eliminado', false)
                             ->get();
             
-            // Asignar el conteo real (contamos todos menos los rechazados o eliminados)
+            // Asignar el conteo real (solo contamos las que no están rechazadas o eliminadas)
             $bingo->participantes_count = $reservas->count();
             $bingo->cartones_count = $reservas->sum('cantidad');
         }
@@ -81,17 +84,21 @@ class BingoAdminController extends Controller
     }
 
     public function reservasIndex(Request $request)
-    {
-        $reservas = Reserva::orderBy('id', 'desc')->get();
+{
+    // Modificado para mostrar los rechazados al final
+    $reservas = Reserva::where('eliminado', false)
+                       ->orderByRaw("CASE WHEN estado = 'rechazado' THEN 1 ELSE 0 END")
+                       ->orderBy('id', 'desc')
+                       ->get();
 
-        // Si la solicitud es AJAX, solo devolver la tabla
-        if ($request->ajax()) {
-            return view('admin.table', compact('reservas'))->render();
-        }
-
-        // Si no es AJAX, devolver la vista completa
-        return view('admin.indexclientes', compact('reservas'));
+    // Si la solicitud es AJAX, solo devolver la tabla
+    if ($request->ajax()) {
+        return view('admin.table', compact('reservas'))->render();
     }
+
+    // Si no es AJAX, devolver la vista completa
+    return view('admin.indexclientes', compact('reservas'));
+}
 
     /**
      * Aprueba una reserva y actualiza su estado a "aprobado".
