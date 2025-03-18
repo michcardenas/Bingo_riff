@@ -81,8 +81,8 @@
                 @endif
             </td>
             <td>
-                @if($reserva->estado == 'revision' || $reserva->estado == 'aprobado')
-                <!-- Original del segundo código (funcional) -->
+                <!-- Cambiado de "revision o aprobado" a solo "revision" -->
+                @if($reserva->estado == 'revision')
                 <button type="button" class="btn btn-sm btn-warning mb-1 edit-series"
                     data-id="{{ $reserva->id }}"
                     data-update-url="{{ route('reservas.update-series', $reserva->id) }}"
