@@ -72,8 +72,44 @@
     </div>
 </div>
 
-<!-- Modal para editar series -->
-<div class="modal fade" id="editSeriesModal" tabindex="-1" aria-labelledby="editSeriesModalLabel" aria-hidden="true">
+
+<!-- Modal de confirmación para borrar clientes -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill"></i> <strong>ADVERTENCIA:</strong> Esta acción es irreversible.
+                </div>
+                <p>Estás a punto de eliminar <strong>TODOS</strong> los registros de la tabla clientes.</p>
+                <p>Esta acción no se puede deshacer y resultará en la pérdida permanente de todos los datos de clientes.</p>
+                
+                <!-- Campo de confirmación para mayor seguridad -->
+                <div class="form-group mt-3">
+                    <label for="confirmText">Para confirmar, escribe "BORRAR TODOS LOS CLIENTES" en el campo de abajo:</label>
+                    <input type="text" class="form-control bg-dark text-white border-danger mt-2" id="confirmText" placeholder="Escribe aquí para confirmar">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteClientsForm" action="{{ route('admin.borrarClientes') }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" id="confirmDeleteBtn" class="btn btn-danger" disabled>
+                        <i class="bi bi-trash"></i> Eliminar Todos los Clientes
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+ <!-- Modal para editar series -->
+ <div class="modal fade" id="editSeriesModal" tabindex="-1" aria-labelledby="editSeriesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content bg-dark text-white">
             <div class="modal-header">
@@ -121,41 +157,6 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" id="saveSeriesChanges">Guardar Cambios</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de confirmación para borrar clientes -->
-<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-white">
-            <div class="modal-header bg-danger">
-                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmar Eliminación</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle-fill"></i> <strong>ADVERTENCIA:</strong> Esta acción es irreversible.
-                </div>
-                <p>Estás a punto de eliminar <strong>TODOS</strong> los registros de la tabla clientes.</p>
-                <p>Esta acción no se puede deshacer y resultará en la pérdida permanente de todos los datos de clientes.</p>
-                
-                <!-- Campo de confirmación para mayor seguridad -->
-                <div class="form-group mt-3">
-                    <label for="confirmText">Para confirmar, escribe "BORRAR TODOS LOS CLIENTES" en el campo de abajo:</label>
-                    <input type="text" class="form-control bg-dark text-white border-danger mt-2" id="confirmText" placeholder="Escribe aquí para confirmar">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <form id="deleteClientsForm" action="{{ route('admin.borrarClientes') }}" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" id="confirmDeleteBtn" class="btn btn-danger" disabled>
-                        <i class="bi bi-trash"></i> Eliminar Todos los Clientes
-                    </button>
-                </form>
             </div>
         </div>
     </div>
