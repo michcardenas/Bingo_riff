@@ -132,6 +132,60 @@
     </tbody>
   </table>
 
+  <!-- Modal para editar series -->
+<div class="modal fade" id="editSeriesModal" tabindex="-1" aria-labelledby="editSeriesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSeriesModalLabel">Editar Series</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSeriesForm" action="" method="POST">
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="reserva_id" id="reserva_id">
+                    <input type="hidden" name="bingo_id" id="bingo_id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre del cliente:</label>
+                        <p id="clientName" class="fs-5"></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Series actuales:</label>
+                        <div id="currentSeries" class="mb-3">
+                            <!-- Series serán mostradas aquí -->
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="newQuantity" class="form-label">Nueva cantidad de cartones:</label>
+                        <input type="number" class="form-control bg-dark text-white" id="newQuantity" name="new_quantity" min="1">
+                        <small class="text-muted">Total actual: <span id="currentTotal"></span> pesos</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar series a mantener:</label>
+                        <div id="seriesCheckboxes" class="row">
+                            <!-- Checkboxes serán generados dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Importante:</strong> Las series que no selecciones quedarán disponibles para nuevas compras. El total a pagar se actualizará automáticamente.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveSeriesChanges">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
   <!-- Scripts de jQuery y DataTables -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
