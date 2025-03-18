@@ -88,11 +88,9 @@
                 @endif
             </td>
             <td>
-                <!-- Botón para editar series -->
                 @if($reserva->estado == 'revision' || $reserva->estado == 'aprobado')
                 <button type="button" class="btn btn-sm btn-warning mb-1 edit-series"
                     data-id="{{ $reserva->id }}"
-                    data-update-url="{{ route('reservas.update-series', $reserva->id) }}"
                     data-nombre="{{ $reserva->nombre }}"
                     data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}"
                     data-cantidad="{{ $reserva->cantidad }}"
@@ -104,7 +102,7 @@
                 @endif
 
                 @if($reserva->estado == 'revision')
-                <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline aprobar-form mt-1">
+                <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline">
                     @csrf
                     @method('PATCH')
                     <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
@@ -115,7 +113,7 @@
                     <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
                 </form>
                 @elseif($reserva->estado == 'aprobado')
-                <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline mt-1">
+                <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
                     @csrf
                     @method('PATCH')
                     <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
@@ -805,18 +803,6 @@
             fetch(url, {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
-
-
-
-
-
-
-
-
-
-
-
-
                     }
                 })
                 .then(response => response.text())
@@ -824,15 +810,6 @@
                     // Si el HTML está vacío, mostrar mensaje
                     if (html.trim() === '') {
                         tableContainer.innerHTML = '<div class="alert alert-warning text-center">No hay resultados que concuerden con tu filtro.</div>';
-
-
-
-
-
-
-
-
-
                         return;
                     }
 
@@ -880,65 +857,6 @@
                             setTimeout(() => {
                                 aplicarFiltros();
                             }, 100); // Pequeño retraso para asegurar que DataTable está listo
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                         }
                     } else {
                         // Si no hay tabla, mostrar mensaje informativo
@@ -962,69 +880,6 @@
                         } else {
                             tipoActual = 'todas';
                         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                     }
                 })
                 .catch(error => {
