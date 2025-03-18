@@ -18,10 +18,6 @@
     <tbody id="reservas-tbody">
         @forelse($reservas as $reserva)
         <tr>
-            data-estado="{{ $reserva->estado }}"
-            data-nombre="{{ $reserva->nombre }}"
-            data-celular="{{ $reserva->celular }}"
-            data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}">
             <td>{{ $reserva->id }}</td>
             <td>{{ $reserva->nombre }}</td>
             <td>{{ $reserva->celular }}</td>
