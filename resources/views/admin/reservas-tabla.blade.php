@@ -89,39 +89,41 @@
           @endif
         </td>
         <td>
-          @if($reserva->estado == 'revision' || $reserva->estado == 'aprobado')
-            <button type="button" class="btn btn-sm btn-warning mb-1 edit-series"
-              data-id="{{ $reserva->id }}"
-              data-nombre="{{ $reserva->nombre }}"
-              data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}"
-              data-cantidad="{{ $reserva->cantidad }}"
-              data-total="{{ $reserva->total }}"
-              data-bingo-id="{{ $reserva->bingo_id }}"
-              data-bingo-precio="{{ $reserva->bingo ? $reserva->bingo->precio : 0 }}">
-              <i class="bi bi-pencil-square"></i> Editar Series
-            </button>
-          @endif
+         <!-- Cambiado de "revision o aprobado" a solo "revision" -->
+         @if($reserva->estado == 'revision')
+                <button type="button" class="btn btn-sm btn-warning mb-1 edit-series"
+                    data-id="{{ $reserva->id }}"
+                    data-update-url="{{ route('reservas.update-series', $reserva->id) }}"
+                    data-nombre="{{ $reserva->nombre }}"
+                    data-series="{{ is_string($reserva->series) ? $reserva->series : json_encode($reserva->series) }}"
+                    data-cantidad="{{ $reserva->cantidad }}"
+                    data-total="{{ $reserva->total }}"
+                    data-bingo-id="{{ $reserva->bingo_id }}"
+                    data-bingo-precio="{{ $reserva->bingo ? $reserva->bingo->precio : 0 }}">
+                    <i class="bi bi-pencil-square"></i> Editar Series
+                </button>
+                @endif
 
-          @if($reserva->estado == 'revision')
-            <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline aprobar-form mt-1">
-              @csrf
-              @method('PATCH')
-              <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
-            </form>
-            <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
-              @csrf
-              @method('PATCH')
-              <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
-            </form>
-          @elseif($reserva->estado == 'aprobado')
-            <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline mt-1">
-              @csrf
-              @method('PATCH')
-              <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
-            </form>
-          @elseif($reserva->estado == 'rechazado')
-            <span class="text-white">Rechazado</span>
-          @endif
+                @if($reserva->estado == 'revision')
+                <form action="{{ route('reservas.aprobar', $reserva->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
+                </form>
+                <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                </form>
+                @elseif($reserva->estado == 'aprobado')
+                <form action="{{ route('reservas.rechazar', $reserva->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                </form>
+                @elseif($reserva->estado == 'rechazado')
+                <span class="text-white">Rechazado</span>
+                @endif
         </td>
       </tr>
       @empty
