@@ -124,6 +124,8 @@
     </tbody>
 </table>
 
+
+
 <!-- Modal para editar series -->
 <div class="modal fade" id="editSeriesModal" tabindex="-1" aria-labelledby="editSeriesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -251,11 +253,24 @@ document.addEventListener('DOMContentLoaded', function() {
         tableContainer.addEventListener('submit', handleTableContainerSubmit);
     }
     
-    function handleTableContainerClick(e) {
+        function handleTableContainerClick(e) {
         // Verificar si el clic fue en un botón edit-series o su icono hijo
         const editButton = e.target.closest('.edit-series');
         if (editButton) {
             handleEditSeries.call(editButton, e);
+        }
+        
+        // Verificar si el clic fue en un botón para borrar cliente
+        const deleteButton = e.target.closest('.delete-cliente');
+        if (deleteButton) {
+            handleDeleteCliente.call(deleteButton, e);
+        }
+        
+        // Verificar si el clic fue en un botón para abrir el modal de borrar todos los clientes
+        const deleteAllButton = e.target.closest('.delete-all-clients');
+        if (deleteAllButton) {
+            e.preventDefault();
+            openDeleteAllClientsModal();
         }
         
         // Agregar aquí otros elementos que necesiten manejo de clics
@@ -265,6 +280,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Verificar si el submit fue de un formulario de aprobar/rechazar
         if (e.target.matches('form[action*="aprobar"], form[action*="rechazar"]')) {
             handleFormSubmit.call(e.target, e);
+        }
+        
+        // Verificar si el submit fue de un formulario de eliminación
+        if (e.target.matches('form[action*="delete"], form[method="DELETE"], form.delete-form')) {
+            const confirmMessage = e.target.getAttribute('data-confirm') || '¿Estás seguro de que deseas eliminar este registro?';
+            if (!confirm(confirmMessage)) {
+                e.preventDefault();
+                return false;
+            }
         }
     }
     
@@ -755,6 +779,163 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // ===== MANEJO DE MODAL PARA BORRAR TODOS LOS CLIENTES =====
+    function openDeleteAllClientsModal() {
+        const modal = document.getElementById('confirmDeleteModal');
+        if (!modal) {
+            console.error('Error: No se encontró el modal #confirmDeleteModal');
+            return;
+        }
+        
+        // Limpiar el campo de confirmación
+        const confirmTextInput = document.getElementById('confirmText');
+        if (confirmTextInput) {
+            confirmTextInput.value = '';
+        }
+        
+        // Deshabilitar el botón de confirmación
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.disabled = true;
+        }
+        
+        // Mostrar el modal
+        try {
+            const confirmDeleteModal = new bootstrap.Modal(modal);
+            confirmDeleteModal.show();
+        } catch (error) {
+            console.error('Error al mostrar el modal:', error);
+            // Alternativa si hay error con Bootstrap
+            modal.style.display = 'block';
+            modal.classList.add('show');
+        }
+        
+        // Configurar el evento para el campo de texto de confirmación
+        setupConfirmDeleteValidation();
+    }
+    
+    function setupConfirmDeleteValidation() {
+        const confirmTextInput = document.getElementById('confirmText');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const expectedText = "BORRAR TODOS LOS CLIENTES";
+        
+        if (!confirmTextInput || !confirmDeleteBtn) {
+            console.error('Error: No se encontraron los elementos necesarios para la validación');
+            return;
+        }
+        
+        // Remover listener previo para evitar duplicados
+        confirmTextInput.removeEventListener('input', handleConfirmTextInput);
+        
+        // Agregar nuevo listener
+        confirmTextInput.addEventListener('input', handleConfirmTextInput);
+        
+        function handleConfirmTextInput() {
+            // Habilitar el botón solo si el texto coincide exactamente
+            const inputText = confirmTextInput.value.trim();
+            confirmDeleteBtn.disabled = (inputText !== expectedText);
+            
+            // Cambiar estilo del campo dependiendo si es correcto
+            if (inputText === expectedText) {
+                confirmTextInput.classList.add('is-valid');
+                confirmTextInput.classList.remove('is-invalid');
+            } else if (inputText.length > 0) {
+                confirmTextInput.classList.add('is-invalid');
+                confirmTextInput.classList.remove('is-valid');
+            } else {
+                confirmTextInput.classList.remove('is-valid', 'is-invalid');
+            }
+        }
+        
+        // Configurar evento para el formulario de eliminación
+        const deleteClientsForm = document.getElementById('deleteClientsForm');
+        if (deleteClientsForm) {
+            // Remover listener previo
+            deleteClientsForm.removeEventListener('submit', handleDeleteAllClientsSubmit);
+            
+            // Agregar nuevo listener
+            deleteClientsForm.addEventListener('submit', handleDeleteAllClientsSubmit);
+        }
+    }
+    
+    function handleDeleteAllClientsSubmit(event) {
+        const confirmTextInput = document.getElementById('confirmText');
+        const expectedText = "BORRAR TODOS LOS CLIENTES";
+        
+        // Verificación adicional de seguridad
+        if (!confirmTextInput || confirmTextInput.value.trim() !== expectedText) {
+            event.preventDefault();
+            alert('Por favor, confirma la eliminación escribiendo el texto exacto solicitado.');
+            return false;
+        }
+        
+        // Si todo está correcto, se enviará el formulario normalmente
+        console.log('Enviando formulario para eliminar todos los clientes...');
+        
+        // Opcionalmente, cerrar el modal después de enviar
+        try {
+            const modal = document.getElementById('confirmDeleteModal');
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        } catch (error) {
+            console.error('Error al cerrar el modal:', error);
+        }
+    }
+    
+    // ===== MANEJO DE ELIMINACIÓN DE CLIENTES =====
+    function handleDeleteCliente(event) {
+        event.preventDefault();
+        
+        // Obtener el ID y nombre del cliente desde los atributos de datos
+        const clienteId = this.getAttribute('data-id');
+        const clienteNombre = this.getAttribute('data-nombre') || 'este cliente';
+        
+        if (!clienteId) {
+            console.error('Error: No se encontró el ID del cliente para eliminar');
+            return;
+        }
+        
+        // Mostrar confirmación antes de eliminar
+        if (confirm(`¿Estás seguro de que deseas eliminar a ${clienteNombre}? Esta acción no se puede deshacer.`)) {
+            // Crear y enviar formulario dinámicamente
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
+            
+            // Construir URL de eliminación
+            let deleteUrl = this.getAttribute('data-url');
+            if (!deleteUrl) {
+                // Construir URL por defecto si no se proporciona
+                deleteUrl = `/admin/clientes/${clienteId}`;
+            }
+            
+            form.action = deleteUrl;
+            
+            // Agregar token CSRF
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+            }
+            
+            // Agregar método DELETE
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            form.appendChild(methodInput);
+            
+            // Añadir formulario al DOM y enviarlo
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    
     // ===== INICIALIZACIÓN Y ASIGNACIÓN DE EVENTOS =====
     
     // Inicializar DataTable al cargar la página
@@ -820,10 +1001,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalCloseButtons = document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close');
     modalCloseButtons.forEach(button => {
         button.addEventListener('click', function() {
-            if (modalInstance) {
+            const modalId = this.closest('.modal')?.id;
+            
+            if (modalId === 'editSeriesModal' && modalInstance) {
                 modalInstance.hide();
+            } else if (modalId === 'confirmDeleteModal') {
+                try {
+                    const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal'));
+                    if (confirmModal) {
+                        confirmModal.hide();
+                    } else {
+                        const modal = document.getElementById('confirmDeleteModal');
+                        if (modal) {
+                            modal.style.display = 'none';
+                            modal.classList.remove('show');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al cerrar modal:', error);
+                    const modal = document.getElementById('confirmDeleteModal');
+                    if (modal) {
+                        modal.style.display = 'none';
+                        modal.classList.remove('show');
+                    }
+                }
             } else {
-                const modal = document.getElementById('editSeriesModal');
+                const modal = this.closest('.modal');
                 if (modal) {
                     modal.style.display = 'none';
                     modal.classList.remove('show');
@@ -831,5 +1034,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Configurar validación para borrar todos los clientes si el modal ya está en el DOM
+    if (document.getElementById('confirmDeleteModal')) {
+        setupConfirmDeleteValidation();
+    }
 });
 </script>
