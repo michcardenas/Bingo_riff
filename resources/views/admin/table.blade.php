@@ -240,18 +240,474 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Función para configurar eventos en la tabla
-    function setupTableEvents() {
+  // Manejador para el evento de editar series
+function handleEditSeries() {
+    console.log('🔍 DEBUG: Iniciando handleEditSeries');
+    
+    try {
+        const modal = document.getElementById('editSeriesModal');
+        if (!modal) {
+            console.error('🛑 ERROR: No se encontró el elemento #editSeriesModal');
+            return;
+        }
+        
+        const seriesData = this.getAttribute('data-series');
+        console.log('🔍 DEBUG: data-series obtenido:', seriesData);
+        
+        const reservaId = this.getAttribute('data-id');
+        const bingoId = this.getAttribute('data-bingo-id');
+        const cantidad = parseInt(this.getAttribute('data-cantidad'));
+        const total = parseInt(this.getAttribute('data-total'));
+        const bingoPrice = parseInt(this.getAttribute('data-bingo-precio'));
+        
+        console.log('🔍 DEBUG: Atributos obtenidos:', {
+            reservaId,
+            bingoId,
+            cantidad,
+            total,
+            bingoPrice
+        });
+        
+        let series = [];
+
+        try {
+            if (seriesData) {
+                series = JSON.parse(seriesData);
+                console.log('🔍 DEBUG: Series parseadas con éxito:', series);
+            } else {
+                console.warn('⚠️ ADVERTENCIA: data-series está vacío o no definido');
+            }
+        } catch (e) {
+            console.error('🛑 ERROR al parsear series:', e);
+            console.log('🔍 DEBUG: Intentando método alternativo de parseo');
+            // Si las series no están en formato JSON, intentar convertirlas desde string
+            if (typeof seriesData === 'string') {
+                series = seriesData.split(',').map(item => item.trim());
+                console.log('🔍 DEBUG: Series convertidas desde string:', series);
+            }
+        }
+
+        // Completar datos del formulario
+        const reservaIdElement = document.getElementById('reserva_id');
+        if (!reservaIdElement) {
+            console.error('🛑 ERROR: No se encontró el elemento #reserva_id');
+        } else {
+            reservaIdElement.value = reservaId;
+        }
+        
+        const bingoIdElement = document.getElementById('bingo_id');
+        if (!bingoIdElement) {
+            console.error('🛑 ERROR: No se encontró el elemento #bingo_id');
+        } else {
+            bingoIdElement.value = bingoId;
+        }
+        
+        const clientNameElement = document.getElementById('clientName');
+        if (!clientNameElement) {
+            console.error('🛑 ERROR: No se encontró el elemento #clientName');
+        } else {
+            clientNameElement.textContent = this.getAttribute('data-nombre');
+        }
+        
+        const newQuantityElement = document.getElementById('newQuantity');
+        if (!newQuantityElement) {
+            console.error('🛑 ERROR: No se encontró el elemento #newQuantity');
+        } else {
+            newQuantityElement.value = cantidad;
+            newQuantityElement.setAttribute('max', Array.isArray(series) ? series.length : 1);
+        }
+        
+        const currentTotalElement = document.getElementById('currentTotal');
+        if (!currentTotalElement) {
+            console.error('🛑 ERROR: No se encontró el elemento #currentTotal');
+        } else {
+            currentTotalElement.textContent = new Intl.NumberFormat('es-CL').format(total);
+        }
+
+        // Establecer URL del formulario usando el atributo data-update-url
+        const form = document.getElementById('editSeriesForm');
+        if (!form) {
+            console.error('🛑 ERROR: No se encontró el formulario #editSeriesForm');
+            return;
+        } else {
+            const updateUrl = this.getAttribute('data-update-url');
+            console.log('🔍 DEBUG: URL del formulario:', updateUrl);
+            form.action = updateUrl;
+        }
+
+        // Mostrar series actuales y crear checkboxes
+        const currentSeriesDiv = document.getElementById('currentSeries');
+        const seriesCheckboxesDiv = document.getElementById('seriesCheckboxes');
+
+        if (!currentSeriesDiv) {
+            console.error('🛑 ERROR: No se encontró el elemento #currentSeries');
+            return;
+        }
+        
+        if (!seriesCheckboxesDiv) {
+            console.error('🛑 ERROR: No se encontró el elemento #seriesCheckboxes');
+            return;
+        }
+
+        // Limpiar contenido previo
+        currentSeriesDiv.innerHTML = '';
+        seriesCheckboxesDiv.innerHTML = '';
+
+        // Mostrar y crear checkboxes para cada serie
+        if (Array.isArray(series) && series.length > 0) {
+            console.log('🔍 DEBUG: Creando elementos para', series.length, 'series');
+            
+            const seriesList = document.createElement('ul');
+            seriesList.className = 'list-group';
+
+            series.forEach((serie, index) => {
+                console.log(`🔍 DEBUG: Procesando serie ${index}:`, serie);
+                
+                // Crear elemento de lista
+                const listItem = document.createElement('li');
+                listItem.className = 'list-group-item bg-dark text-white border-light';
+                listItem.textContent = `Serie ${serie}`;
+                seriesList.appendChild(listItem);
+
+                // Crear checkbox
+                const col = document.createElement('div');
+                col.className = 'col-md-4 mb-2';
+
+                const checkDiv = document.createElement('div');
+                checkDiv.className = 'form-check';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `serie_${index}`;
+                checkbox.name = 'selected_series[]';
+                checkbox.value = serie;
+                checkbox.className = 'form-check-input';
+                checkbox.checked = true;
+
+                const label = document.createElement('label');
+                label.htmlFor = `serie_${index}`;
+                label.className = 'form-check-label';
+                label.textContent = `Serie ${serie}`;
+
+                checkDiv.appendChild(checkbox);
+                checkDiv.appendChild(label);
+                col.appendChild(checkDiv);
+                seriesCheckboxesDiv.appendChild(col);
+            });
+
+            currentSeriesDiv.appendChild(seriesList);
+        } else {
+            console.warn('⚠️ ADVERTENCIA: No hay series disponibles o no es un array válido');
+            currentSeriesDiv.textContent = 'No hay series disponibles';
+        }
+
+        // Manejar cambio en la cantidad de cartones
+        const newQuantityInput = document.getElementById('newQuantity');
+        if (!newQuantityInput) {
+            console.error('🛑 ERROR: No se pudo encontrar el elemento #newQuantity para agregar evento');
+        } else {
+            console.log('🔍 DEBUG: Agregando event listeners a #newQuantity');
+            newQuantityInput.removeEventListener('change', handleQuantityChange);
+            newQuantityInput.addEventListener('change', handleQuantityChange);
+        }
+
+        function handleQuantityChange() {
+            console.log('🔍 DEBUG: Ejecutando handleQuantityChange');
+            
+            const newQuantity = parseInt(this.value);
+            console.log('🔍 DEBUG: Nueva cantidad:', newQuantity);
+            
+            if (isNaN(newQuantity)) {
+                console.error('🛑 ERROR: La cantidad no es un número válido');
+                return;
+            }
+            
+            // Actualizar el total estimado
+            const newTotal = newQuantity * bingoPrice;
+            console.log('🔍 DEBUG: Nuevo total calculado:', newTotal);
+            
+            const currentTotalElement = document.getElementById('currentTotal');
+            if (!currentTotalElement) {
+                console.error('🛑 ERROR: No se encontró el elemento #currentTotal');
+            } else {
+                currentTotalElement.textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+            }
+
+            // Actualizar contador
+            updateSelectedCounter();
+        }
+
+        // Función para actualizar contador de seleccionados
+        function updateSelectedCounter() {
+            console.log('🔍 DEBUG: Ejecutando updateSelectedCounter');
+            
+            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+            console.log('🔍 DEBUG: Número de checkboxes encontrados:', checkboxes.length);
+            
+            const newQuantityElement = document.getElementById('newQuantity');
+            if (!newQuantityElement) {
+                console.error('🛑 ERROR: No se encontró el elemento #newQuantity');
+                return;
+            }
+            
+            const newQuantity = parseInt(newQuantityElement.value);
+            if (isNaN(newQuantity)) {
+                console.error('🛑 ERROR: newQuantity no es un número válido:', newQuantityElement.value);
+                return;
+            }
+            
+            console.log('🔍 DEBUG: Cantidad máxima permitida:', newQuantity);
+            
+            let checkedCount = 0;
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) checkedCount++;
+            });
+            
+            console.log('🔍 DEBUG: Número de checkboxes seleccionados:', checkedCount);
+
+            // Verificar si se están seleccionando más series de las permitidas
+            if (checkedCount > newQuantity) {
+                console.log('🔍 DEBUG: Se excedió la cantidad. Desmarcando checkboxes excedentes');
+                
+                // Desmarcar los últimos checkboxes seleccionados para que coincida con la cantidad
+                let toUncheck = checkedCount - newQuantity;
+                console.log('🔍 DEBUG: Checkboxes a desmarcar:', toUncheck);
+                
+                for (let i = checkboxes.length - 1; i >= 0 && toUncheck > 0; i--) {
+                    if (checkboxes[i].checked) {
+                        console.log('🔍 DEBUG: Desmarcando checkbox', i);
+                        checkboxes[i].checked = false;
+                        toUncheck--;
+                    }
+                }
+            }
+        }
+
+        // Añadir listeners a los checkboxes
+        const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+        if (checkboxes.length === 0) {
+            console.warn('⚠️ ADVERTENCIA: No se encontraron checkboxes para agregar event listeners');
+        }
+        
+        console.log('🔍 DEBUG: Agregando event listeners a', checkboxes.length, 'checkboxes');
+        
+        checkboxes.forEach((checkbox, index) => {
+            checkbox.removeEventListener('change', handleCheckboxChange);
+            checkbox.addEventListener('change', handleCheckboxChange);
+            console.log('🔍 DEBUG: Event listener agregado al checkbox', index);
+        });
+
+        function handleCheckboxChange() {
+            console.log('🔍 DEBUG: Ejecutando handleCheckboxChange');
+            
+            const newQuantityElement = document.getElementById('newQuantity');
+            if (!newQuantityElement) {
+                console.error('🛑 ERROR: No se encontró el elemento #newQuantity');
+                return;
+            }
+            
+            const newQuantity = parseInt(newQuantityElement.value);
+            if (isNaN(newQuantity)) {
+                console.error('🛑 ERROR: newQuantity no es un número válido');
+                return;
+            }
+            
+            console.log('🔍 DEBUG: Cantidad máxima permitida:', newQuantity);
+            
+            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+            let checkedCount = 0;
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) checkedCount++;
+            });
+            
+            console.log('🔍 DEBUG: Checkboxes seleccionados:', checkedCount);
+
+            // Si se excede la cantidad permitida, desmarcar este checkbox
+            if (checkedCount > newQuantity && this.checked) {
+                console.log('🔍 DEBUG: Se excedió la cantidad. Desmarcando checkbox actual');
+                this.checked = false;
+                alert(`Solo puedes seleccionar ${newQuantity} series.`);
+            }
+        }
+
+        // Inicializar contador
+        console.log('🔍 DEBUG: Inicializando contador');
+        updateSelectedCounter();
+
+        // Mostrar modal
+        console.log('🔍 DEBUG: Mostrando modal');
+        try {
+            const modalInstance = new bootstrap.Modal(modal);
+            modalInstance.show();
+        } catch (e) {
+            console.error('🛑 ERROR al mostrar el modal:', e);
+        }
+
+        // Manejar clic en el botón de guardar
+        const saveButton = document.getElementById('saveSeriesChanges');
+        if (!saveButton) {
+            console.error('🛑 ERROR: No se encontró el botón #saveSeriesChanges');
+        } else {
+            console.log('🔍 DEBUG: Agregando event listener al botón de guardar');
+            saveButton.removeEventListener('click', handleSaveClick);
+            saveButton.addEventListener('click', handleSaveClick);
+        }
+
+        function handleSaveClick() {
+            console.log('🔍 DEBUG: Ejecutando handleSaveClick');
+            
+            const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
+            console.log('🔍 DEBUG: Checkboxes seleccionados:', selectedCheckboxes.length);
+            
+            const newQuantityElement = document.getElementById('newQuantity');
+            if (!newQuantityElement) {
+                console.error('🛑 ERROR: No se encontró el elemento #newQuantity');
+                return;
+            }
+            
+            const newQuantity = parseInt(newQuantityElement.value);
+            if (isNaN(newQuantity)) {
+                console.error('🛑 ERROR: newQuantity no es un número válido');
+                return;
+            }
+            
+            console.log('🔍 DEBUG: Cantidad requerida:', newQuantity);
+
+            if (selectedCheckboxes.length !== newQuantity) {
+                console.warn(`⚠️ ADVERTENCIA: Selección incorrecta. Se seleccionaron ${selectedCheckboxes.length}, pero se requieren ${newQuantity}`);
+                alert(`Debes seleccionar exactamente ${newQuantity} series.`);
+                return;
+            }
+
+            // Enviar formulario
+            const form = document.getElementById('editSeriesForm');
+            if (!form) {
+                console.error('🛑 ERROR: No se encontró el formulario #editSeriesForm');
+                return;
+            }
+            
+            console.log('🔍 DEBUG: Enviando formulario');
+            form.submit();
+        }
+    } catch (error) {
+        console.error('🛑 ERROR CRÍTICO en handleEditSeries:', error);
+    }
+}
+
+// Manejador para evento de envío de formularios
+function handleFormSubmit(event) {
+    console.log('🔍 DEBUG: Iniciando handleFormSubmit');
+    
+    try {
+        // Encuentra la fila que contiene el formulario
+        const row = this.closest('tr');
+        if (!row) {
+            console.error('🛑 ERROR: No se encontró la fila (tr) que contiene el formulario');
+            return;
+        }
+        
+        // Busca el input editable del número de comprobante en la misma fila
+        const input = row.querySelector('.comprobante-input');
+        
+        if (input) {
+            console.log('🔍 DEBUG: Input de comprobante encontrado, valor:', input.value);
+            
+            // Crea un campo oculto para enviar el valor
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'numero_comprobante';
+            hiddenInput.value = input.value;
+            
+            console.log('🔍 DEBUG: Añadiendo input oculto con valor:', hiddenInput.value);
+            this.appendChild(hiddenInput);
+        } else {
+            console.warn('⚠️ ADVERTENCIA: No se encontró el input .comprobante-input en esta fila');
+        }
+    } catch (error) {
+        console.error('🛑 ERROR CRÍTICO en handleFormSubmit:', error);
+    }
+}
+
+// Función para configurar eventos de tabla (función original proporcionada)
+function setupTableEvents() {
+    console.log('🔍 DEBUG: Iniciando setupTableEvents');
+    
+    try {
         // Configurar eventos para botones de editar series
-        document.querySelectorAll('.edit-series').forEach(button => {
+        const editButtons = document.querySelectorAll('.edit-series');
+        console.log('🔍 DEBUG: Encontrados', editButtons.length, 'botones de editar series (.edit-series)');
+        
+        editButtons.forEach((button, index) => {
+            console.log('🔍 DEBUG: Agregando event listener al botón .edit-series', index);
             button.addEventListener('click', handleEditSeries);
         });
         
         // Configurar eventos para formularios de aprobación/rechazo
-        document.querySelectorAll('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').forEach(form => {
+        const formSelectors = '.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]';
+        const forms = document.querySelectorAll(formSelectors);
+        console.log('🔍 DEBUG: Encontrados', forms.length, 'formularios para aprobar/rechazar');
+        
+        forms.forEach((form, index) => {
+            console.log('🔍 DEBUG: Agregando event listener al formulario de aprobación/rechazo', index);
             form.addEventListener('submit', handleFormSubmit);
         });
+        
+        console.log('🔍 DEBUG: setupTableEvents completado correctamente');
+    } catch (error) {
+        console.error('🛑 ERROR CRÍTICO en setupTableEvents:', error);
     }
+}
+
+// Función para inicializar todos los event listeners en carga de página
+function initEventListeners() {
+    console.log('🔍 DEBUG: Inicializando event listeners globales');
+    
+    try {
+        // Ejecutar la función de configuración de tabla
+        setupTableEvents();
+        
+        // También verificamos otros selectores en caso de que existan implementaciones mixtas
+        // Añadir event listeners a los botones de editar series (selector alternativo)
+        const editButtons = document.querySelectorAll('.edit-series-btn');
+        if (editButtons.length > 0) {
+            console.log('🔍 DEBUG: Encontrados', editButtons.length, 'botones adicionales (.edit-series-btn)');
+            
+            editButtons.forEach((button, index) => {
+                console.log('🔍 DEBUG: Agregando event listener al botón .edit-series-btn', index);
+                button.addEventListener('click', handleEditSeries);
+            });
+        }
+        
+        // Añadir event listeners a los formularios (selector alternativo)
+        const otherForms = document.querySelectorAll('form.comprobante-form');
+        if (otherForms.length > 0) {
+            console.log('🔍 DEBUG: Encontrados', otherForms.length, 'formularios adicionales (.comprobante-form)');
+            
+            otherForms.forEach((form, index) => {
+                console.log('🔍 DEBUG: Agregando event listener al formulario .comprobante-form', index);
+                form.addEventListener('submit', handleFormSubmit);
+            });
+        }
+        
+        console.log('🔍 DEBUG: Todos los event listeners inicializados correctamente');
+    } catch (error) {
+        console.error('🛑 ERROR CRÍTICO al inicializar event listeners:', error);
+    }
+}
+
+// Ejecutar inicialización cuando el DOM esté cargado
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 DEBUG: DOM completamente cargado');
+    initEventListeners();
+});
+
+// También inicializar si el documento ya está cargado
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    console.log('🔍 DEBUG: Documento ya cargado, inicializando inmediatamente');
+    initEventListeners();
+}
     
     // Función para aplicar filtros
     function aplicarFiltros() {
@@ -517,192 +973,3 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-<script>
-        // Manejador para el evento de editar series
-        function handleEditSeries() {
-        const modal = document.getElementById('editSeriesModal');
-        const seriesData = this.getAttribute('data-series');
-        let series = [];
-
-        try {
-            series = JSON.parse(seriesData);
-        } catch (e) {
-            console.error('Error al parsear series:', e);
-            // Si las series no están en formato JSON, intentar convertirlas desde string
-            if (typeof seriesData === 'string') {
-                series = seriesData.split(',').map(item => item.trim());
-            }
-        }
-
-        const reservaId = this.getAttribute('data-id');
-        const bingoId = this.getAttribute('data-bingo-id');
-        const cantidad = parseInt(this.getAttribute('data-cantidad'));
-        const total = parseInt(this.getAttribute('data-total'));
-        const bingoPrice = parseInt(this.getAttribute('data-bingo-precio'));
-
-        // Completar datos del formulario
-        document.getElementById('reserva_id').value = reservaId;
-        document.getElementById('bingo_id').value = bingoId;
-        document.getElementById('clientName').textContent = this.getAttribute('data-nombre');
-        document.getElementById('newQuantity').value = cantidad;
-        document.getElementById('newQuantity').setAttribute('max', Array.isArray(series) ? series.length : 1);
-        document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(total);
-
-        // Establecer URL del formulario usando el atributo data-update-url
-        const form = document.getElementById('editSeriesForm');
-        form.action = this.getAttribute('data-update-url');
-
-        // Mostrar series actuales y crear checkboxes
-        const currentSeriesDiv = document.getElementById('currentSeries');
-        const seriesCheckboxesDiv = document.getElementById('seriesCheckboxes');
-
-        // Limpiar contenido previo
-        currentSeriesDiv.innerHTML = '';
-        seriesCheckboxesDiv.innerHTML = '';
-
-        // Mostrar y crear checkboxes para cada serie
-        if (Array.isArray(series) && series.length > 0) {
-            const seriesList = document.createElement('ul');
-            seriesList.className = 'list-group';
-
-            series.forEach((serie, index) => {
-                // Crear elemento de lista
-                const listItem = document.createElement('li');
-                listItem.className = 'list-group-item bg-dark text-white border-light';
-                listItem.textContent = `Serie ${serie}`;
-                seriesList.appendChild(listItem);
-
-                // Crear checkbox
-                const col = document.createElement('div');
-                col.className = 'col-md-4 mb-2';
-
-                const checkDiv = document.createElement('div');
-                checkDiv.className = 'form-check';
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `serie_${index}`;
-                checkbox.name = 'selected_series[]';
-                checkbox.value = serie;
-                checkbox.className = 'form-check-input';
-                checkbox.checked = true;
-
-                const label = document.createElement('label');
-                label.htmlFor = `serie_${index}`;
-                label.className = 'form-check-label';
-                label.textContent = `Serie ${serie}`;
-
-                checkDiv.appendChild(checkbox);
-                checkDiv.appendChild(label);
-                col.appendChild(checkDiv);
-                seriesCheckboxesDiv.appendChild(col);
-            });
-
-            currentSeriesDiv.appendChild(seriesList);
-        } else {
-            currentSeriesDiv.textContent = 'No hay series disponibles';
-        }
-
-        // Manejar cambio en la cantidad de cartones
-        const newQuantityInput = document.getElementById('newQuantity');
-        newQuantityInput.removeEventListener('change', handleQuantityChange);
-        newQuantityInput.addEventListener('change', handleQuantityChange);
-
-        function handleQuantityChange() {
-            const newQuantity = parseInt(this.value);
-            
-            // Actualizar el total estimado
-            const newTotal = newQuantity * bingoPrice;
-            document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
-
-            // Actualizar contador
-            updateSelectedCounter();
-        }
-
-        // Función para actualizar contador de seleccionados
-        function updateSelectedCounter() {
-            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
-            let checkedCount = 0;
-
-            checkboxes.forEach(cb => {
-                if (cb.checked) checkedCount++;
-            });
-
-            // Verificar si se están seleccionando más series de las permitidas
-            if (checkedCount > newQuantity) {
-                // Desmarcar los últimos checkboxes seleccionados para que coincida con la cantidad
-                let toUncheck = checkedCount - newQuantity;
-                for (let i = checkboxes.length - 1; i >= 0 && toUncheck > 0; i--) {
-                    if (checkboxes[i].checked) {
-                        checkboxes[i].checked = false;
-                        toUncheck--;
-                    }
-                }
-            }
-        }
-
-        // Añadir listeners a los checkboxes
-        document.querySelectorAll('input[name="selected_series[]"]').forEach(checkbox => {
-            checkbox.removeEventListener('change', handleCheckboxChange);
-            checkbox.addEventListener('change', handleCheckboxChange);
-        });
-
-        function handleCheckboxChange() {
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
-            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
-            let checkedCount = 0;
-
-            checkboxes.forEach(cb => {
-                if (cb.checked) checkedCount++;
-            });
-
-            // Si se excede la cantidad permitida, desmarcar este checkbox
-            if (checkedCount > newQuantity && this.checked) {
-                this.checked = false;
-                alert(`Solo puedes seleccionar ${newQuantity} series.`);
-            }
-        }
-
-        // Inicializar contador
-        updateSelectedCounter();
-
-        // Mostrar modal
-        const modalInstance = new bootstrap.Modal(modal);
-        modalInstance.show();
-
-        // Manejar clic en el botón de guardar
-        const saveButton = document.getElementById('saveSeriesChanges');
-        saveButton.removeEventListener('click', handleSaveClick);
-        saveButton.addEventListener('click', handleSaveClick);
-
-        function handleSaveClick() {
-            const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
-            const newQuantity = parseInt(document.getElementById('newQuantity').value);
-
-            if (selectedCheckboxes.length !== newQuantity) {
-                alert(`Debes seleccionar exactamente ${newQuantity} series.`);
-                return;
-            }
-
-            // Enviar formulario
-            document.getElementById('editSeriesForm').submit();
-        }
-    }
-    
-    // Manejador para evento de envío de formularios
-    function handleFormSubmit(event) {
-        // Encuentra la fila que contiene el formulario
-        const row = this.closest('tr');
-        // Busca el input editable del número de comprobante en la misma fila
-        const input = row.querySelector('.comprobante-input');
-        if (input) {
-            // Crea un campo oculto para enviar el valor
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'numero_comprobante';
-            hiddenInput.value = input.value;
-            this.appendChild(hiddenInput);
-        }
-    }
-    </script>
