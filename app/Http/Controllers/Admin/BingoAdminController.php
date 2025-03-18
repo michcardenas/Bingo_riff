@@ -84,21 +84,17 @@ class BingoAdminController extends Controller
     }
 
     public function reservasIndex(Request $request)
-{
-    // Modificado para mostrar los rechazados al final
-    $reservas = Reserva::where('eliminado', false)
-                       ->orderByRaw("CASE WHEN estado = 'rechazado' THEN 1 ELSE 0 END")
-                       ->orderBy('id', 'desc')
-                       ->get();
+    {
+        $reservas = Reserva::orderBy('id', 'desc')->get();
 
-    // Si la solicitud es AJAX, solo devolver la tabla
-    if ($request->ajax()) {
-        return view('admin.table', compact('reservas'))->render();
+        // Si la solicitud es AJAX, solo devolver la tabla
+        if ($request->ajax()) {
+            return view('admin.table', compact('reservas'))->render();
+        }
+
+        // Si no es AJAX, devolver la vista completa
+        return view('admin.indexclientes', compact('reservas'));
     }
-
-    // Si no es AJAX, devolver la vista completa
-    return view('admin.indexclientes', compact('reservas'));
-}
 
     /**
      * Aprueba una reserva y actualiza su estado a "aprobado".
