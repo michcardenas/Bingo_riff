@@ -19,16 +19,13 @@ class BingoAdminController extends Controller
         
         // Asegurar que tengamos la información completa de participantes
         foreach ($bingos as $bingo) {
-            // Si necesitamos información más detallada
+            // Modificado para incluir todos los estados excepto 'rechazado'
             $reservas = Reserva::where('bingo_id', $bingo->id)
-                            ->where(function($query) {
-                                $query->where('estado', 'aprobado')
-                                      ->orWhere('estado', 'revision');
-                            })
+                            ->where('estado', '!=', 'rechazado')
                             ->where('eliminado', false)
                             ->get();
             
-            // Asignar el conteo real (solo contamos las que no están rechazadas o eliminadas)
+            // Asignar el conteo real (contamos todos menos los rechazados o eliminados)
             $bingo->participantes_count = $reservas->count();
             $bingo->cartones_count = $reservas->sum('cantidad');
         }
