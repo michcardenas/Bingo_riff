@@ -446,7 +446,7 @@
             if (!form.action || form.action.includes('null')) {
                 // Si no hay acción establecida o contiene 'null', establecer una predeterminada
                 console.error('Error: URL del formulario no válida', form.action);
-                form.action = `/admin/reservas/${reservaId}/actualizarSeries`;
+                form.action = `/admin/reservas/${reservaId}/update-series`;
                 console.log('Corrigiendo URL del formulario a:', form.action);
             }
 
@@ -1004,4 +1004,6 @@
     if (document.getElementById('confirmDeleteModal')) {
         setupConfirmDeleteValidation();
     }
+});
+
 </script>
