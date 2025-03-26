@@ -845,7 +845,7 @@ class BingoController extends Controller
         }
 
         // Ordenar por orden_bingo para mostrar en orden de reserva
-        $reservas = $query->orderBy('orden_bingo', 'asc')->paginate(15);
+        $reservas = $query->orderBy('orden_bingo', 'asc')->paginate(1000);
 
         // Si es una solicitud AJAX, devolver solo la tabla
         if ($request->ajax()) {

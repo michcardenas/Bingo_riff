@@ -303,7 +303,7 @@ class BingoAdminController extends Controller
         }
 
         // Cambiar el orden para usar orden_bingo en lugar de created_at
-        $reservas = $query->orderBy('orden_bingo', 'asc')->paginate(15);
+        $reservas = $query->orderBy('orden_bingo', 'asc')->paginate(1000);
 
         // Si es una solicitud AJAX, devolver solo la tabla
         if ($request->ajax()) {
