@@ -670,11 +670,13 @@ body {
     </script>
 
 <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
+<!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
 <script>
 // Variables globales
 let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
 let inputCartones, btnMinus, btnPlus, totalPrice, totalPagar, precioCarton;
 let selectedFiles = []; // Array para mantener los archivos seleccionados
+let isSubmitting = false; // Flag para controlar múltiples envíos
 
 // Function to format numbers with thousands separators (without decimals)
 function formatNumber(number) {
@@ -749,6 +751,24 @@ function validarFormulario(event) {
     // Prevent form submission
     event.preventDefault();
     
+    // Evitar múltiples envíos
+    if (isSubmitting) {
+        console.log('Envío en progreso, ignorando clics adicionales');
+        return false;
+    }
+    
+    // Marcar como en proceso de envío
+    isSubmitting = true;
+    
+    // Deshabilitar el botón de reserva
+    const submitButton = document.querySelector('.btn-naranja.text-white.fw-bold');
+    if (submitButton) {
+        const originalText = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+        submitButton.classList.add('disabled');
+    }
+    
     // Get form elements
     const form = event.target;
     const nombre = form.querySelector('input[name="nombre"]');
@@ -798,6 +818,14 @@ function validarFormulario(event) {
             firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         
+        // Reactivar el botón de envío si hay errores de validación
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalText;
+            submitButton.classList.remove('disabled');
+            isSubmitting = false; // Permitir nuevo intento
+        }
+        
         return false;
     }
     
@@ -838,6 +866,14 @@ function validarFormulario(event) {
     console.error('Error completo:', error);
     showErrorNotification('Error al enviar formulario', 
         `Hubo un problema al enviar los datos. Error: ${error.message}. Revisa la consola para más detalles.`);
+    
+    // Reactivar el botón de envío en caso de error
+    if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+        submitButton.classList.remove('disabled');
+        isSubmitting = false; // Permitir nuevo intento
+    }
 });
 }
 
@@ -1043,6 +1079,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+    }
+    
+    // Agregar funcionalidad de un solo clic al botón de reserva
+    const reservarButton = document.querySelector('.btn-naranja.text-white.fw-bold.w-100');
+    if (reservarButton) {
+        reservarButton.addEventListener('click', function() {
+            // Si ya está en proceso de envío, no hacer nada
+            if (isSubmitting) {
+                console.log('Ya hay un envío en proceso, ignorando clic adicional');
+                return false;
+            }
+            
+            // Si no está dentro de un formulario, manejar independientemente
+            const form = this.closest('form');
+            if (!form) {
+                console.log('El botón no está dentro de un formulario');
+                return;
+            }
+            
+            // El botón está dentro de un formulario, el evento submit lo manejará
+            // validarFormulario ya se encargará de deshabilitar el botón
+            // No hacemos nada más ya que el evento submit del formulario se activará
+        });
     }
 });
 
