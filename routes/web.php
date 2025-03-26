@@ -38,8 +38,8 @@ Route::get('/dashboard', function () {
 })->middleware(['auth'])->name('dashboard');
 
 // Redirección para errores 419 (sesión CSRF expirada)
-Route::fallback(function($e = null){
-    if(request()->is('419') || $e instanceof \Illuminate\Session\TokenMismatchException) {
+Route::fallback(function ($e = null) {
+    if (request()->is('419') || $e instanceof \Illuminate\Session\TokenMismatchException) {
         return redirect()->route('home');
     }
 });
@@ -64,30 +64,35 @@ Route::middleware('auth')->group(function () {
         Route::patch('/bingos/{id}/abrir', [BingoAdminController::class, 'abrir'])->name('bingos.abrir');
         Route::patch('/bingos/{id}/archivar', [BingoAdminController::class, 'archivar'])->name('bingos.archivar');
         Route::delete('/bingos/limpiar', [BingoAdminController::class, 'limpiar'])->name('bingos.limpiar');
-        
+        Route::get('/admin/bingos/verificar-duplicados', [BingoAdminController::class, 'verificarDuplicados'])
+            ->name('admin.bingos.verificar-duplicados');
+
+        Route::post('/admin/bingos/marcar-como-unico/{id}', [BingoAdminController::class, 'marcarComoUnico'])
+            ->name('admin.bingos.marcar-como-unico');
+
         // Nueva ruta para actualizar series
         Route::patch('/reservas/{id}/update-series', [BingoAdminController::class, 'updateSeries'])->name('reservas.update-series');
-        
+
         // Rutas para gestionar reservas de un bingo específico
         Route::get('/bingos/{id}/reservas', [BingoAdminController::class, 'reservasPorBingo'])->name('bingos.reservas');
-        
+
         // NUEVA RUTA: Carga parcial de tabla de reservas para un bingo específico
         Route::get('/bingos/{id}/reservas-tabla', [BingoAdminController::class, 'reservasPorBingoTabla'])->name('bingos.reservas-tabla');
-        
+
         // Rutas para gestionar todas las reservas
         Route::get('/reservas', [BingoAdminController::class, 'reservasIndex'])->name('reservas.index');
         Route::patch('/reservas/{id}/aprobar', [BingoAdminController::class, 'reservasAprobar'])->name('reservas.aprobar');
         Route::patch('/reservas/{id}/rechazar', [BingoAdminController::class, 'reservasRechazar'])->name('reservas.rechazar');
-        
+
         // Rutas para vistas especiales de reservas
         Route::get('/reservas/comprobantes-duplicados', [BingoAdminController::class, 'comprobantesDuplicados'])->name('admin.comprobantesDuplicados');
         Route::get('/reservas/pedidos-duplicados', [BingoAdminController::class, 'pedidosDuplicados'])->name('admin.pedidosDuplicados');
         Route::get('/reservas/cartones-eliminados', [BingoAdminController::class, 'cartonesEliminados'])->name('admin.cartonesEliminados');
-        
+
         // NUEVA RUTA: Actualizar número de comprobante vía AJAX
         Route::post('/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateNumeroComprobante'])->name('reservas.update-comprobante');
         Route::patch('/reservas/{id}/numero-comprobante', [BingoAdminController::class, 'updateNumeroComprobante'])->name('reservas.updateNumeroComprobante');
-        
+
         // Rutas para enlaces
         Route::get('/enlaces', [App\Http\Controllers\EnlaceController::class, 'edit'])->name('enlaces.edit');
         Route::patch('/enlaces/update', [App\Http\Controllers\EnlaceController::class, 'update'])->name('enlaces.update');

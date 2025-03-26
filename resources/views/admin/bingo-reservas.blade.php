@@ -1,5 +1,6 @@
 @extends('layouts.admin')
 
+
 @section('content')
 <div class="container-fluid p-0">
     <!-- Encabezado Panel verde -->
@@ -53,6 +54,7 @@
                     </div>
                 </div>
             </div>
+            
         </div>
     </div>
 
@@ -116,9 +118,81 @@
                 <a href="{{ route('bingos.index') }}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> Volver al Panel
                 </a>
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addParticipantModal">
+                    <i class="bi bi-plus-circle"></i> Añadir Participante
+                </button>
             </div>
         </div>
     </div>
+
+
+<!-- Modal Añadir Participante -->
+<div class="modal fade" id="addParticipantModal" tabindex="-1" aria-labelledby="addParticipantModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="addParticipantModalLabel">Añadir Nuevo Participante</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addParticipantForm" method="POST" action="{{ route('bingo.store') }}" enctype="multipart/form-data">
+                    @csrf
+                    <!-- Bingo ID oculto -->
+                    <input type="hidden" name="bingo_id" value="{{ $bingo->id }}">
+                    <!-- Campo para indicar que es desde panel admin -->
+                    <input type="hidden" name="desde_admin" value="1">
+                    <!-- Campo para la redirección -->
+                    <input type="hidden" name="redirect_to" value="{{ route('bingos.index', $bingo->id) }}">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label">Nombre Completo</label>
+                            <input type="text" class="form-control bg-dark text-white border-light" id="nombre" name="nombre" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="celular" class="form-label">Número de Celular</label>
+                            <input type="text" class="form-control bg-dark text-white border-light" id="celular" name="celular" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="cartones" class="form-label">Cantidad de Cartones</label>
+                            <input type="number" class="form-control bg-dark text-white border-light" id="cartones" name="cartones" min="1" value="1" required>
+                            <small class="form-text text-muted">Precio por cartón: ${{ number_format($bingo->precio, 0, ',', '.') }}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="totalPagar" class="form-label">Total a Pagar</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-white border-light">$</span>
+                                <input type="text" class="form-control bg-dark text-white border-light" id="totalPagar" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="comprobante" class="form-label">Comprobante de Pago</label>
+                        <input type="file" class="form-control bg-dark text-white border-light" id="comprobante" name="comprobante[]" accept="image/*" multiple required>
+                        <small class="form-text text-muted">Puedes subir múltiples imágenes (máximo 5MB cada una)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="autoApprove" name="auto_approve">
+                            <label class="form-check-label" for="autoApprove">
+                                Aprobar automáticamente
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-dark">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="addParticipantForm" class="btn btn-success">Guardar Participante</button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Contenedor para la tabla (ahora será DataTable) -->
     <div class="container" id="tableContent">
@@ -713,6 +787,257 @@
     `;
         document.head.appendChild(style);
     });
+</script>
+
+<script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Calcular el total a pagar cuando cambia la cantidad de cartones
+        const cartonesInput = document.getElementById('cartones');
+        const totalPagarInput = document.getElementById('totalPagar');
+        const precioCarton = {{ $bingo->precio ?? 0 }};
+        
+        console.log('Precio del cartón:', precioCarton);
+        
+        function actualizarTotal() {
+            const cantidad = parseInt(cartonesInput.value) || 0;
+            const total = cantidad * precioCarton;
+            console.log('[DEBUG] Total actualizado:', cantidad, 'cartones x', precioCarton, '=', total);
+            totalPagarInput.value = new Intl.NumberFormat('es-CL').format(total);
+        }
+        
+        // Asegurarse de que el elemento existe antes de añadir el evento
+        if (cartonesInput && totalPagarInput) {
+            cartonesInput.addEventListener('input', actualizarTotal);
+            // Inicializar el total al cargar
+            actualizarTotal();
+        } else {
+            console.error('No se encontraron los elementos necesarios para el cálculo del precio');
+        }
+        
+        // Inicializar el total
+        actualizarTotal();
+        
+        // Envío del formulario vía AJAX
+        const form = document.getElementById('addParticipantForm');
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+            
+            // Mostrar indicador de carga en el botón de envío
+            const submitBtn = document.querySelector('button[type="submit"][form="addParticipantForm"]');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+            
+            // Crear FormData para enviar archivos
+            const formData = new FormData(form);
+            
+            // Obtener el token CSRF de forma segura
+            let csrfToken = '';
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            if (csrfMeta) {
+                csrfToken = csrfMeta.getAttribute('content');
+            } else {
+                // Intentar obtener del formulario (Laravel automáticamente añade un campo _token)
+                const tokenInput = document.querySelector('input[name="_token"]');
+                if (tokenInput) {
+                    csrfToken = tokenInput.value;
+                }
+            }
+            
+            // Construir headers
+            const headers = {
+                'X-Requested-With': 'XMLHttpRequest'
+            };
+            
+            if (csrfToken) {
+                headers['X-CSRF-TOKEN'] = csrfToken;
+            }
+            
+            // Realizar la petición AJAX
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: headers
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Error al procesar la solicitud');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Cerrar el modal
+                const modal = document.getElementById('addParticipantModal');
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                modalInstance.hide();
+                
+                // Mostrar mensaje de éxito
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.role = 'alert';
+                alertDiv.innerHTML = `
+                    <strong>¡Éxito!</strong> ${data.message || 'Participante añadido correctamente.'}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                document.querySelector('.container-fluid').insertAdjacentElement('afterbegin', alertDiv);
+                
+                // Recargar la tabla de datos
+                if (typeof loadTableContent === 'function') {
+                    const bingoId = formData.get('bingo_id');
+                    const rutaTablaTodasReservas = `${basePath}/admin/bingos/${bingoId}/reservas-tabla?tipo=todas`;
+                    loadTableContent(rutaTablaTodasReservas);
+                }
+                
+                // Limpiar el formulario
+                form.reset();
+                actualizarTotal();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // Mostrar mensaje de error
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                alertDiv.role = 'alert';
+                alertDiv.innerHTML = `
+                    <strong>Error:</strong> ${error.message || 'Ha ocurrido un error al procesar la solicitud.'}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                document.querySelector('.modal-body').insertAdjacentElement('afterbegin', alertDiv);
+            })
+            .finally(() => {
+                // Restaurar el botón
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            });
+        });
+    });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnComprobanteDuplicado = document.getElementById('btnComprobanteDuplicado');
+    if (!btnComprobanteDuplicado) {
+        console.error('Botón Comprobante Duplicado no encontrado');
+        return;
+    }
+    
+    btnComprobanteDuplicado.addEventListener('click', function() {
+        console.log('Botón Comprobante Duplicado clickeado');
+        mostrarCargando();
+        
+        fetch('/admin/reservas/comprobantes-duplicados', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => {
+            console.log('Estado de respuesta:', response.status);
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
+            return response.text();
+        })
+        .then(html => {
+            console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+            
+            // En lugar de buscar un tbody específico, actualizamos el contenedor general.
+            const container = document.getElementById('tableContent');
+            if (!container) {
+                throw new Error('Contenedor "tableContent" no encontrado');
+            }
+            container.innerHTML = html;
+            console.log('HTML inyectado en tableContent:', container.innerHTML);
+            
+            reinicializarDataTable();
+            mostrarMensaje('Comprobantes duplicados cargados correctamente', 'success');
+            activarBoton(btnComprobanteDuplicado);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            ocultarCargando();
+            mostrarMensaje('Error al cargar comprobantes duplicados: ' + error.message, 'danger');
+        });
+    });
+    
+    function mostrarCargando() {
+        const container = document.getElementById('tableContent');
+        if (container) {
+            container.innerHTML = `
+                <div class="text-center p-5">
+                    <div class="spinner-border text-light" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-3 text-light">Cargando comprobantes duplicados...</p>
+                </div>
+            `;
+        }
+    }
+    
+    function ocultarCargando() {
+        // Puedes dejarlo vacío o agregar lógica para ocultar un spinner si lo implementas de forma separada.
+    }
+    
+    function reinicializarDataTable() {
+        if (typeof $.fn.DataTable === 'function') {
+            // Si ya existe una instancia de DataTable en la tabla con id "reservas-table", destrúyela.
+            if ($.fn.DataTable.isDataTable('#reservas-table')) {
+                $('#reservas-table').DataTable().destroy();
+            }
+            
+            // Reinicializa DataTable sobre la tabla que debe existir dentro del HTML inyectado.
+            $('#reservas-table').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json'
+                },
+                responsive: true,
+                ordering: true,
+                paging: true,
+                pageLength: 50,
+                stateSave: true,
+                drawCallback: function() {
+                    console.log('DataTable inicializado correctamente');
+                }
+            });
+        }
+    }
+    
+    function mostrarMensaje(mensaje, tipo) {
+        const alerta = document.createElement('div');
+        alerta.className = `alert alert-${tipo} alert-dismissible fade show`;
+        alerta.innerHTML = `
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        const container = document.querySelector('.container-fluid') || document.body;
+        container.insertAdjacentElement('afterbegin', alerta);
+        
+        setTimeout(() => {
+            alerta.classList.remove('show');
+            setTimeout(() => alerta.remove(), 150);
+        }, 5000);
+    }
+    
+    function activarBoton(boton) {
+        document.querySelectorAll('.btn-group .btn').forEach(btn => {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+        });
+        boton.classList.remove('btn-secondary');
+        boton.classList.add('btn-primary');
+    }
+});
+
 </script>
 
 <style>

@@ -17,6 +17,7 @@ class Reserva extends Model
         'celular',
         'cantidad',
         'comprobante',
+        'comprobante_metadata', // Nuevo campo añadido
         'series',
         'total',
         'numero_comprobante',

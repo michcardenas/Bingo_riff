@@ -340,6 +340,32 @@
             }
         }
     </style>
+
+    <script>
+        ! function(f, b, e, v, n, t, s) {
+            if (f.fbq) return;
+            n = f.fbq = function() {
+                n.callMethod ?
+                    n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+            };
+            if (!f._fbq) f._fbq = n;
+            n.push = n;
+            n.loaded = !0;
+            n.version = '2.0';
+            n.queue = [];
+            t = b.createElement(e);
+            t.async = !0;
+            t.src = v;
+            s = b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t, s)
+        }(window, document, 'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '1291210271938936');
+        fbq('track', 'Purchase');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+            src="https://www.facebook.com/tr?id=1291210271938936&ev=PageView&noscript=1" /></noscript>
+
 </head>
 
 <body>
@@ -409,9 +435,11 @@
                 <button type="submit" class="btn btn-orange">BUSCAR MIS CARTONES</button>
             </form>
             <!-- Mensaje de notificación de WhatsApp -->
+            @if(!isset($cartones) || !count($cartones) || !collect($cartones)->contains('estado', 'aprobado'))
             <div class="alert alert-info mt-3 mb-3 text-center">
-                <i class="fab fa-whatsapp me-2"></i> Informaremos por el grupo de Whatsapp cuando los cartones esten aprobados para su descarga.
+                <i class="fab fa-whatsapp me-2"></i>Informaremos por el grupo de Whatsapp cuando los cartones esten aprobados para su descarga.
             </div>
+            @endif
 
             @if(isset($cartones) && count($cartones) > 0)
             @php
@@ -448,22 +476,14 @@
                         <td class="carton-estado" data-estado="{{ $carton['estado'] }}">
                             @if($carton['estado'] == 'aprobado')
                             <span class="estado-aprobado">Aprobado</span>
-                            @if(isset($carton['bingo_estado']) && strtolower($carton['bingo_estado']) == 'abierto')
-                            <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="ms-2 download-link" title="Descargar cartón">
-                                <i class="fas fa-download download-icon"></i>
+                            <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="btn btn-sm ms-2 download-link" title="Descargar cartón" style="background-color: #00bf63; color: white;">
+                                Descargar
                             </a>
-                            @elseif(isset($carton['bingo_estado']) && strtolower($carton['bingo_estado']) == 'cerrado')
-                            <a href="javascript:void(0)" class="ms-2" title="Este cartón pertenece a un bingo cerrado y no puede ser descargado" onclick="alert('Este cartón pertenece a un bingo cerrado y no puede ser descargado.')">
-                                <i class="fas fa-lock download-icon"></i>
-                            </a>
-                            <span class="tiempo-descarga tiempo-rojo">Bingo cerrado</span>
-                            @else
-                            <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="ms-2 download-link" title="Descargar cartón">
-                                <i class="fas fa-download download-icon"></i>
-                            </a>
-                            @endif
                             @elseif($carton['estado'] == 'revision')
-                            <span class="estado-revision">Revisión</span>
+                            <span class="estado-revision">Disponible</span>
+                            <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="btn btn-sm ms-2 download-link" title="Descargar cartón" style="background-color: #00bf63; color: white;">
+                                Descargar
+                            </a>
                             @elseif($carton['estado'] == 'rechazado')
                             <span class="estado-rechazado">Rechazado</span>
                             <a href="#" class="ms-2 contactar-admin" data-carton="{{ $carton['numero'] }}" data-whatsapp="{{ $numeroContacto }}">
@@ -479,7 +499,7 @@
             </table>
             @elseif(isset($cartones) && count($cartones) == 0)
             <div class="alert alert-warning mt-3">
-                No se encontraron cartones asociados. Si crees que esto es un error, contacta al administrador por medio del botón de Whatsapp.
+            <i class="fab fa-whatsapp me-2"></i>No se encontraron cartones asociados. Si crees que esto es un error, contacta al administrador por medio del botón de Whatsapp.
             </div>
             @endif
 
@@ -563,17 +583,12 @@
                     });
                 }
 
-                /**
-                 * Procesa la información del bingo y actualiza la visualización del cartón
-                 * Prioriza el estado "archivado" sobre cualquier otro estado
-                 */
                 function procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal) {
                     if (!infoBingo) return;
 
                     const bingoEstado = infoBingo.estado ? infoBingo.estado.toLowerCase() : '';
                     const estadoSpan = celdaEstado.querySelector('span[class^="estado-"]');
-                    const iconoDescarga = celdaEstado.querySelector('.fa-download');
-                    const enlaceDescarga = iconoDescarga ? iconoDescarga.closest('a') : null;
+                    const enlaceDescarga = celdaEstado.querySelector('.download-link');
                     const enlaceWhatsapp = celdaEstado.querySelector('.contactar-admin');
 
                     // Verificar si el bingo está archivado (no debería aparecer, pero por si acaso)
@@ -590,21 +605,17 @@
                             enlaceWhatsapp.style.display = 'none';
                         }
 
-                        // 3. Para cartones aprobados, cambiar el icono de descarga por un candado
-                        if (iconoDescarga) {
-                            iconoDescarga.classList.remove('fa-download');
-                            iconoDescarga.classList.add('fa-lock');
-
-                            // Deshabilitar el enlace de descarga
-                            if (enlaceDescarga) {
-                                enlaceDescarga.setAttribute('data-original-href', enlaceDescarga.href);
-                                enlaceDescarga.href = 'javascript:void(0)';
-                                enlaceDescarga.title = 'Este cartón pertenece a un bingo archivado y no puede ser descargado';
-                                enlaceDescarga.onclick = function(e) {
-                                    e.preventDefault();
-                                    alert('Este cartón pertenece a un bingo archivado y no puede ser descargado.');
-                                };
-                            }
+                        // 3. Para cartones aprobados, cambiar el botón de descarga
+                        if (enlaceDescarga) {
+                            enlaceDescarga.setAttribute('data-original-href', enlaceDescarga.href);
+                            enlaceDescarga.href = 'javascript:void(0)';
+                            enlaceDescarga.textContent = 'Archivado';
+                            enlaceDescarga.style.backgroundColor = '#808080'; // Gris para archivado
+                            enlaceDescarga.title = 'Este cartón pertenece a un bingo archivado y no puede ser descargado';
+                            enlaceDescarga.onclick = function(e) {
+                                e.preventDefault();
+                                alert('Este cartón pertenece a un bingo archivado y no puede ser descargado.');
+                            };
                         }
 
                         // 4. Agregar indicador visual de archivado
@@ -613,44 +624,18 @@
                         return;
                     }
 
-                    // Si está cerrado, deshabilitar descarga
-                    if (bingoEstado === 'cerrado' && estadoOriginal === 'aprobado' && enlaceDescarga) {
-                        // Deshabilitar enlace de descarga
-                        enlaceDescarga.setAttribute('data-original-href', enlaceDescarga.href);
-                        enlaceDescarga.href = 'javascript:void(0)';
-                        enlaceDescarga.title = 'Este cartón pertenece a un bingo cerrado y no puede ser descargado';
-
-                        // Cambiar icono de descarga por candado
-                        if (iconoDescarga) {
-                            iconoDescarga.classList.remove('fa-download');
-                            iconoDescarga.classList.add('fa-lock');
-                        }
-
-                        // Configurar alerta al hacer clic
-                        enlaceDescarga.onclick = function(e) {
-                            e.preventDefault();
-                            alert('Este cartón pertenece a un bingo cerrado y no puede ser descargado.');
-                        };
-
-                        // Agregar indicador visual de que el bingo está cerrado
-                        agregarIndicadorVisual(celdaEstado, 'cerrado');
-                    }
-
-                    // Si está abierto, asegurarse de que sea descargable (por si hubo cambios)
-                    if (bingoEstado === 'abierto' && estadoOriginal === 'aprobado' && enlaceDescarga) {
+                    // Para cartones aprobados, asegurarse de que sean descargables
+                    if (estadoOriginal === 'aprobado' && enlaceDescarga) {
                         // Verificar si hay que restaurar el enlace original
                         const originalHref = enlaceDescarga.getAttribute('data-original-href');
                         if (originalHref) {
                             enlaceDescarga.href = originalHref;
                             enlaceDescarga.removeAttribute('data-original-href');
+                            enlaceDescarga.textContent = 'Descargar';
+                            enlaceDescarga.style.backgroundColor = '#00bf63'; // Verde de aprobado
+                            enlaceDescarga.style.color = 'white';
                             enlaceDescarga.title = 'Descargar cartón';
                             enlaceDescarga.onclick = null; // Eliminar cualquier onclick previo
-                        }
-
-                        // Asegurar que el icono sea de descarga
-                        if (iconoDescarga && iconoDescarga.classList.contains('fa-lock')) {
-                            iconoDescarga.classList.remove('fa-lock');
-                            iconoDescarga.classList.add('fa-download');
                         }
 
                         // Quitar cualquier indicador visual previo
@@ -658,39 +643,7 @@
                         if (indicadorExistente) {
                             indicadorExistente.remove();
                         }
-
-                        // Opcional: agregar indicador visual de que está disponible
-                        agregarIndicadorVisual(celdaEstado, 'disponible');
                     }
-                }
-
-                /**
-                 * Agrega un indicador visual del estado de disponibilidad del cartón
-                 */
-                function agregarIndicadorVisual(celdaEstado, tipo) {
-                    // Eliminar indicador existente si hay uno
-                    const indicadorExistente = celdaEstado.querySelector('.tiempo-descarga');
-                    if (indicadorExistente) {
-                        indicadorExistente.remove();
-                    }
-
-                    // Crear el nuevo indicador
-                    const indicador = document.createElement('span');
-                    indicador.className = 'tiempo-descarga';
-
-                    if (tipo === 'archivado') {
-                        indicador.textContent = 'Bingo archivado';
-                        indicador.classList.add('tiempo-amarillo');
-                    } else if (tipo === 'cerrado') {
-                        indicador.textContent = 'Bingo cerrado';
-                        indicador.classList.add('tiempo-rojo');
-                    } else if (tipo === 'disponible') {
-                        indicador.textContent = 'Disponible';
-                        indicador.classList.add('tiempo-verde');
-                    }
-
-                    // Agregar el indicador a la celda
-                    celdaEstado.appendChild(indicador);
                 }
 
                 /**

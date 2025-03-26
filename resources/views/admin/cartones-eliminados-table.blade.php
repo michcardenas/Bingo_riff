@@ -71,7 +71,7 @@
             </td>
             <td>
                 @if($reserva->estado == 'revision')
-                    <span class="badge bg-warning text-dark">Revisión</span>
+                    <span class="badge bg-warning text-dark">Disponible</span>
                 @elseif($reserva->estado == 'aprobado')
                     <span class="badge bg-success">Aprobado</span>
                 @elseif($reserva->estado == 'rechazado')

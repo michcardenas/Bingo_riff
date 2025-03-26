@@ -124,8 +124,12 @@ class CartonController extends Controller
         // Eliminar ceros a la izquierda
         $numeroSinCeros = ltrim($numero, '0');
     
-        // Buscar reservas aprobadas
-        $query = Reserva::where('estado', 'aprobado')->where('eliminado', 0);
+        // Buscar reservas aprobadas o en revisión (disponibles)
+        $query = Reserva::where(function($q) {
+            $q->where('estado', 'aprobado')
+              ->orWhere('estado', 'revision');
+        })->where('eliminado', 0);
+        
         if ($bingoId) {
             $query->where('bingo_id', $bingoId);
         }
@@ -145,10 +149,10 @@ class CartonController extends Controller
         }
     
         if (!$reservaEncontrada) {
-            Log::warning("Cartón no encontrado o no aprobado: $numero");
-            return redirect()->back()->with('error', 'El cartón no existe o no está aprobado.');
+            Log::warning("Cartón no encontrado o no disponible: $numero");
+            return redirect()->back()->with('error', 'El cartón no existe o no está disponible para descarga.');
         }
-
+    
         // Verificar el estado del bingo
         if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
             $bingo = $reservaEncontrada->bingo;
@@ -160,17 +164,14 @@ class CartonController extends Controller
                 return redirect()->back()->with('error', 'Este cartón pertenece a un bingo archivado y no puede ser descargado.');
             }
             
-            // Verificar si el bingo está cerrado - ya no se permite descarga
-            if ($bingoEstado !== 'abierto') {
-                Log::warning("Intento de descarga de cartón {$numero} para bingo cerrado");
-                return redirect()->back()->with('error', 'Este cartón pertenece a un bingo cerrado y ya no puede ser descargado.');
-            }
+            // Ya no verificamos si el bingo está cerrado, permitiendo descargas sin importar el estado
+            // Se eliminó la condición que impedía descargar cartones de bingos cerrados
         }
-
+    
         // Convertir el número a entero para quitar ceros iniciales
         $numeroSinCeros = intval($numero);
         $rutaCompleta = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroSinCeros . '.pdf');
-
+    
         if (!file_exists($rutaCompleta)) {
             Log::warning("Archivo de cartón no encontrado: $rutaCompleta");
             return redirect()->back()->with('error', 'No se encontró el archivo del cartón.');
