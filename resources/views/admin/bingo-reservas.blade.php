@@ -933,13 +933,13 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Botón Comprobante Duplicado clickeado');
         mostrarCargando();
         
-        fetch('/admin/reservas/comprobantes-duplicados', {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html'
-            }
-        })
+        fetch("{{ route('admin.comprobantesDuplicados') }}", {
+    method: 'GET',
+    headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'text/html'
+    }
+})
         .then(response => {
             console.log('Estado de respuesta:', response.status);
             if (!response.ok) {
@@ -982,10 +982,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         }
     }
-    
-    function ocultarCargando() {
-        // Puedes dejarlo vacío o agregar lógica para ocultar un spinner si lo implementas de forma separada.
-    }
+
     
     function reinicializarDataTable() {
         if (typeof $.fn.DataTable === 'function') {
