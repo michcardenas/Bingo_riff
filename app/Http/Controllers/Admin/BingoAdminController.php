@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bingo;
+use Yajra\DataTables\Facades\DataTables;
 use App\Models\Reserva;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -257,53 +258,46 @@ class BingoAdminController extends Controller
         ));
     }
 
-    /**
-     * Mostrar tabla parcial de reservas filtradas
-     */
     public function reservasPorBingoTabla(Request $request, $id)
-{
-    $bingo = Bingo::findOrFail($id);
-    $query = Reserva::where('bingo_id', $id);
-
-    // Filtrar por tipo
-    $tipo = $request->tipo ?? 'todas';
-    if ($tipo === 'aprobadas') {
-        $query->where('estado', 'aprobado');
-    } elseif ($tipo === 'pendientes') {
-        $query->where('estado', 'revision');
-    } elseif ($tipo === 'rechazadas') {
-        $query->where('estado', 'rechazado');
+    {
+        $bingo = Bingo::findOrFail($id);
+        $query = Reserva::where('bingo_id', $id);
+    
+        // Filtrar por tipo
+        $tipo = $request->tipo ?? 'todas';
+        if ($tipo === 'aprobadas') {
+            $query->where('estado', 'aprobado');
+        } elseif ($tipo === 'pendientes') {
+            $query->where('estado', 'revision');
+        } elseif ($tipo === 'rechazadas') {
+            $query->where('estado', 'rechazado');
+        }
+    
+        // Filtros adicionales
+        if ($request->filled('nombre')) {
+            $query->where('nombre', 'LIKE', '%' . $request->nombre . '%');
+        }
+        if ($request->filled('celular')) {
+            $query->where('celular', 'LIKE', '%' . $request->celular . '%');
+        }
+        if ($request->filled('serie')) {
+            $serie = $request->serie;
+            $serieFormateada = '"[\\"' . $serie . '\\"]"';
+            $serieEnArray = '[\\"' . $serie . '\\"';
+            $query->where(function ($q) use ($serieFormateada, $serieEnArray) {
+                $q->where('series', $serieFormateada)
+                  ->orWhere('series', 'LIKE', '%' . $serieEnArray . '%');
+            });
+        }
+    
+        $query->orderBy('orden_bingo', 'asc');
+    
+        return DataTables::of($query)
+            ->editColumn('created_at', function($row) {
+                return $row->created_at ? $row->created_at->format('d/m/Y') : '';
+            })
+            ->make(true);
     }
-
-    // Filtros adicionales
-    if ($request->filled('nombre')) {
-        $query->where('nombre', 'LIKE', '%' . $request->nombre . '%');
-    }
-    if ($request->filled('celular')) {
-        $query->where('celular', 'LIKE', '%' . $request->celular . '%');
-    }
-    if ($request->filled('serie')) {
-        $serie = $request->serie;
-        // Buscamos coincidencias exactas o parciales en el campo series
-        $serieFormateada = '"[\\"' . $serie . '\\"]"';
-        $serieEnArray = '[\\"' . $serie . '\\"';
-        $query->where(function ($q) use ($serieFormateada, $serieEnArray) {
-            $q->where('series', $serieFormateada)
-              ->orWhere('series', 'LIKE', '%' . $serieEnArray . '%');
-        });
-    }
-
-    // Ordenamos según orden_bingo
-    $query->orderBy('orden_bingo', 'asc');
-
-    // Retornamos el resultado utilizando DataTables para procesamiento en el servidor
-    return datatables()->of($query)
-        ->editColumn('created_at', function($row) {
-            return $row->created_at ? $row->created_at->format('d/m/Y') : '';
-        })
-        // Aquí puedes agregar otros formateos o columnas personalizadas si es necesario
-        ->make(true);
-}
 
 
 
