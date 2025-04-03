@@ -732,21 +732,56 @@
         });
 
         // Evento para el botón de Filtrar
-        document.getElementById('btnFiltrar').addEventListener('click', function() {
-            const nombre = document.getElementById('nombre').value.trim();
-            const celular = document.getElementById('celular').value.trim();
-            const serie = document.getElementById('serie').value.trim();
+document.getElementById('btnFiltrar').addEventListener('click', function() {
+    const nombre = document.getElementById('nombre').value.trim();
+    const celular = document.getElementById('celular').value.trim();
+    const serie = document.getElementById('serie').value.trim();
 
-            // Si no hay filtros, solo aplicar el filtro por tipo
-            if (!nombre && !celular && !serie) {
-                filtrarPorTipo(tipoActual);
-                return;
-            }
-
-            // Si hay filtros, cargar los datos filtrados
-            const filteredUrl = addFiltersToUrl(rutaTablaTodasReservas);
-            loadTableContent(filteredUrl, true, tipoActual);
-        });
+    // Guardar el tipo actual antes de cargar nuevos datos
+    const tipoAplicar = tipoActual;
+    
+    // Siempre cargar los datos con los filtros aplicados
+    const filteredUrl = addFiltersToUrl(rutaTablaTodasReservas);
+    
+    // Mostrar indicador de carga
+    mostrarCargando();
+    
+    // Cargamos datos y después aplicamos el filtro por tipo
+    fetch(filteredUrl, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Actualizar contenedor
+        const container = document.getElementById('tableContent');
+        container.innerHTML = html;
+        
+        // Inicializar DataTable
+        if (typeof initializeDataTable === 'function') {
+            initializeDataTable();
+            
+            // Una vez inicializado, aplicar el filtro por tipo
+            console.log(`Aplicando filtro de tipo: ${tipoAplicar}`);
+            setTimeout(() => {
+                filtrarPorTipo(tipoAplicar);
+            }, 200);
+        }
+    })
+    .catch(error => {
+        console.error('Error cargando datos filtrados:', error);
+        document.getElementById('tableContent').innerHTML = `
+            <div class="alert alert-danger text-center">
+                Error al cargar los datos: ${error.message}
+            </div>`;
+    });
+});
 
         // Evento para el botón de Limpiar filtros
         document.getElementById('btnLimpiar').addEventListener('click', function() {
