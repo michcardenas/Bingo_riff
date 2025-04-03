@@ -248,63 +248,62 @@
         }
 
         // Función para cargar la tabla vía AJAX
-function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
-    console.log('Intentando cargar tabla desde URL:', url);
+        function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
+            console.log('Intentando cargar tabla desde URL:', url);
 
-    // Mostrar indicador de carga
-    document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
+            // Mostrar indicador de carga
+            document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
 
-    // Destruir DataTable existente si existe
-    if (dataTable !== null) {
-        dataTable.destroy();
-        dataTable = null;
-    }
+            // Destruir DataTable existente si existe
+            if (dataTable !== null) {
+                dataTable.destroy();
+                dataTable = null;
+            }
 
-    // Hacer la petición AJAX
-    fetch(url, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => {
-        console.log('Estado de respuesta:', response.status);
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-        return response.text();
-    })
-    .then(html => {
-        console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+            // Hacer la petición AJAX
+            fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    console.log('Estado de respuesta:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
 
-        // Si el HTML está vacío o contiene mensaje de no resultados
-        if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
-            document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
-            return;
-        }
+                    // Si el HTML está vacío o contiene mensaje de no resultados
+                    if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
+                        document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
+                        return;
+                    }
 
-        // Actualizar el contenedor con la tabla
-        document.getElementById('tableContent').innerHTML = html;
+                    // Actualizar el contenedor con la tabla
+                    document.getElementById('tableContent').innerHTML = html;
 
-        // Inicializar DataTable
-        initializeDataTable();
+                    // Inicializar DataTable
+                    initializeDataTable();
 
-        // Si hay que filtrar después de cargar, aplicar el filtro
-        if (filtrarDespues && dataTable) {
-            setTimeout(() => {
-                filtrarPorTipo(tipoFiltro);
-            }, 100);
-        }
-    })
-    .catch(error => {
-        console.error('Error cargando tabla:', error);
-        document.getElementById('tableContent').innerHTML =
-            `<div class="alert alert-danger text-center">
+                    // Si hay que filtrar después de cargar, aplicar el filtro
+                    if (filtrarDespues && dataTable) {
+                        setTimeout(() => {
+                            filtrarPorTipo(tipoFiltro);
+                        }, 100);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cargando tabla:', error);
+                    document.getElementById('tableContent').innerHTML =
+                        `<div class="alert alert-danger text-center">
                 Error al cargar los datos: ${error.message}<br>
                 <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
             </div>`;
-    });
-}
-
+                });
+        }
 
         // Función para inicializar DataTable
         function initializeDataTable() {

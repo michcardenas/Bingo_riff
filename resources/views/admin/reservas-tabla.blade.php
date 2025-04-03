@@ -203,44 +203,67 @@
   <script src="https://cdn.datatables.net/buttons/2.3.3/js/buttons.print.min.js"></script>
 
   <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar DataTable con procesamiento del lado del servidor
-    $('#reservas-table').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-            url: "{{ route('admin.reservas.bingo.tabla', $bingo->id) }}",
-            data: function(d) {
-                d.tipo = "{{ request('tipo', 'todas') }}";
-                d.nombre = $('#nombre').val();
-                d.celular = $('#celular').val();
-                d.serie = $('#serie').val();
-            }
-        },
-        columns: [
-            // Columna oculta para ordenación por "orden_bingo"
-            { data: 'orden_bingo', name: 'orden_bingo', visible: false },
-            { data: 'id', name: 'id' },
-            { data: 'nombre', name: 'nombre' },
-            { data: 'celular', name: 'celular' },
-            { data: 'series', name: 'series' },
-            { data: 'estado', name: 'estado' },
-            { data: 'cantidad', name: 'cantidad' },
-            { data: 'total', name: 'total' },
-            { data: 'action', name: 'action', orderable: false, searchable: false }
-        ],
-        // Optimizaciones de rendimiento
-        deferRender: true,
-        scroller: true,
-        scrollY: '60vh',
-        scrollCollapse: true,
-        // Ordenar por "orden_bingo" (columna oculta en el índice 0) de forma ascendente
-        order: [[0, 'asc']],
-        // Configuración de idioma
+    $(document).ready(function() {
+      // Inicializar DataTable
+      const table = $('#reservas-table').DataTable({
+        responsive: true,
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-        }
-    });
+          url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/es-ES.json'
+        },
+        dom: 'Bfrtip',
+        buttons: [
+          {
+            text: '<i class="bi bi-eye"></i> Mostrar Todos',
+            className: 'btn btn-secondary',
+            action: function(e, dt, node, config) {
+              // Reiniciar búsquedas y quitar clases de duplicados
+              dt.search('').columns().search('').draw();
+              dt.rows().nodes().each(function(row) {
+                $(row).removeClass('duplicated-comprobante duplicated-price');
+              });
+              // Limpiar filtros personalizados
+              $('#filter-estado').val('');
+              $('#filter-nombre').val('');
+              $('#filter-celular').val('');
+              $('#filter-serie').val('');
+            }
+          },
+          {
+            extend: 'excel',
+            text: '<i class="bi bi-file-excel"></i> Excel',
+            className: 'btn btn-success',
+            exportOptions: {
+              columns: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10]
+            }
+          },
+          {
+            extend: 'pdf',
+            text: '<i class="bi bi-file-pdf"></i> PDF',
+            className: 'btn btn-danger',
+            exportOptions: {
+              columns: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10]
+            }
+          },
+          {
+            extend: 'print',
+            text: '<i class="bi bi-printer"></i> Imprimir',
+            className: 'btn btn-primary',
+            exportOptions: {
+              columns: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10]
+            }
+          }
+        ],
+        order: [[0, 'desc']],
+        columnDefs: [
+          { orderable: true, targets: [0, 1, 2, 3, 7] },
+          { orderable: false, targets: '_all' },
+          { targets: 11, searchable: false }
+        ],
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
+        stateSave: true,
+        searching: false
+      });
 
       // Ejemplo: Manejar la actualización del número de comprobante mediante AJAX (comentado)
       $('.comprobante-input').on('blur', function() {

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bingo;
-use Yajra\DataTables\Facades\DataTables;
 use App\Models\Reserva;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -39,6 +38,8 @@ class BingoAdminController extends Controller
 
         return view('admin.index', compact('bingos'));
     }
+
+    
 
     public function create()
     {
@@ -258,47 +259,197 @@ class BingoAdminController extends Controller
         ));
     }
 
+    /**
+     * Mostrar tabla parcial de reservas filtradas
+     */
     public function reservasPorBingoTabla(Request $request, $id)
     {
         $bingo = Bingo::findOrFail($id);
-        $query = Reserva::where('bingo_id', $id);
-    
-        // Filtrar por tipo
-        $tipo = $request->tipo ?? 'todas';
-        if ($tipo === 'aprobadas') {
-            $query->where('estado', 'aprobado');
-        } elseif ($tipo === 'pendientes') {
-            $query->where('estado', 'revision');
-        } elseif ($tipo === 'rechazadas') {
-            $query->where('estado', 'rechazado');
-        }
-    
-        // Filtros adicionales
-        if ($request->filled('nombre')) {
-            $query->where('nombre', 'LIKE', '%' . $request->nombre . '%');
-        }
-        if ($request->filled('celular')) {
-            $query->where('celular', 'LIKE', '%' . $request->celular . '%');
-        }
-        if ($request->filled('serie')) {
-            $serie = $request->serie;
-            $serieFormateada = '"[\\"' . $serie . '\\"]"';
-            $serieEnArray = '[\\"' . $serie . '\\"';
-            $query->where(function ($q) use ($serieFormateada, $serieEnArray) {
-                $q->where('series', $serieFormateada)
-                  ->orWhere('series', 'LIKE', '%' . $serieEnArray . '%');
+        
+        // Si es una solicitud AJAX desde DataTables
+        if ($request->ajax()) {
+            // Parámetros de DataTables
+            $draw = $request->get('draw');
+            $start = $request->get('start', 0);
+            $length = $request->get('length', 25);
+            $search = $request->get('search.value', '');
+            $orderColumn = $request->get('order.0.column', 0);
+            $orderDir = $request->get('order.0.dir', 'asc');
+            
+            // Mapeo de columnas para ordenar
+            $columns = [
+                0 => 'orden_bingo',
+                1 => 'nombre',
+                2 => 'celular',
+                3 => 'created_at',
+                7 => 'total'
+            ];
+            
+            // Columna por la que ordenar
+            $orderBy = isset($columns[$orderColumn]) ? $columns[$orderColumn] : 'orden_bingo';
+            
+            // Query base con eager loading para reducir consultas N+1
+            $query = Reserva::with(['bingo:id,nombre,precio'])
+                ->where('bingo_id', $id)
+                ->select('id', 'orden_bingo', 'nombre', 'celular', 'created_at', 'cantidad', 
+                        'series', 'bingo_id', 'total', 'comprobante', 'numero_comprobante', 'estado');
+            
+            // Filtros
+            $tipo = $request->get('tipo') ?? 'todas';
+            if ($tipo === 'aprobadas') {
+                $query->where('estado', 'aprobado');
+            } elseif ($tipo === 'pendientes') {
+                $query->where('estado', 'revision');
+            } elseif ($tipo === 'rechazadas') {
+                $query->where('estado', 'rechazado');
+            }
+            
+            // Filtros adicionales
+            if ($request->filled('nombre')) {
+                $query->where('nombre', 'LIKE', '%' . $request->nombre . '%');
+            }
+            
+            if ($request->filled('celular')) {
+                $query->where('celular', 'LIKE', '%' . $request->celular . '%');
+            }
+            
+            if ($request->filled('serie')) {
+                $serie = $request->serie;
+                $query->where(function ($q) use ($serie) {
+                    $q->where('series', 'LIKE', '%"' . $serie . '"%');
+                });
+            }
+            
+            // Búsqueda global
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('nombre', 'LIKE', '%' . $search . '%')
+                      ->orWhere('celular', 'LIKE', '%' . $search . '%')
+                      ->orWhere('orden_bingo', 'LIKE', '%' . $search . '%')
+                      ->orWhere('series', 'LIKE', '%' . $search . '%');
+                });
+            }
+            
+            // Conteo total para información de paginación (usar cacheado para mejorar rendimiento)
+            $countKey = "reservas_{$id}_{$tipo}_count";
+            $totalRecords = Cache::remember($countKey, 5, function() use ($query) {
+                return $query->count();
             });
+            
+            // Aplicar orden y paginación
+            $reservas = $query->orderBy($orderBy, $orderDir)
+                              ->offset($start)
+                              ->limit($length)
+                              ->get();
+            
+            $data = [];
+            
+            foreach ($reservas as $reserva) {
+                // Procesar series
+                $seriesData = $reserva->series;
+                if (is_string($seriesData) && json_decode($seriesData) !== null) {
+                    $seriesData = json_decode($seriesData, true);
+                }
+                $seriesText = is_array($seriesData) ? implode(', ', $seriesData) : $seriesData;
+                
+                // Procesar comprobantes
+                $comprobantesHTML = '';
+                if ($reserva->comprobante) {
+                    $comprobantes = is_array($reserva->comprobante) ? $reserva->comprobante : json_decode($reserva->comprobante, true);
+                    if (is_array($comprobantes) && count($comprobantes) > 0) {
+                        foreach ($comprobantes as $index => $comprobante) {
+                            $comprobantesHTML .= '<a href="' . asset('storage/' . $comprobante) . '" target="_blank" class="btn btn-sm btn-light">Ver comprobante ' . ($index + 1) . '</a> ';
+                        }
+                    } else {
+                        $comprobantesHTML = '<span class="text-danger">Sin comprobante</span>';
+                    }
+                } else {
+                    $comprobantesHTML = '<span class="text-danger">Sin comprobante</span>';
+                }
+                
+                // Procesar estado
+                $estadoHTML = '';
+                if ($reserva->estado == 'revision') {
+                    $estadoHTML = '<span class="badge bg-warning text-dark">Disponible</span>';
+                } elseif ($reserva->estado == 'aprobado') {
+                    $estadoHTML = '<span class="badge bg-success">Aprobado</span>';
+                } elseif ($reserva->estado == 'rechazado') {
+                    $estadoHTML = '<span class="badge bg-danger">Rechazado</span>';
+                } else {
+                    $estadoHTML = '<span class="badge bg-secondary">' . ucfirst($reserva->estado) . '</span>';
+                }
+                
+                // Procesar acciones de manera eficiente - solo generamos el HTML necesario según el estado
+                $accionesHTML = '';
+                if ($reserva->estado == 'revision') {
+                    $accionesHTML .= '<button type="button" class="btn btn-sm btn-warning mb-1 edit-series"
+                        data-id="' . $reserva->id . '"
+                        data-update-url="' . route('reservas.update-series', $reserva->id) . '"
+                        data-nombre="' . htmlspecialchars($reserva->nombre, ENT_QUOTES, 'UTF-8') . '"
+                        data-series="' . htmlspecialchars(is_string($reserva->series) ? $reserva->series : json_encode($reserva->series), ENT_QUOTES, 'UTF-8') . '"
+                        data-cantidad="' . $reserva->cantidad . '"
+                        data-total="' . $reserva->total . '"
+                        data-bingo-id="' . $reserva->bingo_id . '"
+                        data-bingo-precio="' . ($reserva->bingo ? $reserva->bingo->precio : 0) . '">
+                        <i class="bi bi-pencil-square"></i> Editar Series
+                    </button>
+                    <form action="' . route('reservas.aprobar', $reserva->id) . '" method="POST" class="d-inline aprobar-form">
+                        ' . csrf_field() . '
+                        ' . method_field('PATCH') . '
+                        <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
+                    </form>
+                    <form action="' . route('reservas.rechazar', $reserva->id) . '" method="POST" class="d-inline rechazar-form">
+                        ' . csrf_field() . '
+                        ' . method_field('PATCH') . '
+                        <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                    </form>';
+                } elseif ($reserva->estado == 'aprobado') {
+                    $accionesHTML .= '<form action="' . route('reservas.rechazar', $reserva->id) . '" method="POST" class="d-inline rechazar-form">
+                        ' . csrf_field() . '
+                        ' . method_field('PATCH') . '
+                        <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                    </form>';
+                } elseif ($reserva->estado == 'rechazado') {
+                    $accionesHTML .= '<span class="text-white">Rechazado</span>';
+                }
+                
+                // Construir fila con atributos de datos
+                $data[] = [
+                    'DT_RowClass' => 'reserva-row',
+                    'DT_RowAttr' => [
+                        'data-estado' => $reserva->estado,
+                        'data-nombre' => $reserva->nombre,
+                        'data-celular' => $reserva->celular,
+                        'data-series' => is_string($reserva->series) ? $reserva->series : json_encode($reserva->series)
+                    ],
+                    'id' => $reserva->orden_bingo ?? 'N/A',
+                    'nombre' => $reserva->nombre,
+                    'celular' => $reserva->celular,
+                    'created_at' => $reserva->created_at->format('d/m/Y H:i'),
+                    'cantidad' => $reserva->cantidad,
+                    'series' => $seriesText,
+                    'bingo' => $reserva->bingo ? $reserva->bingo->nombre : '<span class="text-warning">Sin asignar</span>',
+                    'total' => '$' . number_format($reserva->total, 0, ',', '.') . ' Pesos',
+                    'comprobante' => $comprobantesHTML,
+                    'numero_comprobante' => $reserva->estado == 'revision' 
+                        ? '<input type="text" class="form-control form-control-sm bg-dark text-white border-light comprobante-input" value="' . ($reserva->numero_comprobante ?? '') . '" data-id="' . $reserva->id . '">'
+                        : '<input type="text" class="form-control form-control-sm bg-dark text-white border-light" value="' . ($reserva->numero_comprobante ?? '') . '">',
+                    'estado' => $estadoHTML,
+                    'acciones' => $accionesHTML
+                ];
+            }
+            
+            // Formato de respuesta para DataTables
+            return response()->json([
+                'draw' => intval($draw),
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $totalRecords,
+                'data' => $data
+            ]);
         }
-    
-        $query->orderBy('orden_bingo', 'asc');
-    
-        return DataTables::of($query)
-            ->editColumn('created_at', function($row) {
-                return $row->created_at ? $row->created_at->format('d/m/Y') : '';
-            })
-            ->make(true);
-    }
 
+        return view('bingos.reservas', compact('bingo'));
+    }
 
 
     public function cerrar($id)
@@ -1235,25 +1386,30 @@ private function compararMetadatos($metadatosA, $metadatosB)
         return view('admin.indexclientes', compact('reservas'));
     }
 
-    /**
-     * Actualiza el número de comprobante de una reserva.
-     *
-     * @param Request $request
-     * @param int $id
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function updateNumeroComprobante(Request $request, $id)
-    {
-        $request->validate([
-            'numero_comprobante' => 'required|string|max:255',
-        ]);
+/**
+ * Actualiza el número de comprobante de una reserva vía AJAX
+ */
+public function updateNumeroComprobante(Request $request, $id)
+{
+    $request->validate([
+        'numero_comprobante' => 'nullable|string|max:255',
+    ]);
 
+    try {
         $reserva = Reserva::findOrFail($id);
         $reserva->numero_comprobante = $request->numero_comprobante;
         $reserva->save();
 
-        return redirect()->back()->with('success', 'Número de comprobante actualizado correctamente.');
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        \Log::error('Error al actualizar número de comprobante: ' . $e->getMessage(), [
+            'reserva_id' => $id,
+            'data' => $request->all()
+        ]);
+        
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
+}
 
     public function truncateClientes()
     {
