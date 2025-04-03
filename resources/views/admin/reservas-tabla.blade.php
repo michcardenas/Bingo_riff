@@ -205,7 +205,7 @@
   <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar DataTable con procesamiento del lado del servidor
-    $('#reservasTable').DataTable({
+    $('#reservas-table').DataTable({
         processing: true,
         serverSide: true,
         ajax: {
