@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{{ route('bingos.reservas-tabla', $bingo->id) }}",
+            url: "{{ route('admin.reservas.bingo.tabla', $bingo->id) }}",
             data: function(d) {
                 d.tipo = "{{ request('tipo', 'todas') }}";
                 d.nombre = $('#nombre').val();
