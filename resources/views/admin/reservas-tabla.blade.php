@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{{ route('admin.reservas.bingo.tabla', $bingo->id) }}",
+            url: "{{ route('bingos.reservas-tabla', $bingo->id) }}",
             data: function(d) {
                 d.tipo = "{{ request('tipo', 'todas') }}";
                 d.nombre = $('#nombre').val();
@@ -218,23 +218,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         },
         columns: [
-            {data: 'id', name: 'id'},
-            {data: 'nombre', name: 'nombre'},
-            {data: 'celular', name: 'celular'},
-            {data: 'series', name: 'series'},
-            {data: 'estado', name: 'estado'},
-            {data: 'cantidad', name: 'cantidad'},
-            {data: 'total', name: 'total'},
-            {data: 'action', name: 'action', orderable: false, searchable: false}
+            // Columna oculta para ordenación por "orden_bingo"
+            { data: 'orden_bingo', name: 'orden_bingo', visible: false },
+            { data: 'id', name: 'id' },
+            { data: 'nombre', name: 'nombre' },
+            { data: 'celular', name: 'celular' },
+            { data: 'series', name: 'series' },
+            { data: 'estado', name: 'estado' },
+            { data: 'cantidad', name: 'cantidad' },
+            { data: 'total', name: 'total' },
+            { data: 'action', name: 'action', orderable: false, searchable: false }
         ],
         // Optimizaciones de rendimiento
         deferRender: true,
         scroller: true,
         scrollY: '60vh',
         scrollCollapse: true,
-        // Ordenar por orden_bingo de forma ascendente
-        order: [[6, 'asc']],
-        // Configuración de lengua
+        // Ordenar por "orden_bingo" (columna oculta en el índice 0) de forma ascendente
+        order: [[0, 'asc']],
+        // Configuración de idioma
         language: {
             url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
         }

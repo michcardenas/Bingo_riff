@@ -261,57 +261,50 @@ class BingoAdminController extends Controller
      * Mostrar tabla parcial de reservas filtradas
      */
     public function reservasPorBingoTabla(Request $request, $id)
-    {
-        $bingo = Bingo::findOrFail($id);
-        $query = Reserva::where('bingo_id', $id);
+{
+    $bingo = Bingo::findOrFail($id);
+    $query = Reserva::where('bingo_id', $id);
 
-        // Filtrar por tipo
-        $tipo = $request->tipo ?? 'todas';
-
-        if ($tipo === 'aprobadas') {
-            $query->where('estado', 'aprobado');
-        } elseif ($tipo === 'pendientes') {
-            $query->where('estado', 'revision');
-        } elseif ($tipo === 'rechazadas') {
-            $query->where('estado', 'rechazado');
-        }
-
-        // Aplicar filtros adicionales
-        if ($request->filled('nombre')) {
-            $query->where('nombre', 'LIKE', '%' . $request->nombre . '%');
-        }
-
-        if ($request->filled('celular')) {
-            $query->where('celular', 'LIKE', '%' . $request->celular . '%');
-        }
-
-        if ($request->filled('serie')) {
-            $serie = $request->serie;
-
-            // Crear el patrón exacto que buscamos en la base de datos
-            // Básicamente buscamos: ["0001"] o algo que incluya ese patrón exacto
-            $serieFormateada = '"[\\"' . $serie . '\\"]"';
-            $serieEnArray = '[\\"' . $serie . '\\"';  // Para cuando es parte de un array más grande
-
-            $query->where(function ($q) use ($serie, $serieFormateada, $serieEnArray) {
-                // Opción 1: Serie exacta - coincide con todo el campo (para series individuales)
-                $q->where('series', $serieFormateada);
-
-                // Opción 2: Serie como parte de un array más grande
-                $q->orWhere('series', 'LIKE', '%' . $serieEnArray . '%');
-            });
-        }
-
-        // Cambiar el orden para usar orden_bingo en lugar de created_at
-        $reservas = $query->orderBy('orden_bingo', 'asc')->paginate(1000);
-
-        // Si es una solicitud AJAX, devolver solo la tabla
-        if ($request->ajax()) {
-            return view('admin.reservas-tabla', compact('reservas', 'bingo'));
-        }
-
-        return redirect()->route('bingos.reservas', $id);
+    // Filtrar por tipo
+    $tipo = $request->tipo ?? 'todas';
+    if ($tipo === 'aprobadas') {
+        $query->where('estado', 'aprobado');
+    } elseif ($tipo === 'pendientes') {
+        $query->where('estado', 'revision');
+    } elseif ($tipo === 'rechazadas') {
+        $query->where('estado', 'rechazado');
     }
+
+    // Filtros adicionales
+    if ($request->filled('nombre')) {
+        $query->where('nombre', 'LIKE', '%' . $request->nombre . '%');
+    }
+    if ($request->filled('celular')) {
+        $query->where('celular', 'LIKE', '%' . $request->celular . '%');
+    }
+    if ($request->filled('serie')) {
+        $serie = $request->serie;
+        // Buscamos coincidencias exactas o parciales en el campo series
+        $serieFormateada = '"[\\"' . $serie . '\\"]"';
+        $serieEnArray = '[\\"' . $serie . '\\"';
+        $query->where(function ($q) use ($serieFormateada, $serieEnArray) {
+            $q->where('series', $serieFormateada)
+              ->orWhere('series', 'LIKE', '%' . $serieEnArray . '%');
+        });
+    }
+
+    // Ordenamos según orden_bingo
+    $query->orderBy('orden_bingo', 'asc');
+
+    // Retornamos el resultado utilizando DataTables para procesamiento en el servidor
+    return datatables()->of($query)
+        ->editColumn('created_at', function($row) {
+            return $row->created_at ? $row->created_at->format('d/m/Y') : '';
+        })
+        // Aquí puedes agregar otros formateos o columnas personalizadas si es necesario
+        ->make(true);
+}
+
 
 
     public function cerrar($id)
