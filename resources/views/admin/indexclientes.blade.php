@@ -117,154 +117,77 @@
 document.addEventListener('DOMContentLoaded', function() {
     let currentTable = null;
     
-    // Initialize DataTable with optimized settings
+    // Inicializar DataTable directamente en la tabla existente
     function initializeDataTable() {
-        // Make sure any existing DataTable is properly destroyed
+        // Primero, asegurarse de destruir cualquier instancia previa
         if ($.fn.DataTable.isDataTable('.table')) {
             $('.table').DataTable().destroy();
         }
         
         try {
-            // Initialize DataTable with optimized settings
+            // Inicializar nueva instancia de DataTable
             currentTable = $('.table').DataTable({
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
                     emptyTable: "No hay datos disponibles",
                     zeroRecords: "No hay resultados que concuerden con tu filtro"
                 },
-                order: [[0, 'desc']], // Sort by ID in descending order
+                order: [[0, 'desc']], // Ordenar por ID de forma descendente
                 responsive: true,
-                // Enable server-side processing for large datasets
-                serverSide: false, // Change to true when implementing server-side processing
-                // Implement paging for better performance with large datasets
-                paging: true,
-                pageLength: 25, // Show 25 entries per page
-                // Optimize DOM structure
                 dom: '<"row"<"col-md-6"l><"col-md-6"f>>rt<"row"<"col-md-6"i><"col-md-6"p>>',
-                // Defer rendering for better performance
-                deferRender: true,
-                // Process data in batches for better performance
-                processing: true,
-                // Initialize callbacks
+                // Manejar errores durante la inicialización
+                drawCallback: function(settings) {
+                    // Si hay un error, lo manejamos aquí
+                    if (settings.bDestroying) return;
+                    
+                    // Comprobar si hay datos
+                    if (this.api().data().length === 0) {
+                        // Si no hay datos, mostrar mensaje personalizado
+                        if (!document.querySelector('.dataTables_empty')) {
+                            const tbody = document.querySelector('.table tbody');
+                            if (tbody) {
+                                const tr = document.createElement('tr');
+                                const td = document.createElement('td');
+                                td.className = 'dataTables_empty';
+                                td.textContent = "No hay resultados que concuerden con tu filtro";
+                                td.setAttribute('colspan', '100%'); // Usar 100% para cubrir todas las columnas
+                                tr.appendChild(td);
+                                tbody.innerHTML = '';
+                                tbody.appendChild(tr);
+                            }
+                        }
+                    }
+                },
                 initComplete: function() {
-                    // Add custom classes for dark theme
+                    // Añadir clases personalizadas para el tema oscuro
                     $('.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate').addClass('text-white');
                     $('.dataTables_wrapper .form-control').addClass('bg-dark text-white border-secondary');
                     $('.dataTables_wrapper .page-link').addClass('bg-dark text-white border-secondary');
                     
-                    // Setup table events only once after initialization
-                    setupTableEvents();
-                    
-                    console.log('DataTable initialized successfully');
+                    console.log('DataTable inicializado correctamente');
                 }
             });
         } catch (error) {
-            console.error('Error initializing DataTable:', error);
+            console.error('Error al inicializar DataTable:', error);
+            // En caso de error, mostrar mensaje personalizado
             showNoResultsMessage();
         }
-    }
-
-    // Optimized DataTables Configuration for Large Datasets
-function initOptimizedDataTable() {
-    // Ensure any existing DataTable is properly destroyed
-    if ($.fn.DataTable.isDataTable('.table')) {
-        $('.table').DataTable().destroy();
+        
+        // Configurar eventos para elementos dentro de la tabla
+        setupTableEvents();
     }
     
-    return $('.table').DataTable({
-        // Language settings
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
-            emptyTable: "No hay datos disponibles",
-            zeroRecords: "No hay resultados que concuerden con tu filtro"
-        },
-        
-        // Performance optimizations
-        processing: true,        // Show processing indicator
-        deferRender: true,       // Defer rendering for better performance
-        scroller: true,          // Enable virtual scrolling
-        scrollY: '50vh',         // Set height for vertical scroll
-        scrollCollapse: true,    // Enable scroll collapse
-        
-        // Server-side processing (enable when backend API is ready)
-        serverSide: false,       // Change to true when server endpoint is ready
-        ajax: null,              // Set your API endpoint when serverSide: true
-        
-        // Data display settings
-        order: [[0, 'desc']],    // Sort by ID in descending order
-        responsive: true,        // Enable responsive design
-        
-        // Control page length options
-        pageLength: 25,          // Default page size
-        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
-        
-        // DOM structure optimization
-        dom: '<"row"<"col-md-6"l><"col-md-6"f>>rt<"row"<"col-md-6"i><"col-md-6"p>>',
-        
-        // Optimize column rendering for large datasets
-        columnDefs: [
-            {
-                // Add any column-specific optimizations here
-                // Example: don't sort on action column
-                targets: [-1], // Last column
-                orderable: false
-            }
-        ],
-        
-        // Advanced callbacks
-        createdRow: function(row, data, dataIndex) {
-            // Add any row-specific customizations
-            // Example: highlight specific rows based on status
-            if (data.estado === 'pendiente') {
-                $(row).addClass('bg-warning bg-opacity-25');
-            }
-        },
-        
-        // Callbacks for customization and debugging
-        drawCallback: function(settings) {
-            // Handle empty data states
-            if (settings.bDestroying) return;
-            
-            // Check if there's data
-            if (this.api().data().length === 0) {
-                const tbody = document.querySelector('.table tbody');
-                if (tbody && !document.querySelector('.dataTables_empty')) {
-                    const tr = document.createElement('tr');
-                    const td = document.createElement('td');
-                    td.className = 'dataTables_empty';
-                    td.textContent = "No hay resultados que concuerden con tu filtro";
-                    td.setAttribute('colspan', '100%');
-                    tr.appendChild(td);
-                    tbody.innerHTML = '';
-                    tbody.appendChild(tr);
-                }
-            }
-        },
-        
-        // Final initialization callback
-        initComplete: function() {
-            // Add dark theme classes
-            $('.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate').addClass('text-white');
-            $('.dataTables_wrapper .form-control').addClass('bg-dark text-white border-secondary');
-            $('.dataTables_wrapper .page-link').addClass('bg-dark text-white border-secondary');
-            
-            // Set up event listeners for dynamic elements
-            setupTableEvents();
-            
-            console.log('DataTable initialized successfully');
-        }
-    });
-}
-    
-    // Show "No results" message if DataTable fails
+    // Función para mostrar mensaje de "No hay resultados" si DataTable falla
     function showNoResultsMessage() {
         const table = document.querySelector('.table');
         if (table) {
             const tbody = table.querySelector('tbody');
             if (tbody) {
+                // Contar el número de columnas en la tabla
                 const headerCells = table.querySelectorAll('thead th');
                 const colCount = headerCells.length || 1;
                 
+                // Crear una fila con mensaje
                 const tr = document.createElement('tr');
                 const td = document.createElement('td');
                 td.setAttribute('colspan', colCount);
@@ -272,36 +195,27 @@ function initOptimizedDataTable() {
                 td.textContent = "No hay resultados que concuerden con tu filtro";
                 tr.appendChild(td);
                 
+                // Reemplazar contenido de tbody
                 tbody.innerHTML = '';
                 tbody.appendChild(tr);
             }
         }
     }
     
-    // Set up events in the table - called only once after DataTable initialization
+    // Función para configurar eventos en la tabla
     function setupTableEvents() {
-        // Use event delegation instead of attaching to each element
-        const tableElement = document.querySelector('.table');
-        if (!tableElement) return;
-        
-        // Handle edit series buttons with event delegation
-        tableElement.addEventListener('click', function(e) {
-            const editButton = e.target.closest('.edit-series');
-            if (editButton) {
-                handleEditSeries.call(editButton);
-            }
+        // Configurar eventos para botones de editar series
+        document.querySelectorAll('.edit-series').forEach(button => {
+            button.addEventListener('click', handleEditSeries);
         });
         
-        // Handle form submissions with event delegation
-        tableElement.addEventListener('submit', function(e) {
-            const form = e.target.closest('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]');
-            if (form) {
-                handleFormSubmit.call(form, e);
-            }
+        // Configurar eventos para formularios de aprobación/rechazo
+        document.querySelectorAll('.aprobar-form, form[action*="aprobar"], form[action*="rechazar"]').forEach(form => {
+            form.addEventListener('submit', handleFormSubmit);
         });
     }
     
-    // Handler for editing series
+    // Manejador para el evento de editar series
     function handleEditSeries() {
         const modal = document.getElementById('editSeriesModal');
         const seriesData = this.getAttribute('data-series');
@@ -310,7 +224,8 @@ function initOptimizedDataTable() {
         try {
             series = JSON.parse(seriesData);
         } catch (e) {
-            console.error('Error parsing series:', e);
+            console.error('Error al parsear series:', e);
+            // Si las series no están en formato JSON, intentar convertirlas desde string
             if (typeof seriesData === 'string') {
                 series = seriesData.split(',').map(item => item.trim());
             }
@@ -322,7 +237,7 @@ function initOptimizedDataTable() {
         const total = parseInt(this.getAttribute('data-total'));
         const bingoPrice = parseInt(this.getAttribute('data-bingo-precio'));
 
-        // Populate form data
+        // Completar datos del formulario
         document.getElementById('reserva_id').value = reservaId;
         document.getElementById('bingo_id').value = bingoId;
         document.getElementById('clientName').textContent = this.getAttribute('data-nombre');
@@ -330,35 +245,31 @@ function initOptimizedDataTable() {
         document.getElementById('newQuantity').setAttribute('max', Array.isArray(series) ? series.length : 1);
         document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(total);
 
-        // Set form URL
+        // Establecer URL del formulario
         const form = document.getElementById('editSeriesForm');
         form.action = `/admin/reservas/${reservaId}/update-series`;
 
-        // Get DOM elements
+        // Mostrar series actuales y crear checkboxes
         const currentSeriesDiv = document.getElementById('currentSeries');
         const seriesCheckboxesDiv = document.getElementById('seriesCheckboxes');
 
-        // Clear previous content
+        // Limpiar contenido previo
         currentSeriesDiv.innerHTML = '';
         seriesCheckboxesDiv.innerHTML = '';
 
-        // Use DocumentFragment for better performance
-        const seriesFragment = document.createDocumentFragment();
-        const checkboxesFragment = document.createDocumentFragment();
-
-        // Display and create checkboxes for each series
+        // Mostrar y crear checkboxes para cada serie
         if (Array.isArray(series) && series.length > 0) {
             const seriesList = document.createElement('ul');
             seriesList.className = 'list-group';
 
             series.forEach((serie, index) => {
-                // Create list item for current series
+                // Crear elemento de lista
                 const listItem = document.createElement('li');
                 listItem.className = 'list-group-item bg-dark text-white border-light';
                 listItem.textContent = `Serie ${serie}`;
                 seriesList.appendChild(listItem);
 
-                // Create checkbox
+                // Crear checkbox
                 const col = document.createElement('div');
                 col.className = 'col-md-4 mb-2';
 
@@ -381,36 +292,31 @@ function initOptimizedDataTable() {
                 checkDiv.appendChild(checkbox);
                 checkDiv.appendChild(label);
                 col.appendChild(checkDiv);
-                checkboxesFragment.appendChild(col);
+                seriesCheckboxesDiv.appendChild(col);
             });
 
-            seriesFragment.appendChild(seriesList);
-            currentSeriesDiv.appendChild(seriesFragment);
-            seriesCheckboxesDiv.appendChild(checkboxesFragment);
+            currentSeriesDiv.appendChild(seriesList);
         } else {
             currentSeriesDiv.textContent = 'No hay series disponibles';
         }
 
-        // Handle quantity change - use a single event listener
+        // Manejar cambio en la cantidad de cartones
         const newQuantityInput = document.getElementById('newQuantity');
-        if (newQuantityInput) {
-            // Remove existing listeners to prevent duplicates
-            const newInput = newQuantityInput.cloneNode(true);
-            newQuantityInput.parentNode.replaceChild(newInput, newQuantityInput);
-            
-            newInput.addEventListener('change', function() {
-                const newQuantity = parseInt(this.value);
-                
-                // Update estimated total
-                const newTotal = newQuantity * bingoPrice;
-                document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+        newQuantityInput.removeEventListener('change', handleQuantityChange);
+        newQuantityInput.addEventListener('change', handleQuantityChange);
 
-                // Update counter
-                updateSelectedCounter();
-            });
+        function handleQuantityChange() {
+            const newQuantity = parseInt(this.value);
+            
+            // Actualizar el total estimado
+            const newTotal = newQuantity * bingoPrice;
+            document.getElementById('currentTotal').textContent = new Intl.NumberFormat('es-CL').format(newTotal);
+
+            // Actualizar contador
+            updateSelectedCounter();
         }
 
-        // Function to update selected counter
+        // Función para actualizar contador de seleccionados
         function updateSelectedCounter() {
             const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
             const newQuantity = parseInt(document.getElementById('newQuantity').value);
@@ -420,9 +326,9 @@ function initOptimizedDataTable() {
                 if (cb.checked) checkedCount++;
             });
 
-            // Check if more series are selected than allowed
+            // Verificar si se están seleccionando más series de las permitidas
             if (checkedCount > newQuantity) {
-                // Uncheck the last selected checkboxes to match the quantity
+                // Desmarcar los últimos checkboxes seleccionados para que coincida con la cantidad
                 let toUncheck = checkedCount - newQuantity;
                 for (let i = checkboxes.length - 1; i >= 0 && toUncheck > 0; i--) {
                     if (checkboxes[i].checked) {
@@ -433,62 +339,62 @@ function initOptimizedDataTable() {
             }
         }
 
-        // Add event delegation for checkboxes
-        seriesCheckboxesDiv.addEventListener('change', function(e) {
-            if (e.target.matches('input[name="selected_series[]"]')) {
-                const newQuantity = parseInt(document.getElementById('newQuantity').value);
-                const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
-                let checkedCount = 0;
-
-                checkboxes.forEach(cb => {
-                    if (cb.checked) checkedCount++;
-                });
-
-                // If exceeding allowed quantity, uncheck this checkbox
-                if (checkedCount > newQuantity && e.target.checked) {
-                    e.target.checked = false;
-                    alert(`Solo puedes seleccionar ${newQuantity} series.`);
-                }
-            }
+        // Añadir listeners a los checkboxes
+        document.querySelectorAll('input[name="selected_series[]"]').forEach(checkbox => {
+            checkbox.removeEventListener('change', handleCheckboxChange);
+            checkbox.addEventListener('change', handleCheckboxChange);
         });
 
-        // Initialize counter
+        function handleCheckboxChange() {
+            const newQuantity = parseInt(document.getElementById('newQuantity').value);
+            const checkboxes = document.querySelectorAll('input[name="selected_series[]"]');
+            let checkedCount = 0;
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) checkedCount++;
+            });
+
+            // Si se excede la cantidad permitida, desmarcar este checkbox
+            if (checkedCount > newQuantity && this.checked) {
+                this.checked = false;
+                alert(`Solo puedes seleccionar ${newQuantity} series.`);
+            }
+        }
+
+        // Inicializar contador
         updateSelectedCounter();
 
-        // Show modal
+        // Mostrar modal
         const modalInstance = new bootstrap.Modal(modal);
         modalInstance.show();
 
-        // Handle save button click - use a single event listener
+        // Manejar clic en el botón de guardar
         const saveButton = document.getElementById('saveSeriesChanges');
-        if (saveButton) {
-            // Remove existing listeners to prevent duplicates
-            const newButton = saveButton.cloneNode(true);
-            saveButton.parentNode.replaceChild(newButton, saveButton);
-            
-            newButton.addEventListener('click', function() {
-                const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
-                const newQuantity = parseInt(document.getElementById('newQuantity').value);
+        saveButton.removeEventListener('click', handleSaveClick);
+        saveButton.addEventListener('click', handleSaveClick);
 
-                if (selectedCheckboxes.length !== newQuantity) {
-                    alert(`Debes seleccionar exactamente ${newQuantity} series.`);
-                    return;
-                }
+        function handleSaveClick() {
+            const selectedCheckboxes = document.querySelectorAll('input[name="selected_series[]"]:checked');
+            const newQuantity = parseInt(document.getElementById('newQuantity').value);
 
-                // Submit form
-                document.getElementById('editSeriesForm').submit();
-            });
+            if (selectedCheckboxes.length !== newQuantity) {
+                alert(`Debes seleccionar exactamente ${newQuantity} series.`);
+                return;
+            }
+
+            // Enviar formulario
+            document.getElementById('editSeriesForm').submit();
         }
     }
     
-    // Handler for form submission
+    // Manejador para evento de envío de formularios
     function handleFormSubmit(event) {
-        // Find row containing the form
+        // Encuentra la fila que contiene el formulario
         const row = this.closest('tr');
-        // Find editable input for receipt number in the same row
+        // Busca el input editable del número de comprobante en la misma fila
         const input = row.querySelector('.comprobante-input');
         if (input) {
-            // Create hidden field to send value
+            // Crea un campo oculto para enviar el valor
             const hiddenInput = document.createElement('input');
             hiddenInput.type = 'hidden';
             hiddenInput.name = 'numero_comprobante';
@@ -497,160 +403,156 @@ function initOptimizedDataTable() {
         }
     }
     
-    // Function to apply filters - optimized
+    // Función para aplicar filtros
     function aplicarFiltros() {
         const nombre = document.getElementById('nombre')?.value.trim() || '';
         const celular = document.getElementById('celular')?.value.trim() || '';
         const serie = document.getElementById('serie')?.value.trim() || '';
         
-        console.log("Applying filters:", { nombre, celular, serie });
+        console.log("Aplicando filtros:", { nombre, celular, serie });
         
-        // Filter using DataTable API
+        // Filtrar usando DataTable API
         if (currentTable) {
             try {
-                // Clear current filters
+                // Limpiar filtros actuales
                 currentTable.search('').columns().search('').draw();
                 
-                // If series value exists, use it as global search
+                // Si hay valor de serie, usarlo como búsqueda global
                 if (serie) {
                     currentTable.search(serie).draw();
                     return;
                 }
                 
-                // For other filters, apply by column
-                let filtersApplied = false;
+                // Para los demás filtros, aplicar por columna
+                let filtrosAplicados = false;
                 
                 if (nombre) {
-                    // Verify column exists before trying to filter
+                    // Verificar si la columna existe antes de intentar filtrar
                     if (currentTable.columns(1).nodes().length > 0) {
                         currentTable.columns(1).search(nombre, true, false);
-                        filtersApplied = true;
+                        filtrosAplicados = true;
                     }
                 }
                 
                 if (celular) {
-                    // Verify column exists before trying to filter
+                    // Verificar si la columna existe antes de intentar filtrar
                     if (currentTable.columns(2).nodes().length > 0) {
                         currentTable.columns(2).search(celular, true, false);
-                        filtersApplied = true;
+                        filtrosAplicados = true;
                     }
                 }
                 
-                // Draw table with applied filters
+                // Dibujar la tabla con los filtros aplicados
                 currentTable.draw();
             } catch (error) {
-                console.error("Error applying filters:", error);
+                console.error("Error al aplicar filtros:", error);
+                // Si hay un error, mostrar mensaje personalizado
                 showNoResultsMessage();
             }
         } else {
-            console.error("DataTable not properly initialized");
+            console.error("DataTable no está inicializado correctamente");
+            // Si DataTable no está disponible, mostrar mensaje personalizado
             showNoResultsMessage();
         }
     }
     
-    // Function to clear filters
+    // Función para limpiar filtros
     function limpiarFiltros() {
-        // Clear text fields
+        // Limpiar campos de texto
         document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
             if (input) input.value = '';
         });
         
-        // Clear DataTable filters
+        // Limpiar filtros de DataTable
         if (currentTable) {
             try {
                 currentTable.search('').columns().search('').draw();
             } catch (error) {
-                console.error("Error clearing filters:", error);
+                console.error("Error al limpiar filtros:", error);
+                // Si hay error, reinicializar DataTable
                 initializeDataTable();
             }
         }
     }
     
-    // Function to load content into 'tableContent' container - optimized with debounce
-    const loadTableContent = (function() {
-        let timer;
-        return function(url) {
-            // Clear any pending loadTableContent calls
-            clearTimeout(timer);
+    // Función para cargar contenido en el contenedor 'tableContent'
+    function loadTableContent(url) {
+        // Guardar los valores actuales de los filtros
+        const filtros = {
+            nombre: document.getElementById('nombre')?.value || '',
+            celular: document.getElementById('celular')?.value || '',
+            serie: document.getElementById('serie')?.value || ''
+        };
+        
+        // Mostrar indicador de carga
+        const tableContainer = document.getElementById('tableContent');
+        const loadingHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
+        tableContainer.innerHTML = loadingHTML;
+        
+        // Destruir DataTable existente si existe
+        if (currentTable !== null) {
+            try {
+                currentTable.destroy();
+            } catch (error) {
+                console.error("Error al destruir DataTable:", error);
+            }
+            currentTable = null;
+        }
+        
+        // Hacer la petición AJAX
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            // Actualizar el contenido
+            tableContainer.innerHTML = html;
             
-            // Save current filter values
-            const filtros = {
-                nombre: document.getElementById('nombre')?.value || '',
-                celular: document.getElementById('celular')?.value || '',
-                serie: document.getElementById('serie')?.value || ''
-            };
-            
-            // Show loading indicator
-            const tableContainer = document.getElementById('tableContent');
-            const loadingHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
-            tableContainer.innerHTML = loadingHTML;
-            
-            // Destroy existing DataTable if it exists
-            if (currentTable !== null) {
-                try {
-                    currentTable.destroy();
-                } catch (error) {
-                    console.error("Error destroying DataTable:", error);
+            // Verificar si hay tabla antes de inicializar DataTable
+            if (document.querySelector('.table')) {
+                // Reinicializar DataTable
+                initializeDataTable();
+                
+                // Restaurar los valores de los filtros
+                const nombreInput = document.getElementById('nombre');
+                const celularInput = document.getElementById('celular');
+                const serieInput = document.getElementById('serie');
+                
+                if (nombreInput) nombreInput.value = filtros.nombre;
+                if (celularInput) celularInput.value = filtros.celular;
+                if (serieInput) serieInput.value = filtros.serie;
+                
+                // Aplicar filtros si había alguno activo
+                if (filtros.nombre || filtros.celular || filtros.serie) {
+                    setTimeout(() => {
+                        aplicarFiltros();
+                    }, 100); // Pequeño retraso para asegurar que DataTable está listo
                 }
-                currentTable = null;
+            } else {
+                // Si no hay tabla, mostrar mensaje informativo
+                tableContainer.innerHTML = '<div class="alert alert-info">No hay datos disponibles para mostrar.</div>';
             }
             
-            // Delay actual AJAX request to prevent multiple rapid calls
-            timer = setTimeout(function() {
-                // Make AJAX request
-                fetch(url, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => response.text())
-                .then(html => {
-                    // Update content
-                    tableContainer.innerHTML = html;
-                    
-                    // Check if table exists before initializing DataTable
-                    if (document.querySelector('.table')) {
-                        // Reinitialize DataTable
-                        initializeDataTable();
-                        
-                        // Restore filter values
-                        const nombreInput = document.getElementById('nombre');
-                        const celularInput = document.getElementById('celular');
-                        const serieInput = document.getElementById('serie');
-                        
-                        if (nombreInput) nombreInput.value = filtros.nombre;
-                        if (celularInput) celularInput.value = filtros.celular;
-                        if (serieInput) serieInput.value = filtros.serie;
-                        
-                        // Apply filters if any was active
-                        if (filtros.nombre || filtros.celular || filtros.serie) {
-                            setTimeout(aplicarFiltros, 100); // Small delay to ensure DataTable is ready
-                        }
-                    } else {
-                        // If no table, show informational message
-                        tableContainer.innerHTML = '<div class="alert alert-info">No hay datos disponibles para mostrar.</div>';
-                    }
-                    
-                    // Update active buttons
-                    updateActiveButtons(url);
-                })
-                .catch(error => {
-                    console.error('Error loading content:', error);
-                    tableContainer.innerHTML = '<div class="alert alert-danger">Error al cargar los datos. Por favor, intenta nuevamente.</div>';
-                });
-            }, 300); // Debounce delay
-        };
-    })();
+            // Actualizar botones activos
+            updateActiveButtons(url);
+        })
+        .catch(error => {
+            console.error('Error cargando contenido:', error);
+            tableContainer.innerHTML = '<div class="alert alert-danger">Error al cargar los datos. Por favor, intenta nuevamente.</div>';
+        });
+    }
     
-    // Update active button state based on URL
+    // Actualizar estado activo de los botones basado en la URL
     function updateActiveButtons(url) {
-        // Reset all buttons to inactive state
+        // Resetear todos los botones a estado no activo
         document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(btn => {
             btn.classList.remove('btn-primary');
             btn.classList.add('btn-secondary');
         });
         
-        // Activate corresponding button based on URL
+        // Activar el botón correspondiente según la URL
         if (url.includes('comprobantesDuplicados')) {
             document.getElementById('btnComprobanteDuplicado').classList.add('btn-primary');
             document.getElementById('btnComprobanteDuplicado').classList.remove('btn-secondary');
@@ -666,10 +568,10 @@ function initOptimizedDataTable() {
         }
     }
     
-    // Initialize DataTable when page loads
+    // Inicializar DataTable al cargar la página
     initializeDataTable();
     
-    // Set up button event listeners for different views
+    // Asignar eventos a los botones para cargar diferentes vistas
     document.getElementById('btnOriginal').addEventListener('click', function() {
         loadTableContent("{{ route('reservas.index') }}");
     });
@@ -686,11 +588,11 @@ function initOptimizedDataTable() {
         loadTableContent("{{ route('admin.cartonesEliminados') }}");
     });
     
-    // Set up filter button events
+    // Asignar eventos a los botones de filtro
     document.getElementById('btnFiltrar').addEventListener('click', aplicarFiltros);
     document.getElementById('btnLimpiar').addEventListener('click', limpiarFiltros);
     
-    // Enable filtering with Enter in text fields
+    // Permitir filtrar con Enter en los campos de texto
     document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
         input.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -700,50 +602,86 @@ function initOptimizedDataTable() {
         });
     });
     
-    // Set up delete clients button and confirmation modal - simplified approach
+    // Configurar el botón de borrar clientes y el modal de confirmación
     const btnBorrarClientes = document.getElementById('btnBorrarClientes');
     if (btnBorrarClientes) {
         btnBorrarClientes.addEventListener('click', function() {
-            // Use bootstrap.Modal consistently for reliable modal handling
-            const modalElement = document.getElementById('confirmDeleteModal');
-            if (modalElement && typeof bootstrap !== 'undefined') {
-                const modal = new bootstrap.Modal(modalElement);
-                modal.show();
-            } else {
-                console.error('Modal element or Bootstrap not found');
+            // Intentar múltiples métodos para abrir el modal
+            try {
+                // Método 1: Usando la clase bootstrap.Modal si está disponible
+                if (typeof bootstrap !== 'undefined') {
+                    const modalElement = document.getElementById('confirmDeleteModal');
+                    if (modalElement) {
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                        console.log('Modal abierto con bootstrap.Modal');
+                    } else {
+                        console.error('Elemento modal no encontrado');
+                    }
+                }
+                // Método 2: Usando jQuery si está disponible
+                else if (typeof $ !== 'undefined') {
+                    $('#confirmDeleteModal').modal('show');
+                    console.log('Modal abierto con jQuery');
+                }
+                // Método 3: Manipulación directa del DOM
+                else {
+                    const modalElement = document.getElementById('confirmDeleteModal');
+                    if (modalElement) {
+                        modalElement.classList.add('show');
+                        modalElement.style.display = 'block';
+                        document.body.classList.add('modal-open');
+                        
+                        // Crear backdrop si no existe
+                        let backdrop = document.querySelector('.modal-backdrop');
+                        if (!backdrop) {
+                            backdrop = document.createElement('div');
+                            backdrop.className = 'modal-backdrop fade show';
+                            document.body.appendChild(backdrop);
+                        }
+                        console.log('Modal abierto con manipulación DOM directa');
+                    } else {
+                        console.error('Elemento modal no encontrado');
+                    }
+                }
+            } catch (error) {
+                console.error('Error al abrir el modal:', error);
+                alert('Error al abrir el modal de confirmación. Por favor, intenta nuevamente.');
             }
         });
     }
     
-    // Set up confirmation text validation
+    // Configurar la validación del texto de confirmación
     const confirmText = document.getElementById('confirmText');
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     
     if (confirmText && confirmDeleteBtn) {
         confirmText.addEventListener('input', function() {
-            confirmDeleteBtn.disabled = (this.value !== 'BORRAR TODOS LOS CLIENTES');
+            if (this.value === 'BORRAR TODOS LOS CLIENTES') {
+                confirmDeleteBtn.disabled = false;
+            } else {
+                confirmDeleteBtn.disabled = true;
+            }
         });
     }
     
-    // Set up delete form submission
+    // Configurar el formulario de eliminación
     const deleteClientsForm = document.getElementById('deleteClientsForm');
     if (deleteClientsForm) {
         deleteClientsForm.addEventListener('submit', function(event) {
-            // Final verification before submitting
+            // Última verificación antes de enviar
             if (confirmText.value !== 'BORRAR TODOS LOS CLIENTES') {
                 event.preventDefault();
                 alert('Por favor, confirma la acción escribiendo el texto exacto.');
                 return false;
             }
             
-            // If everything is correct, show loading indicator
+            // Si todo está correcto, mostrar indicador de carga
             confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Eliminando...';
             confirmDeleteBtn.disabled = true;
             return true;
         });
     }
-    
-    // Remove duplicate script execution by removing the second script block entirely
 });
 </script>
 <script>
