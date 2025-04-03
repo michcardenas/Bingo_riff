@@ -731,56 +731,52 @@
             loadTableContent(rutaTablaTodasReservas, true, 'cartones-eliminados');
         });
 
-        // Evento para el botón de Filtrar
+      // Evento para el botón de Filtrar
 document.getElementById('btnFiltrar').addEventListener('click', function() {
     const nombre = document.getElementById('nombre').value.trim();
     const celular = document.getElementById('celular').value.trim();
     const serie = document.getElementById('serie').value.trim();
 
-    // Guardar el tipo actual antes de cargar nuevos datos
-    const tipoAplicar = tipoActual;
-    
-    // Siempre cargar los datos con los filtros aplicados
-    const filteredUrl = addFiltersToUrl(rutaTablaTodasReservas);
-    
-    // Mostrar indicador de carga
-    mostrarCargando();
-    
-    // Cargamos datos y después aplicamos el filtro por tipo
-    fetch(filteredUrl, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+    // Si no hay filtros, mostrar todos los datos
+    if (!nombre && !celular && !serie) {
+        if (dataTable) {
+            dataTable.search('').columns().search('').draw();
         }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-        return response.text();
-    })
-    .then(html => {
-        // Actualizar contenedor
-        const container = document.getElementById('tableContent');
-        container.innerHTML = html;
+        return;
+    }
+
+    // Si ya tenemos un DataTable inicializado, aplicamos filtros directamente
+    if (dataTable) {
+        // Importante: primero volver a la primera página
+        dataTable.page('first').draw('page');
         
-        // Inicializar DataTable
-        if (typeof initializeDataTable === 'function') {
-            initializeDataTable();
-            
-            // Una vez inicializado, aplicar el filtro por tipo
-            console.log(`Aplicando filtro de tipo: ${tipoAplicar}`);
-            setTimeout(() => {
-                filtrarPorTipo(tipoAplicar);
-            }, 200);
+        // Limpiar filtros anteriores de DataTable
+        dataTable.search('').columns().search('').draw(false);
+        
+        // Establecer búsqueda global que combine todos los criterios
+        let terminoBusqueda = '';
+        if (nombre) terminoBusqueda += nombre + ' ';
+        if (celular) terminoBusqueda += celular + ' ';
+        if (serie) terminoBusqueda += serie + ' ';
+        
+        // Aplicar la búsqueda y mostrar resultados
+        dataTable.search(terminoBusqueda.trim()).draw();
+        
+        // Verificar si hay resultados visibles
+        const resultadosVisibles = dataTable.page.info().recordsDisplay;
+        
+        // Mostrar mensaje si no hay coincidencias
+        $('#mensaje-filtro').remove();
+        if (resultadosVisibles === 0) {
+            $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-warning">No se encontraron reservas que coincidan con los filtros aplicados.</div>');
+        } else {
+            $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-success">Se encontraron ${resultadosVisibles} reservas que coinciden con los filtros.</div>`);
         }
-    })
-    .catch(error => {
-        console.error('Error cargando datos filtrados:', error);
-        document.getElementById('tableContent').innerHTML = `
-            <div class="alert alert-danger text-center">
-                Error al cargar los datos: ${error.message}
-            </div>`;
-    });
+    } else {
+        // Si no hay DataTable, hacer petición con filtros
+        const filteredUrl = addFiltersToUrl(rutaTablaTodasReservas);
+        loadTableContent(filteredUrl);
+    }
 });
 
         // Evento para el botón de Limpiar filtros

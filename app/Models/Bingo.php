@@ -16,6 +16,7 @@ class Bingo extends Model
         'fecha',
         'precio',
         'estado',
+        'visible',
         'reabierto',
     ];
 

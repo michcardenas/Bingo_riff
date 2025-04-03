@@ -119,7 +119,7 @@
                                 <a href="{{ route('bingos.reservas', $bingo->id) }}" class="btn btn-sm btn-info me-2">
                                     <i class="bi bi-people-fill"></i> Ver Participantes
                                 </a>
-                                
+
                                 @if(strtolower($bingo->estado) == 'abierto')
                                 <!-- Si el bingo está abierto, mostrar botón para cerrarlo -->
                                 <form action="{{ route('bingos.cerrar', $bingo->id) }}" method="POST" class="d-inline me-2">
@@ -144,14 +144,23 @@
                                 <span class="badge bg-secondary me-2">Cerrado (ya se reabrió 1 vez)</span>
                                 @endif
                                 @endif
-                                
+
                                 <!-- Botón para archivar el bingo (disponible siempre excepto cuando ya está archivado) -->
                                 @if(strtolower($bingo->estado) != 'archivado')
-                                <form action="{{ route('bingos.archivar', $bingo->id) }}" method="POST" class="d-inline">
+                                <form action="{{ route('bingos.archivar', $bingo->id) }}" method="POST" class="d-inline me-2">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit" class="btn btn-sm" style="background-color: #FFB700; color: white; font-weight: bold; border: 2px solid white;">
                                         Archivar Bingo
+                                    </button>
+                                </form>
+
+                                <!-- Botón para ocultar un bingo específico -->
+                                <form action="{{ route('bingos.limpiarSolo', $bingo->id) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-sm" style="background-color: #dc3545; color: white; font-weight: bold; border: 2px solid white;" onclick="return confirm('¿Estás seguro de que deseas ocultar este bingo?')">
+                                        Borrar Bingo
                                     </button>
                                 </form>
                                 @else

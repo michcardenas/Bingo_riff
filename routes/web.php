@@ -63,6 +63,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/bingos/{id}', [BingoAdminController::class, 'update'])->name('bingos.update');
         Route::patch('/bingos/{id}/abrir', [BingoAdminController::class, 'abrir'])->name('bingos.abrir');
         Route::patch('/bingos/{id}/archivar', [BingoAdminController::class, 'archivar'])->name('bingos.archivar');
+        Route::patch('/bingos/{id}/limpiarSolo', [BingoAdminController::class, 'limpiarSolo'])->name('bingos.limpiarSolo');
         Route::delete('/bingos/limpiar', [BingoAdminController::class, 'limpiar'])->name('bingos.limpiar');
         Route::get('/admin/bingos/verificar-duplicados', [BingoAdminController::class, 'verificarDuplicados'])
             ->name('admin.bingos.verificar-duplicados');
@@ -75,6 +76,8 @@ Route::middleware('auth')->group(function () {
 
         // Rutas para gestionar reservas de un bingo específico
         Route::get('/bingos/{id}/reservas', [BingoAdminController::class, 'reservasPorBingo'])->name('bingos.reservas');
+
+        
 
         // NUEVA RUTA: Carga parcial de tabla de reservas para un bingo específico
         Route::get('/bingos/{id}/reservas-tabla', [BingoAdminController::class, 'reservasPorBingoTabla'])->name('bingos.reservas-tabla');
