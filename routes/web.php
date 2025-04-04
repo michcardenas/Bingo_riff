@@ -191,32 +191,30 @@ Route::prefix('api')->group(function () {
         return response()->json($bingo);
     });
 
-    Route::get('/~ecqeqzgf/bingos/{id}', function ($id) {
+    Route::get('/~ecqeqzgf/api/bingos/{id}', function ($id) {
         // Agregar log para depuración
-        Log::info("Consultando bingo con ID: $id");
+        Log::info("API: Consultando bingo con ID: $id");
         
         try {
-            // Consulta directa a la base de datos para verificar
-            $bingoRaw = DB::table('bingos')->where('id', $id)->first();
-            if ($bingoRaw) {
-                Log::info("Bingo encontrado directamente en DB: " . json_encode($bingoRaw));
-            } else {
-                Log::warning("Bingo no encontrado directamente en DB con ID: $id");
-            }
-    
-            // Consulta a través del modelo
             $bingo = Bingo::find($id);
             
             if (!$bingo) {
-                Log::warning("Bingo no encontrado a través del modelo Eloquent con ID: $id");
+                Log::warning("API: Bingo no encontrado con ID: $id");
                 return response()->json(['error' => 'Bingo no encontrado'], 404);
             }
-    
-            Log::info("Bingo encontrado a través del modelo Eloquent: " . json_encode($bingo));
-            return response()->json($bingo);
+            
+            // Convertir a array primero para ver si hay problemas de serialización
+            $bingoArray = $bingo->toArray();
+            Log::info("API: Bingo encontrado con ID $id: " . json_encode($bingoArray));
+            
+            // Devolver con debug info
+            return response()->json([
+                'bingo' => $bingoArray,
+                'timestamp' => now()->toDateTimeString()
+            ]);
         } catch (\Exception $e) {
-            Log::error("Error al consultar bingo con ID $id: " . $e->getMessage());
-            return response()->json(['error' => 'Error interno del servidor'], 500);
+            Log::error("API: Error al consultar bingo con ID $id: " . $e->getMessage());
+            return response()->json(['error' => 'Error interno del servidor: ' . $e->getMessage()], 500);
         }
     });
 });
