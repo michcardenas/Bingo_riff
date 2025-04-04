@@ -736,7 +736,7 @@
                 }
             </script>
 
-// Reemplazar el script anterior con este código mejorado
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const celularInput = document.getElementById('celular');
