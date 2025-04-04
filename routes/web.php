@@ -112,6 +112,67 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+
+Route::get('/admin/debug/bingos/{bingoId}/series/{serie?}', function($bingoId, $serie = null) {
+    // 1. Información del bingo
+    $bingo = App\Models\Bingo::findOrFail($bingoId);
+    
+    // 2. Obtiene las reservas del bingo
+    $reservas = App\Models\Reserva::where('bingo_id', $bingoId)
+        ->where('eliminado', false)
+        ->get();
+    
+    // 3. Prepare la respuesta
+    $resultado = [
+        'bingo' => [
+            'id' => $bingo->id,
+            'nombre' => $bingo->nombre,
+            'estado' => $bingo->estado
+        ],
+        'total_reservas' => $reservas->count(),
+        'reservas' => []
+    ];
+    
+    // 4. Si se proporcionó un número de serie, buscar coincidencias
+    $seriePadded = $serie ? str_pad($serie, 6, '0', STR_PAD_LEFT) : null;
+    $serieEncontrada = false;
+    
+    foreach ($reservas as $reserva) {
+        $series = json_decode($reserva->series, true);
+        
+        $reservaInfo = [
+            'id' => $reserva->id,
+            'nombre' => $reserva->nombre,
+            'celular' => $reserva->celular,
+            'series_raw' => $reserva->series,
+            'series_decoded' => $series
+        ];
+        
+        // Si estamos buscando una serie específica
+        if ($serie) {
+            $encontrado = is_array($series) && (in_array($serie, $series) || in_array($seriePadded, $series));
+            $reservaInfo['coincide_serie'] = $encontrado;
+            
+            if ($encontrado) {
+                $serieEncontrada = true;
+                $reservaInfo['es_coincidencia'] = true;
+            }
+        }
+        
+        $resultado['reservas'][] = $reservaInfo;
+    }
+    
+    if ($serie) {
+        $resultado['busqueda'] = [
+            'serie_original' => $serie,
+            'serie_formateada' => $seriePadded,
+            'encontrada' => $serieEncontrada
+        ];
+    }
+    
+    return response()->json($resultado);
+})->name('debug.series');
+
 // Rutas de API para bingos
 Route::prefix('api')->group(function () {
     Route::get('/bingos/by-name', function (Request $request) {
