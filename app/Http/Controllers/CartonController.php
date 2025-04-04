@@ -117,6 +117,11 @@ class CartonController extends Controller
  * Solo permite descargar si el bingo está 'abierto'.
  * No permite descargar si el bingo está 'cerrado' o 'archivado'.
  */
+/**
+ * Descarga el cartón si está aprobado.
+ * Solo permite descargar si el bingo está 'abierto'.
+ * No permite descargar si el bingo está 'cerrado' o 'archivado'.
+ */
 public function descargar($numero, $bingoId = null)
 {
     Log::info("Iniciando descarga de cartón: $numero, Bingo ID: $bingoId");
