@@ -786,24 +786,41 @@ function agregarIndicadorVisual(celdaEstado, estado) {
  */
 function consultarEstadoBingo(nombreBingo) {
     const url = `/~ecqeqzgf/api/bingos/by-name?nombre=${encodeURIComponent(nombreBingo)}`;
+    console.log(`Consultando bingo por nombre: ${nombreBingo}, URL: ${url}`);
 
     return fetch(url)
         .then(function(response) {
+            console.log(`Respuesta para bingo nombre "${nombreBingo}": Status ${response.status}`);
+            
             if (response.status === 404) {
                 console.log(`Bingo con nombre "${nombreBingo}" no encontrado`);
-                return null; // Retornar null de manera controlada
+                return null;
             }
             if (!response.ok) {
                 return response.text().then(text => {
-                    console.error("Error al consultar bingo por nombre:", text);
+                    console.error(`Error al consultar bingo por nombre "${nombreBingo}":`, text);
                     throw new Error('Error al consultar bingo');
                 });
             }
-            return response.json();
+            
+            return response.text().then(text => {
+                // Verificar si hay contenido antes de intentar parsear
+                if (!text || text.trim() === '') {
+                    console.error(`Respuesta vacía para bingo nombre "${nombreBingo}"`);
+                    return null;
+                }
+                
+                try {
+                    return JSON.parse(text);
+                } catch (jsonError) {
+                    console.error(`Error al parsear JSON para bingo nombre "${nombreBingo}":`, text, jsonError);
+                    return null;
+                }
+            });
         })
         .catch(function(error) {
-            console.error("Error detallado:", error);
-            return null; // Siempre retornar null en caso de error
+            console.error(`Error detallado para bingo nombre "${nombreBingo}":`, error);
+            return null;
         });
 }
 
@@ -812,24 +829,41 @@ function consultarEstadoBingo(nombreBingo) {
  */
 function consultarEstadoBingoPorId(bingoId) {
     const url = `/~ecqeqzgf/api/bingos/${bingoId}`;
+    console.log(`Consultando bingo por ID: ${bingoId}, URL: ${url}`);
 
     return fetch(url)
         .then(function(response) {
+            console.log(`Respuesta para bingo ID ${bingoId}: Status ${response.status}`);
+            
             if (response.status === 404) {
                 console.log(`Bingo con ID ${bingoId} no encontrado`);
-                return null; // Retornar null de manera controlada
+                return null;
             }
             if (!response.ok) {
                 return response.text().then(text => {
-                    console.error("Error al consultar bingo por ID:", text);
+                    console.error(`Error al consultar bingo por ID ${bingoId}:`, text);
                     throw new Error('Error al consultar bingo');
                 });
             }
-            return response.json();
+            
+            return response.text().then(text => {
+                // Verificar si hay contenido antes de intentar parsear
+                if (!text || text.trim() === '') {
+                    console.error(`Respuesta vacía para bingo ID ${bingoId}`);
+                    return null;
+                }
+                
+                try {
+                    return JSON.parse(text);
+                } catch (jsonError) {
+                    console.error(`Error al parsear JSON para bingo ID ${bingoId}:`, text, jsonError);
+                    return null;
+                }
+            });
         })
         .catch(function(error) {
-            console.error("Error detallado:", error);
-            return null; // Siempre retornar null en caso de error
+            console.error(`Error detallado para bingo ID ${bingoId}:`, error);
+            return null;
         });
 }
 </script>

@@ -175,7 +175,7 @@ Route::get('/admin/debug/bingos/{bingoId}/series/{serie?}', function($bingoId, $
 
 // Rutas de API para bingos
 Route::prefix('api')->group(function () {
-    Route::get('/bingos/by-name', function (Request $request) {
+    Route::get('/~ecqeqzgf/bingos/by-name', function (Request $request) {
         $nombre = $request->query('nombre');
 
         if (!$nombre) {
