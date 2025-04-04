@@ -41,6 +41,9 @@ class BingoGanadoresController extends Controller
     
             $reservaEncontrada = null;
             $numeroCarton = null;
+            
+            // Registra lo que estamos buscando para depuración
+            Log::info("Buscando serie: '$serie' en el bingo ID: " . $bingo->id);
     
             foreach ($reservas as $reserva) {
                 // Aquí aseguramos que las series sean siempre un array
@@ -48,19 +51,32 @@ class BingoGanadoresController extends Controller
                     ? json_decode($reserva->series, true)
                     : $reserva->series;
     
-                if (!is_array($series)) continue;
+                if (!is_array($series)) {
+                    Log::warning("Series no es un array para reserva ID: " . $reserva->id);
+                    continue;
+                }
+                
+                // Registra las series para depuración
+                Log::info("Reserva ID: " . $reserva->id . ", Series: " . json_encode($series));
     
-                // Ahora buscamos la serie exacta
-                $indice = array_search($serie, $series);
-    
-                if ($indice !== false) {
-                    $reservaEncontrada = $reserva;
-                    $numeroCarton = str_pad($indice + 1, 6, '0', STR_PAD_LEFT);
-                    break;
+                // IMPORTANTE: La búsqueda debe incluir conversión a cadena y eliminar ceros a la izquierda
+                foreach ($series as $indice => $serieBD) {
+                    // Convertimos ambos a string y eliminamos ceros a la izquierda para comparar
+                    $serieLimpia = ltrim($serie, '0');
+                    $serieBDLimpia = ltrim($serieBD, '0');
+                    
+                    // También compara con la serie original por si acaso
+                    if ($serieBDLimpia === $serieLimpia || $serieBD === $serie) {
+                        $reservaEncontrada = $reserva;
+                        $numeroCarton = str_pad($indice + 1, 6, '0', STR_PAD_LEFT);
+                        Log::info("Serie encontrada! Reserva ID: " . $reserva->id . ", Índice: " . $indice);
+                        break 2; // Salir de ambos bucles
+                    }
                 }
             }
     
             if (!$reservaEncontrada) {
+                Log::warning("No se encontró ningún participante con la serie: '$serie'");
                 return response()->json(['error' => 'No se encontró ningún participante con ese número de serie.'], 404);
             }
     
