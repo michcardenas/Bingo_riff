@@ -112,85 +112,78 @@ class CartonController extends Controller
         ]);
     }
 
-/**
- * Descarga el cartón si está aprobado.
- * Solo permite descargar si el bingo está 'abierto'.
- * No permite descargar si el bingo está 'cerrado' o 'archivado'.
- */
-/**
- * Descarga el cartón si está aprobado.
- * Solo permite descargar si el bingo está 'abierto'.
- * No permite descargar si el bingo está 'cerrado' o 'archivado'.
- */
-public function descargar($numero, $bingoId = null)
-{
-    Log::info("Iniciando descarga de cartón: $numero, Bingo ID: $bingoId");
-
-    // Eliminar ceros a la izquierda
-    $numeroSinCeros = ltrim($numero, '0');
-
-    // Buscar reservas aprobadas o en revisión (disponibles)
-    $query = Reserva::where(function($q) {
-        $q->where('estado', 'aprobado')
-          ->orWhere('estado', 'revision');
-    })->where('eliminado', 0);
+  /**
+     * Descarga el cartón si está aprobado.
+     * Solo permite descargar si el bingo está 'abierto'.
+     * No permite descargar si el bingo está 'cerrado' o 'archivado'.
+     */
+    public function descargar($numero, $bingoId = null)
+    {
+        Log::info("Iniciando descarga de cartón: $numero, Bingo ID: $bingoId");
     
-    if ($bingoId) {
-        $query->where('bingo_id', $bingoId);
-    }
-
-    $reservas = $query->get();
-    $reservaEncontrada = null;
-
-    // Buscar manualmente en las series
-    foreach ($reservas as $reserva) {
-        if (!empty($reserva->series)) {
-            $seriesArray = json_decode($reserva->series, true);
-            if (is_array($seriesArray) && in_array($numero, $seriesArray)) {
-                $reservaEncontrada = $reserva;
-                break;
+        // Eliminar ceros a la izquierda
+        $numeroSinCeros = ltrim($numero, '0');
+    
+        // Buscar reservas aprobadas o en revisión (disponibles)
+        $query = Reserva::where(function($q) {
+            $q->where('estado', 'aprobado')
+              ->orWhere('estado', 'revision');
+        })->where('eliminado', 0);
+        
+        if ($bingoId) {
+            $query->where('bingo_id', $bingoId);
+        }
+    
+        $reservas = $query->get();
+        $reservaEncontrada = null;
+    
+        // Buscar manualmente en las series
+        foreach ($reservas as $reserva) {
+            if (!empty($reserva->series)) {
+                $seriesArray = json_decode($reserva->series, true);
+                if (is_array($seriesArray) && in_array($numero, $seriesArray)) {
+                    $reservaEncontrada = $reserva;
+                    break;
+                }
             }
         }
-    }
-
-    if (!$reservaEncontrada) {
-        Log::warning("Cartón no encontrado o no disponible: $numero");
-        return redirect()->back()->with('error', 'El cartón no existe o no está disponible para descarga.');
-    }
-
-    // Verificar el estado del bingo
-    if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
-        $bingo = $reservaEncontrada->bingo;
-        $bingoEstado = strtolower($bingo->estado);
-        
-        // Verificar si el bingo está archivado
-        if ($bingoEstado === 'archivado') {
-            Log::warning("Intento de descarga de cartón {$numero} para bingo archivado");
-            return redirect()->back()->with('error', 'Este cartón pertenece a un bingo archivado y no puede ser descargado.');
-        }
-        
-        // Ya no verificamos si el bingo está cerrado, permitiendo descargas sin importar el estado
-        // Se eliminó la condición que impedía descargar cartones de bingos cerrados
-    }
-
-    // Convertir el número a entero para quitar ceros iniciales
-    $numeroSinCeros = intval($numero);
     
-    // Cambiado: ahora se busca un archivo JPG en lugar de PDF
-    $rutaCompleta = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroSinCeros . '.jpg');
-
-    if (!file_exists($rutaCompleta)) {
-        Log::warning("Archivo de cartón no encontrado: $rutaCompleta");
-        return redirect()->back()->with('error', 'No se encontró el archivo del cartón.');
+        if (!$reservaEncontrada) {
+            Log::warning("Cartón no encontrado o no disponible: $numero");
+            return redirect()->back()->with('error', 'El cartón no existe o no está disponible para descarga.');
+        }
+    
+        // Verificar el estado del bingo
+        if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
+            $bingo = $reservaEncontrada->bingo;
+            $bingoEstado = strtolower($bingo->estado);
+            
+            // Verificar si el bingo está archivado
+            if ($bingoEstado === 'archivado') {
+                Log::warning("Intento de descarga de cartón {$numero} para bingo archivado");
+                return redirect()->back()->with('error', 'Este cartón pertenece a un bingo archivado y no puede ser descargado.');
+            }
+            
+            // Ya no verificamos si el bingo está cerrado, permitiendo descargas sin importar el estado
+            // Se eliminó la condición que impedía descargar cartones de bingos cerrados
+        }
+    
+        // Convertir el número a entero para quitar ceros iniciales
+        $numeroSinCeros = intval($numero);
+        $rutaCompleta = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroSinCeros . '.pdf');
+    
+        if (!file_exists($rutaCompleta)) {
+            Log::warning("Archivo de cartón no encontrado: $rutaCompleta");
+            return redirect()->back()->with('error', 'No se encontró el archivo del cartón.');
+        }
+    
+        // Preparar el nombre del archivo
+        $nombreArchivo = "Carton-RIFFY-{$numeroSinCeros}";
+    
+        // Descargar directamente
+        Log::info("Descargando cartón: $numeroSinCeros");
+        return response()->download($rutaCompleta, "{$nombreArchivo}.pdf");
     }
-
-    // Preparar el nombre del archivo
-    $nombreArchivo = "Carton-RIFFY-{$numeroSinCeros}";
-
-    // Descargar directamente con el tipo de contenido cambiado para JPG
-    Log::info("Descargando cartón: $numeroSinCeros");
-    return response()->download($rutaCompleta, "{$nombreArchivo}.jpg");
-}
 
     public function getBingoByName(Request $request)
     {

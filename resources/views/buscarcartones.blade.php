@@ -562,311 +562,180 @@
             <!-- Bootstrap JS -->
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar verificación de cartones con indicador visual
-    verificarEstadoBingos();
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Inicializar verificación de cartones con indicador visual
+                    verificarEstadoBingos();
 
-    // Agregar evento a los botones de contactar admin
-    const contactarBtns = document.querySelectorAll('.contactar-admin');
-    contactarBtns.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const cartonNumero = this.getAttribute('data-carton');
-            const adminWhatsapp = this.getAttribute('data-whatsapp') || "3235903774";
-            let mensaje = '';
+                    // Agregar evento a los botones de contactar admin
+                    const contactarBtns = document.querySelectorAll('.contactar-admin');
+                    contactarBtns.forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const cartonNumero = this.getAttribute('data-carton');
+                            const adminWhatsapp = this.getAttribute('data-whatsapp') || "3235903774";
+                            let mensaje = '';
 
-            // Determinar qué tipo de alerta contiene este botón para personalizar el mensaje
-            if (this.closest('.alert-warning') && this.closest('.alert-warning').textContent.includes('rechazado')) {
-                mensaje = `Hola, necesito ayuda con mi cartón rechazado #${cartonNumero}.`;
-            } else if (this.closest('.alert-warning') && this.closest('.alert-warning').textContent.includes('No se encontraron cartones')) {
-                mensaje = `Hola, no puedo encontrar mis cartones asociados #${cartonNumero}. ¿Podrías ayudarme?`;
-            } else if (this.closest('.alert-info')) {
-                mensaje = `Hola, quisiera consultar sobre el estado de aprobación de mis cartones.`;
-            } else {
-                // Mensaje por defecto en caso de que no coincida con ninguno de los anteriores
-                mensaje = `Hola, necesito información sobre mi cartón.`;
-            }
+                            // Determinar qué tipo de alerta contiene este botón para personalizar el mensaje
+                            if (this.closest('.alert-warning') && this.closest('.alert-warning').textContent.includes('rechazado')) {
+                                mensaje = `Hola, necesito ayuda con mi cartón rechazado #${cartonNumero}.`;
+                            } else if (this.closest('.alert-warning') && this.closest('.alert-warning').textContent.includes('No se encontraron cartones')) {
+                                mensaje = `Hola, no puedo encontrar mis cartones asociados #${cartonNumero}. ¿Podrías ayudarme?`;
+                            } else if (this.closest('.alert-info')) {
+                                mensaje = `Hola, quisiera consultar sobre el estado de aprobación de mis cartones.`;
+                            } else {
+                                // Mensaje por defecto en caso de que no coincida con ninguno de los anteriores
+                                mensaje = `Hola, necesito información sobre mi cartón.`;
+                            }
 
-            // Limpiar número de WhatsApp de cualquier carácter no numérico
-            const whatsappNumero = adminWhatsapp.replace(/[^0-9]/g, '');
-            const whatsappUrl = `https://wa.me/${whatsappNumero}?text=${encodeURIComponent(mensaje)}`;
-            window.open(whatsappUrl, '_blank');
-        });
-    });
+                            // Limpiar número de WhatsApp de cualquier carácter no numérico
+                            const whatsappNumero = adminWhatsapp.replace(/[^0-9]/g, '');
+                            const whatsappUrl = `https://wa.me/${whatsappNumero}?text=${encodeURIComponent(mensaje)}`;
+                            window.open(whatsappUrl, '_blank');
+                        });
+                    });
+                });
 
-    // Configuración del formulario de búsqueda automática
-    const celularInput = document.getElementById('celular');
-    const searchForm = document.getElementById('searchForm');
-    let typingTimer;
-    const doneTypingInterval = 1200; // tiempo en ms (1.2 segundos)
-    let lastSubmittedValue = '';
-    let isFirstLoad = true;
-    
-    // Al cargar la página, verificamos si ya hay un valor en el campo
-    // y si ya hay resultados mostrados (la tabla de cartones existe)
-    if (celularInput) {
-        const hasCelularValue = celularInput.value.length >= 10;
-        const hasResults = document.querySelector('.cartones-table') !== null;
-        
-        // Solo autoenviar en la carga inicial si hay valor pero no hay resultados
-        if (hasCelularValue && !hasResults && isFirstLoad) {
-            // Pequeño retraso para asegurarnos que la página esté completamente cargada
-            setTimeout(() => {
-                lastSubmittedValue = celularInput.value;
-                searchForm.submit();
-            }, 500);
-            isFirstLoad = false;
-        }
-        
-        // Evento para detectar cuando el usuario está escribiendo
-        celularInput.addEventListener('keyup', function() {
-            // Limpiar el timer existente
-            clearTimeout(typingTimer);
-            
-            // Solo activar si hay 10+ dígitos Y es diferente al último valor enviado
-            const currentValue = this.value;
-            if (currentValue.length >= 10 && currentValue !== lastSubmittedValue) {
-                // Esperar que el usuario termine de escribir
-                typingTimer = setTimeout(function() {
-                    // Actualizar el último valor enviado para evitar envíos repetidos
-                    lastSubmittedValue = currentValue;
-                    
-                    // Mostrar indicador visual
-                    const loadingIndicator = document.createElement('div');
-                    loadingIndicator.id = 'loadingIndicator';
-                    loadingIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span> Buscando...';
-                    loadingIndicator.style.marginTop = '10px';
-                    
-                    // Verificar si ya existe un indicador y eliminarlo
-                    const existingIndicator = document.getElementById('loadingIndicator');
-                    if (existingIndicator) {
-                        existingIndicator.remove();
+                /**
+                 * Verifica el estado de los bingos asociados a los cartones
+                 * Prioriza mostrar el estado "archivado" sobre cualquier otro estado
+                 */
+                function verificarEstadoBingos() {
+                    const tablaCartones = document.querySelector('.cartones-table');
+                    if (!tablaCartones) return;
+
+                    const filas = tablaCartones.querySelectorAll('tbody tr');
+
+                    filas.forEach(function(fila) {
+                        const celdaBingo = fila.querySelector('td:nth-child(2)');
+                        const celdaEstado = fila.querySelector('td:nth-child(4)');
+
+                        if (!celdaBingo || !celdaEstado) return;
+
+                        const bingoId = celdaBingo.getAttribute('data-bingo-id');
+                        const nombreBingo = celdaBingo.textContent.trim();
+
+                        // Guardar estado original del cartón
+                        const estadoOriginal = celdaEstado.getAttribute('data-estado');
+
+                        // Verificar el bingo para todos los cartones, sin importar el estado
+                        if (bingoId) {
+                            consultarEstadoBingoPorId(bingoId)
+                                .then(infoBingo => procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal));
+                        } else if (nombreBingo && nombreBingo !== 'Sin asignar') {
+                            consultarEstadoBingo(nombreBingo)
+                                .then(infoBingo => procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal));
+                        }
+                    });
+                }
+
+                function procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal) {
+                    if (!infoBingo) return;
+
+                    const bingoEstado = infoBingo.estado ? infoBingo.estado.toLowerCase() : '';
+                    const estadoSpan = celdaEstado.querySelector('span[class^="estado-"]');
+                    const enlaceDescarga = celdaEstado.querySelector('.download-link');
+                    const enlaceWhatsapp = celdaEstado.querySelector('.contactar-admin');
+
+                    // Verificar si el bingo está archivado (no debería aparecer, pero por si acaso)
+                    if (bingoEstado === 'archivado') {
+                        // 1. Cambiar el texto y la clase del estado
+                        if (estadoSpan) {
+                            estadoSpan.textContent = 'Archivado';
+                            estadoSpan.className = '';
+                            estadoSpan.classList.add('estado-archivado');
+                        }
+
+                        // 2. Ocultar enlace de WhatsApp para cartones rechazados
+                        if (enlaceWhatsapp) {
+                            enlaceWhatsapp.style.display = 'none';
+                        }
+
+                        // 3. Para cartones aprobados, cambiar el botón de descarga
+                        if (enlaceDescarga) {
+                            enlaceDescarga.setAttribute('data-original-href', enlaceDescarga.href);
+                            enlaceDescarga.href = 'javascript:void(0)';
+                            enlaceDescarga.textContent = 'Archivado';
+                            enlaceDescarga.style.backgroundColor = '#808080'; // Gris para archivado
+                            enlaceDescarga.title = 'Este cartón pertenece a un bingo archivado y no puede ser descargado';
+                            enlaceDescarga.onclick = function(e) {
+                                e.preventDefault();
+                                alert('Este cartón pertenece a un bingo archivado y no puede ser descargado.');
+                            };
+                        }
+
+                        // 4. Agregar indicador visual de archivado
+                        agregarIndicadorVisual(celdaEstado, 'archivado');
+
+                        return;
                     }
-                    
-                    // Agregar el indicador antes del botón de búsqueda
-                    const submitButton = searchForm.querySelector('button[type="submit"]');
-                    searchForm.insertBefore(loadingIndicator, submitButton);
-                    
-                    // Enviar el formulario después de un breve retraso
-                    setTimeout(() => {
-                        searchForm.submit();
-                    }, 300);
-                }, doneTypingInterval);
-            }
-        });
-        
-        // Cancelar el timer si el usuario sigue escribiendo
-        celularInput.addEventListener('keydown', function() {
-            clearTimeout(typingTimer);
-        });
-    }
-});
 
-/**
- * Verifica el estado de los bingos asociados a los cartones
- * Prioriza mostrar el estado "archivado" sobre cualquier otro estado
- */
-function verificarEstadoBingos() {
-    const tablaCartones = document.querySelector('.cartones-table');
-    if (!tablaCartones) return;
+                    // Para cartones aprobados, asegurarse de que sean descargables
+                    if (estadoOriginal === 'aprobado' && enlaceDescarga) {
+                        // Verificar si hay que restaurar el enlace original
+                        const originalHref = enlaceDescarga.getAttribute('data-original-href');
+                        if (originalHref) {
+                            enlaceDescarga.href = originalHref;
+                            enlaceDescarga.removeAttribute('data-original-href');
+                            enlaceDescarga.textContent = 'Descargar';
+                            enlaceDescarga.style.backgroundColor = '#00bf63'; // Verde de aprobado
+                            enlaceDescarga.style.color = 'white';
+                            enlaceDescarga.title = 'Descargar cartón';
+                            enlaceDescarga.onclick = null; // Eliminar cualquier onclick previo
+                        }
 
-    const filas = tablaCartones.querySelectorAll('tbody tr');
-
-    filas.forEach(function(fila) {
-        const celdaBingo = fila.querySelector('td:nth-child(2)');
-        const celdaEstado = fila.querySelector('td:nth-child(4)');
-
-        if (!celdaBingo || !celdaEstado) return;
-
-        const bingoId = celdaBingo.getAttribute('data-bingo-id');
-        const nombreBingo = celdaBingo.textContent.trim();
-
-        // Guardar estado original del cartón
-        const estadoOriginal = celdaEstado.getAttribute('data-estado');
-
-        // Verificar el bingo para todos los cartones, sin importar el estado
-        if (bingoId) {
-            consultarEstadoBingoPorId(bingoId)
-                .then(infoBingo => procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal));
-        } else if (nombreBingo && nombreBingo !== 'Sin asignar') {
-            consultarEstadoBingo(nombreBingo)
-                .then(infoBingo => procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal));
-        }
-    });
-}
-
-function procesarEstadoBingo(infoBingo, celdaEstado, estadoOriginal) {
-    // Si no hay información del bingo (porque no existe o hubo error), no hacemos nada
-    if (!infoBingo) {
-        console.log("No se pudo obtener información del bingo o el bingo no existe");
-        return;
-    }
-
-    const bingoEstado = infoBingo.estado ? infoBingo.estado.toLowerCase() : '';
-    const estadoSpan = celdaEstado.querySelector('span[class^="estado-"]');
-    const enlaceDescarga = celdaEstado.querySelector('.download-link');
-    const enlaceWhatsapp = celdaEstado.querySelector('.contactar-admin');
-
-    // Verificar si el bingo está archivado
-    if (bingoEstado === 'archivado') {
-        // 1. Cambiar el texto y la clase del estado
-        if (estadoSpan) {
-            estadoSpan.textContent = 'Archivado';
-            estadoSpan.className = '';
-            estadoSpan.classList.add('estado-archivado');
-        }
-
-        // 2. Ocultar enlace de WhatsApp para cartones rechazados
-        if (enlaceWhatsapp) {
-            enlaceWhatsapp.style.display = 'none';
-        }
-
-        // 3. Para cartones aprobados, cambiar el botón de descarga
-        if (enlaceDescarga) {
-            enlaceDescarga.setAttribute('data-original-href', enlaceDescarga.href);
-            enlaceDescarga.href = 'javascript:void(0)';
-            enlaceDescarga.textContent = 'Archivado';
-            enlaceDescarga.style.backgroundColor = '#808080'; // Gris para archivado
-            enlaceDescarga.title = 'Este cartón pertenece a un bingo archivado y no puede ser descargado';
-            enlaceDescarga.onclick = function(e) {
-                e.preventDefault();
-                alert('Este cartón pertenece a un bingo archivado y no puede ser descargado.');
-            };
-        }
-
-        // 4. Agregar indicador visual de archivado
-        agregarIndicadorVisual(celdaEstado, 'archivado');
-
-        return;
-    }
-
-    // Para cartones aprobados, asegurarse de que sean descargables
-    if (estadoOriginal === 'aprobado' && enlaceDescarga) {
-        // Verificar si hay que restaurar el enlace original
-        const originalHref = enlaceDescarga.getAttribute('data-original-href');
-        if (originalHref) {
-            enlaceDescarga.href = originalHref;
-            enlaceDescarga.removeAttribute('data-original-href');
-            enlaceDescarga.textContent = 'Descargar';
-            enlaceDescarga.style.backgroundColor = '#00bf63'; // Verde de aprobado
-            enlaceDescarga.style.color = 'white';
-            enlaceDescarga.title = 'Descargar cartón';
-            enlaceDescarga.onclick = null; // Eliminar cualquier onclick previo
-        }
-
-        // Quitar cualquier indicador visual previo
-        const indicadorExistente = celdaEstado.querySelector('.tiempo-descarga');
-        if (indicadorExistente) {
-            indicadorExistente.remove();
-        }
-    }
-}
-
-/**
- * Agrega un indicador visual a la celda del estado según el estado del bingo
- * Esta función debe implementarse si se usa en procesarEstadoBingo
- */
-function agregarIndicadorVisual(celdaEstado, estado) {
-    // Implementar según necesidades visuales 
-    // Por ejemplo, agregar una clase o icono
-    const indicador = document.createElement('div');
-    indicador.className = `tiempo-descarga estado-${estado}`;
-    indicador.textContent = estado === 'archivado' ? '(Bingo archivado)' : '';
-    
-    const indicadorExistente = celdaEstado.querySelector('.tiempo-descarga');
-    if (indicadorExistente) {
-        indicadorExistente.remove();
-    }
-    
-    celdaEstado.appendChild(indicador);
-}
-
-/**
- * Consulta el estado de un bingo por su nombre
- */
-function consultarEstadoBingo(nombreBingo) {
-    const url = `/~ecqeqzgf/api/bingos/by-name?nombre=${encodeURIComponent(nombreBingo)}`;
-    console.log(`Consultando bingo por nombre: ${nombreBingo}, URL: ${url}`);
-
-    return fetch(url)
-        .then(function(response) {
-            console.log(`Respuesta para bingo nombre "${nombreBingo}": Status ${response.status}`);
-            
-            if (response.status === 404) {
-                console.log(`Bingo con nombre "${nombreBingo}" no encontrado`);
-                return null;
-            }
-            if (!response.ok) {
-                return response.text().then(text => {
-                    console.error(`Error al consultar bingo por nombre "${nombreBingo}":`, text);
-                    throw new Error('Error al consultar bingo');
-                });
-            }
-            
-            return response.text().then(text => {
-                // Verificar si hay contenido antes de intentar parsear
-                if (!text || text.trim() === '') {
-                    console.error(`Respuesta vacía para bingo nombre "${nombreBingo}"`);
-                    return null;
+                        // Quitar cualquier indicador visual previo
+                        const indicadorExistente = celdaEstado.querySelector('.tiempo-descarga');
+                        if (indicadorExistente) {
+                            indicadorExistente.remove();
+                        }
+                    }
                 }
-                
-                try {
-                    return JSON.parse(text);
-                } catch (jsonError) {
-                    console.error(`Error al parsear JSON para bingo nombre "${nombreBingo}":`, text, jsonError);
-                    return null;
-                }
-            });
-        })
-        .catch(function(error) {
-            console.error(`Error detallado para bingo nombre "${nombreBingo}":`, error);
-            return null;
-        });
-}
 
-/**
- * Consulta el estado de un bingo por su ID
- */
-function consultarEstadoBingoPorId(bingoId) {
-    const url = `/~ecqeqzgf/api/bingos/${bingoId}`;
-    console.log(`Consultando bingo por ID: ${bingoId}, URL: ${url}`);
+                /**
+                 * Consulta el estado de un bingo por su nombre
+                 */
+                function consultarEstadoBingo(nombreBingo) {
+                    const url = `/api/bingos/by-name?nombre=${encodeURIComponent(nombreBingo)}`;
 
-    return fetch(url)
-        .then(function(response) {
-            console.log(`Respuesta para bingo ID ${bingoId}: Status ${response.status}`);
-            
-            if (response.status === 404) {
-                console.log(`Bingo con ID ${bingoId} no encontrado`);
-                return null;
-            }
-            if (!response.ok) {
-                return response.text().then(text => {
-                    console.error(`Error al consultar bingo por ID ${bingoId}:`, text);
-                    throw new Error('Error al consultar bingo');
-                });
-            }
-            
-            return response.text().then(text => {
-                // Verificar si hay contenido antes de intentar parsear
-                if (!text || text.trim() === '') {
-                    console.error(`Respuesta vacía para bingo ID ${bingoId}`);
-                    return null;
+                    return fetch(url)
+                        .then(function(response) {
+                            if (!response.ok) {
+                                return response.text().then(text => {
+                                    console.error("Error al consultar bingo por nombre:", text);
+                                    throw new Error('Error al consultar bingo');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .catch(function(error) {
+                            console.error("Error detallado:", error);
+                            return null;
+                        });
                 }
-                
-                try {
-                    return JSON.parse(text);
-                } catch (jsonError) {
-                    console.error(`Error al parsear JSON para bingo ID ${bingoId}:`, text, jsonError);
-                    return null;
+
+                /**
+                 * Consulta el estado de un bingo por su ID
+                 */
+                function consultarEstadoBingoPorId(bingoId) {
+                    const url = `/api/bingos/${bingoId}`;
+
+                    return fetch(url)
+                        .then(function(response) {
+                            if (!response.ok) {
+                                return response.text().then(text => {
+                                    console.error("Error al consultar bingo por ID:", text);
+                                    throw new Error('Error al consultar bingo');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .catch(function(error) {
+                            console.error("Error detallado:", error);
+                            return null;
+                        });
                 }
-            });
-        })
-        .catch(function(error) {
-            console.error(`Error detallado para bingo ID ${bingoId}:`, error);
-            return null;
-        });
-}
-</script>
+            </script>
+            
 </body>
 
 </html>

@@ -112,70 +112,9 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-
-Route::get('/admin/debug/bingos/{bingoId}/series/{serie?}', function($bingoId, $serie = null) {
-    // 1. Información del bingo
-    $bingo = App\Models\Bingo::findOrFail($bingoId);
-    
-    // 2. Obtiene las reservas del bingo
-    $reservas = App\Models\Reserva::where('bingo_id', $bingoId)
-        ->where('eliminado', false)
-        ->get();
-    
-    // 3. Prepare la respuesta
-    $resultado = [
-        'bingo' => [
-            'id' => $bingo->id,
-            'nombre' => $bingo->nombre,
-            'estado' => $bingo->estado
-        ],
-        'total_reservas' => $reservas->count(),
-        'reservas' => []
-    ];
-    
-    // 4. Si se proporcionó un número de serie, buscar coincidencias
-    $seriePadded = $serie ? str_pad($serie, 6, '0', STR_PAD_LEFT) : null;
-    $serieEncontrada = false;
-    
-    foreach ($reservas as $reserva) {
-        $series = json_decode($reserva->series, true);
-        
-        $reservaInfo = [
-            'id' => $reserva->id,
-            'nombre' => $reserva->nombre,
-            'celular' => $reserva->celular,
-            'series_raw' => $reserva->series,
-            'series_decoded' => $series
-        ];
-        
-        // Si estamos buscando una serie específica
-        if ($serie) {
-            $encontrado = is_array($series) && (in_array($serie, $series) || in_array($seriePadded, $series));
-            $reservaInfo['coincide_serie'] = $encontrado;
-            
-            if ($encontrado) {
-                $serieEncontrada = true;
-                $reservaInfo['es_coincidencia'] = true;
-            }
-        }
-        
-        $resultado['reservas'][] = $reservaInfo;
-    }
-    
-    if ($serie) {
-        $resultado['busqueda'] = [
-            'serie_original' => $serie,
-            'serie_formateada' => $seriePadded,
-            'encontrada' => $serieEncontrada
-        ];
-    }
-    
-    return response()->json($resultado);
-})->name('debug.series');
-
 // Rutas de API para bingos
 Route::prefix('api')->group(function () {
-    Route::get('/~ecqeqzgf/bingos/by-name', function (Request $request) {
+    Route::get('/bingos/by-name', function (Request $request) {
         $nombre = $request->query('nombre');
 
         if (!$nombre) {
@@ -191,31 +130,14 @@ Route::prefix('api')->group(function () {
         return response()->json($bingo);
     });
 
-    Route::get('/~ecqeqzgf/api/bingos/{id}', function ($id) {
-        // Agregar log para depuración
-        Log::info("API: Consultando bingo con ID: $id");
-        
-        try {
-            $bingo = Bingo::find($id);
-            
-            if (!$bingo) {
-                Log::warning("API: Bingo no encontrado con ID: $id");
-                return response()->json(['error' => 'Bingo no encontrado'], 404);
-            }
-            
-            // Convertir a array primero para ver si hay problemas de serialización
-            $bingoArray = $bingo->toArray();
-            Log::info("API: Bingo encontrado con ID $id: " . json_encode($bingoArray));
-            
-            // Devolver con debug info
-            return response()->json([
-                'bingo' => $bingoArray,
-                'timestamp' => now()->toDateTimeString()
-            ]);
-        } catch (\Exception $e) {
-            Log::error("API: Error al consultar bingo con ID $id: " . $e->getMessage());
-            return response()->json(['error' => 'Error interno del servidor: ' . $e->getMessage()], 500);
+    Route::get('/bingos/{id}', function ($id) {
+        $bingo = Bingo::find($id);
+
+        if (!$bingo) {
+            return response()->json(['error' => 'Bingo no encontrado'], 404);
         }
+
+        return response()->json($bingo);
     });
 });
 
