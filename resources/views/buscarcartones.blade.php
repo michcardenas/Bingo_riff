@@ -738,71 +738,85 @@
 
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const celularInput = document.getElementById('celular');
-        const searchForm = document.getElementById('searchForm');
-        let typingTimer;
-        const doneTypingInterval = 1200; // tiempo en ms (1.2 segundos)
-        let lastSubmittedValue = '';
-        let isFirstLoad = true;
+document.addEventListener('DOMContentLoaded', function() {
+    const celularInput = document.getElementById('celular');
+    const searchForm = document.getElementById('searchForm');
+    let typingTimer;
+    const doneTypingInterval = 1200; // tiempo en ms (1.2 segundos)
+    let lastSubmittedValue = '';
+    let isFirstLoad = true;
+    let hasSearched = false; // Bandera para controlar si ya se ha realizado una búsqueda
+    
+    // Al cargar la página, verificamos si ya hay un valor en el campo
+    const hasCelularValue = celularInput.value.length >= 10;
+    const hasResults = document.querySelector('.cartones-table') !== null;
+    
+    // Si hay un mensaje de "no se encontraron resultados", consideramos que ya se ha realizado la búsqueda
+    const noResultsMessage = document.querySelector('.alert-info, .alert-warning');
+    if (noResultsMessage && noResultsMessage.textContent.includes('No se encontraron')) {
+        hasSearched = true;
+        lastSubmittedValue = celularInput.value; // Guardar el valor que ya fue buscado
+    }
+    
+    // Solo autoenviar en la carga inicial si hay valor pero no hay resultados y no se ha buscado aún
+    if (hasCelularValue && !hasResults && isFirstLoad && !hasSearched) {
+        // Pequeño retraso para asegurarnos que la página esté completamente cargada
+        setTimeout(() => {
+            lastSubmittedValue = celularInput.value;
+            searchForm.submit();
+        }, 500);
+        isFirstLoad = false;
+    }
+    
+    // Evento para detectar cuando el usuario está escribiendo
+    celularInput.addEventListener('keyup', function() {
+        // Limpiar el timer existente
+        clearTimeout(typingTimer);
         
-        // Al cargar la página, verificamos si ya hay un valor en el campo
-        // y si ya hay resultados mostrados (la tabla de cartones existe)
-        const hasCelularValue = celularInput.value.length >= 10;
-        const hasResults = document.querySelector('.cartones-table') !== null;
-        
-        // Solo autoenviar en la carga inicial si hay valor pero no hay resultados
-        if (hasCelularValue && !hasResults && isFirstLoad) {
-            // Pequeño retraso para asegurarnos que la página esté completamente cargada
-            setTimeout(() => {
-                lastSubmittedValue = celularInput.value;
-                searchForm.submit();
-            }, 500);
-            isFirstLoad = false;
+        // Solo activar si hay 10+ dígitos Y es diferente al último valor enviado
+        const currentValue = this.value;
+        if (currentValue.length >= 10 && currentValue !== lastSubmittedValue) {
+            // Esperar que el usuario termine de escribir
+            typingTimer = setTimeout(function() {
+                // Actualizar el último valor enviado para evitar envíos repetidos
+                lastSubmittedValue = currentValue;
+                
+                // Mostrar indicador visual
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.id = 'loadingIndicator';
+                loadingIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span> Buscando...';
+                loadingIndicator.style.marginTop = '10px';
+                
+                // Verificar si ya existe un indicador y eliminarlo
+                const existingIndicator = document.getElementById('loadingIndicator');
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+                
+                // Agregar el indicador antes del botón de búsqueda
+                const submitButton = searchForm.querySelector('button[type="submit"]');
+                submitButton.parentNode.insertBefore(loadingIndicator, submitButton);
+                
+                // Enviar el formulario después de un breve retraso
+                setTimeout(() => {
+                    searchForm.submit();
+                }, 300);
+            }, doneTypingInterval);
         }
-        
-        // Evento para detectar cuando el usuario está escribiendo
-        celularInput.addEventListener('keyup', function() {
-            // Limpiar el timer existente
-            clearTimeout(typingTimer);
-            
-            // Solo activar si hay 10+ dígitos Y es diferente al último valor enviado
-            const currentValue = this.value;
-            if (currentValue.length >= 10 && currentValue !== lastSubmittedValue) {
-                // Esperar que el usuario termine de escribir
-                typingTimer = setTimeout(function() {
-                    // Actualizar el último valor enviado para evitar envíos repetidos
-                    lastSubmittedValue = currentValue;
-                    
-                    // Mostrar indicador visual
-                    const loadingIndicator = document.createElement('div');
-                    loadingIndicator.id = 'loadingIndicator';
-                    loadingIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span> Buscando...';
-                    loadingIndicator.style.marginTop = '10px';
-                    
-                    // Verificar si ya existe un indicador y eliminarlo
-                    const existingIndicator = document.getElementById('loadingIndicator');
-                    if (existingIndicator) {
-                        existingIndicator.remove();
-                    }
-                    
-                    // Agregar el indicador antes del botón de búsqueda
-                    const submitButton = searchForm.querySelector('button[type="submit"]');
-                    searchForm.insertBefore(loadingIndicator, submitButton);
-                    
-                    // Enviar el formulario después de un breve retraso
-                    setTimeout(() => {
-                        searchForm.submit();
-                    }, 300);
-                }, doneTypingInterval);
-            }
-        });
-        
-        // Cancelar el timer si el usuario sigue escribiendo
-        celularInput.addEventListener('keydown', function() {
-            clearTimeout(typingTimer);
-        });
     });
+    
+    // Cancelar el timer si el usuario sigue escribiendo
+    celularInput.addEventListener('keydown', function() {
+        clearTimeout(typingTimer);
+    });
+    
+    // Guardar el hecho de que se realizó una búsqueda (agregar esto al final del script)
+    if (searchForm) {
+        searchForm.addEventListener('submit', function() {
+            hasSearched = true;
+        });
+    }
+});
 </script>
             
 </body>
