@@ -785,7 +785,7 @@ function agregarIndicadorVisual(celdaEstado, estado) {
  * Consulta el estado de un bingo por su nombre
  */
 function consultarEstadoBingo(nombreBingo) {
-    const url = `/api/bingos/by-name?nombre=${encodeURIComponent(nombreBingo)}`;
+    const url = `/~ecqeqzgf/api/bingos/by-name?nombre=${encodeURIComponent(nombreBingo)}`;
 
     return fetch(url)
         .then(function(response) {
@@ -811,7 +811,7 @@ function consultarEstadoBingo(nombreBingo) {
  * Consulta el estado de un bingo por su ID
  */
 function consultarEstadoBingoPorId(bingoId) {
-    const url = `/api/bingos/${bingoId}`;
+    const url = `/~ecqeqzgf/api/bingos/${bingoId}`;
 
     return fetch(url)
         .then(function(response) {
