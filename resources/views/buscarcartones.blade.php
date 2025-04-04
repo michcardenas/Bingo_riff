@@ -262,6 +262,35 @@
             bottom: 0;
         }
 
+        /* Estilos para el indicador de carga */
+        #loadingIndicator {
+            padding: 6px;
+            text-align: center;
+            color: #fa9044;
+            font-weight: 500;
+            font-size: 16px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        /* Spinner para indicar carga */
+        .spinner-border {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            vertical-align: text-bottom;
+            border: .2em solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spinner-border .75s linear infinite;
+        }
+
+        @keyframes spinner-border {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         /* Media query para dispositivos móviles */
         @media screen and (max-width: 767px) {
 
@@ -429,7 +458,9 @@
                 @csrf
                 <div class="mb-3">
                     <label for="telefono" class="form-label">Número de Celular</label>
-                    <input type="text" class="form-control" id="celular" name="celular" placeholder="Ejemplo: 3234095109" required>
+                    <input type="text" class="form-control" id="celular" name="celular"
+                        value="{{ session('celular_comprador') ?? request()->old('celular') }}"
+                        placeholder="Ejemplo: 3234095109" required>
                     <div class="form-text">Ingresa el mismo número de celular con el que reservaste tus cartones.</div>
                 </div>
                 <button type="submit" class="btn btn-orange">BUSCAR MIS CARTONES</button>
@@ -704,6 +735,73 @@
                         });
                 }
             </script>
+          <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const celularInput = document.getElementById('celular');
+        const searchForm = document.getElementById('searchForm');
+        let typingTimer;
+        const doneTypingInterval = 1200; // tiempo en ms (1.2 segundos)
+        let lastSubmittedValue = '';
+        let isFirstLoad = true;
+        
+        // Al cargar la página, verificamos si ya hay un valor en el campo
+        // y si ya hay resultados mostrados (la tabla de cartones existe)
+        const hasCelularValue = celularInput.value.length >= 10;
+        const hasResults = document.querySelector('.cartones-table') !== null;
+        
+        // Solo autoenviar en la carga inicial si hay valor pero no hay resultados
+        if (hasCelularValue && !hasResults && isFirstLoad) {
+            // Pequeño retraso para asegurarnos que la página esté completamente cargada
+            setTimeout(() => {
+                lastSubmittedValue = celularInput.value;
+                searchForm.submit();
+            }, 500);
+            isFirstLoad = false;
+        }
+        
+        // Evento para detectar cuando el usuario está escribiendo
+        celularInput.addEventListener('keyup', function() {
+            // Limpiar el timer existente
+            clearTimeout(typingTimer);
+            
+            // Solo activar si hay 10+ dígitos Y es diferente al último valor enviado
+            const currentValue = this.value;
+            if (currentValue.length >= 10 && currentValue !== lastSubmittedValue) {
+                // Esperar que el usuario termine de escribir
+                typingTimer = setTimeout(function() {
+                    // Actualizar el último valor enviado para evitar envíos repetidos
+                    lastSubmittedValue = currentValue;
+                    
+                    // Mostrar indicador visual
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.id = 'loadingIndicator';
+                    loadingIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span> Buscando...';
+                    loadingIndicator.style.marginTop = '10px';
+                    
+                    // Verificar si ya existe un indicador y eliminarlo
+                    const existingIndicator = document.getElementById('loadingIndicator');
+                    if (existingIndicator) {
+                        existingIndicator.remove();
+                    }
+                    
+                    // Agregar el indicador antes del botón de búsqueda
+                    const submitButton = searchForm.querySelector('button[type="submit"]');
+                    searchForm.insertBefore(loadingIndicator, submitButton);
+                    
+                    // Enviar el formulario después de un breve retraso
+                    setTimeout(() => {
+                        searchForm.submit();
+                    }, 300);
+                }, doneTypingInterval);
+            }
+        });
+        
+        // Cancelar el timer si el usuario sigue escribiendo
+        celularInput.addEventListener('keydown', function() {
+            clearTimeout(typingTimer);
+        });
+    });
+</script>
 </body>
 
 </html>

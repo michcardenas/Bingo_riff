@@ -221,12 +221,16 @@ class BingoController extends Controller
                 return redirect()->route('bingos.show', $bingo->id)
                     ->with('success', '¡Participante añadido correctamente!');
             } else {
-                // Si viene del flujo normal, redirigir a la vista "reservado"
-                return redirect()->route('reservado')
-                    ->with('success', '¡Reserva realizada correctamente!')
-                    ->with('series', $series)
-                    ->with('bingo', $bingo->nombre)
-                    ->with('orden', $reservaCreada->orden_bingo); // Pasamos también el orden
+                    // Si viene del flujo normal, redirigir a la vista "reservado"
+    // Almacenamos el número de teléfono en la sesión para usarlo en buscarcartones
+    session()->put('celular_comprador', $validated['celular']);
+    
+    return redirect()->route('reservado')
+        ->with('success', '¡Reserva realizada correctamente!')
+        ->with('series', $series)
+        ->with('bingo', $bingo->nombre)
+        ->with('celular', $validated['celular']) // Pasamos también el celular
+        ->with('orden', $reservaCreada->orden_bingo);
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Error de validación', [
