@@ -191,7 +191,7 @@ Route::prefix('api')->group(function () {
         return response()->json($bingo);
     });
 
-    Route::get('/bingos/{id}', function ($id) {
+    Route::get('/~ecqeqzgf/bingos/{id}', function ($id) {
         // Agregar log para depuración
         Log::info("Consultando bingo con ID: $id");
         
