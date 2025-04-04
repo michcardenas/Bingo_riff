@@ -121,13 +121,13 @@ class CartonController extends Controller
     
         // Preparar la consulta base para las reservas
         $query = Reserva::where(function($q) {
-            $q->where('estado', 'aprobado')
-              ->orWhere('estado', 'revision');
-        })->where('eliminado', 0);
+            $q->where('reservas.estado', 'aprobado')
+              ->orWhere('reservas.estado', 'revision');
+        })->where('reservas.eliminado', 0);
         
         // Si se proporciona un bingoId específico, priorizar ese bingo
         if ($bingoId) {
-            $query->where('bingo_id', $bingoId);
+            $query->where('reservas.bingo_id', $bingoId);
         } else {
             // Si no se proporciona un bingoId, unir con la tabla de bingos para ordenar
             $query->join('bingos', 'reservas.bingo_id', '=', 'bingos.id')
@@ -171,7 +171,7 @@ class CartonController extends Controller
     
         // Convertir el número a entero para quitar ceros iniciales
         $numeroSinCeros = intval($numero);
-        $rutaCompleta = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroSinCeros . '.jpg');
+        $rutaCompleta = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroSinCeros . '.pdf');
     
         if (!file_exists($rutaCompleta)) {
             Log::warning("Archivo de cartón no encontrado: $rutaCompleta");
