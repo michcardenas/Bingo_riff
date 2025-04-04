@@ -118,6 +118,10 @@
                 <a href="{{ route('bingos.index') }}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> Volver al Panel
                 </a>
+
+                <a href="{{ route('bingos.buscador.serie', $bingo->id) }}" class="btn btn-primary">
+    <i class="bi bi-search"></i> Buscar por Número de Serie
+</a>
                 <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addParticipantModal">
                     <i class="bi bi-plus-circle"></i> Añadir Participante
                 </button>

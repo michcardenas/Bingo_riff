@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\BingoController;
 use App\Http\Controllers\CartonController;
+use App\Http\Controllers\BingoGanadoresController;
 use App\Models\Bingo;
 use App\Http\Controllers\Admin\BingoAdminController;
 use Illuminate\Support\Facades\Route;
@@ -76,6 +77,15 @@ Route::middleware('auth')->group(function () {
 
         // Rutas para gestionar reservas de un bingo específico
         Route::get('/bingos/{id}/reservas', [BingoAdminController::class, 'reservasPorBingo'])->name('bingos.reservas');
+
+       // NUEVAS RUTAS para la página de búsqueda de serie
+    Route::get('/bingos/{bingo}/buscador-serie', [BingoGanadoresController::class, 'index'])->name('bingos.buscador.serie');
+    
+    // API para búsqueda de participantes por número de serie
+    Route::get('/api/bingos/{bingo}/participantes/serie/{serie}', [BingoGanadoresController::class, 'buscarPorSerie']);
+    
+    // API para marcar como ganador
+    Route::patch('/api/bingos/{bingo}/participantes/{participante}/ganador', [BingoGanadoresController::class, 'marcarGanador']);
 
         
 

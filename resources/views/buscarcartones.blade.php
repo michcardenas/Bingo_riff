@@ -434,12 +434,6 @@
                 </div>
                 <button type="submit" class="btn btn-orange">BUSCAR MIS CARTONES</button>
             </form>
-            <!-- Mensaje de notificación de WhatsApp -->
-            @if(!isset($cartones) || !count($cartones) || !collect($cartones)->contains('estado', 'aprobado'))
-            <div class="alert alert-info mt-3 mb-3 text-center">
-                <i class="fab fa-whatsapp me-2"></i>Informaremos por el grupo de Whatsapp cuando los cartones esten aprobados para su descarga.
-            </div>
-            @endif
 
             @if(isset($cartones) && count($cartones) > 0)
             @php
@@ -453,6 +447,9 @@
 
             @if($cartonesRechazados > 0)
             <div class="alert alert-warning mt-3">
+                <a href="#" class="contactar-admin" data-carton="{{ $carton['numero'] }}" data-whatsapp="{{ $numeroContacto }}" style="text-decoration: none;">
+                    <i class="fab fa-whatsapp text-success"></i>
+                </a>
                 Su {{ $cartonesRechazados == 1 ? 'cartón ha' : 'cartones han' }} sido {{ $cartonesRechazados == 1 ? 'rechazado' : 'rechazados' }}, contacta al administrador por medio del botón de Whatsapp.
             </div>
             @endif
@@ -499,8 +496,12 @@
             </table>
             @elseif(isset($cartones) && count($cartones) == 0)
             <div class="alert alert-warning mt-3">
-            <i class="fab fa-whatsapp me-2"></i>No se encontraron cartones asociados. Si crees que esto es un error, contacta al administrador por medio del botón de Whatsapp.
+                <a href="#" class="contactar-admin" data-whatsapp="{{ $numeroContacto }}" style="text-decoration: none;">
+                    <i class="fab fa-whatsapp text-success"></i>
+                </a>
+                No se encontraron cartones asociados. Si crees que esto es un error, contacta al administrador por medio del botón de Whatsapp.
             </div>
+
             @endif
 
             <!-- Sección de ayuda -->
@@ -541,7 +542,20 @@
                             e.preventDefault();
                             const cartonNumero = this.getAttribute('data-carton');
                             const adminWhatsapp = this.getAttribute('data-whatsapp') || "3235903774";
-                            const mensaje = `Hola, necesito ayuda con mi cartón rechazado #${cartonNumero}.`;
+                            let mensaje = '';
+
+                            // Determinar qué tipo de alerta contiene este botón para personalizar el mensaje
+                            if (this.closest('.alert-warning') && this.closest('.alert-warning').textContent.includes('rechazado')) {
+                                mensaje = `Hola, necesito ayuda con mi cartón rechazado #${cartonNumero}.`;
+                            } else if (this.closest('.alert-warning') && this.closest('.alert-warning').textContent.includes('No se encontraron cartones')) {
+                                mensaje = `Hola, no puedo encontrar mis cartones asociados #${cartonNumero}. ¿Podrías ayudarme?`;
+                            } else if (this.closest('.alert-info')) {
+                                mensaje = `Hola, quisiera consultar sobre el estado de aprobación de mis cartones.`;
+                            } else {
+                                // Mensaje por defecto en caso de que no coincida con ninguno de los anteriores
+                                mensaje = `Hola, necesito información sobre mi cartón.`;
+                            }
+
                             // Limpiar número de WhatsApp de cualquier carácter no numérico
                             const whatsappNumero = adminWhatsapp.replace(/[^0-9]/g, '');
                             const whatsappUrl = `https://wa.me/${whatsappNumero}?text=${encodeURIComponent(mensaje)}`;

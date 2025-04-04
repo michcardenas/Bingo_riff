@@ -17,13 +17,17 @@ class Reserva extends Model
         'celular',
         'cantidad',
         'comprobante',
-        'comprobante_metadata', // Nuevo campo añadido
+        'comprobante_metadata',
         'series',
         'total',
         'numero_comprobante',
         'estado',
         'bingo_id',
         'orden_bingo',
+        // Nuevos campos para gestión de ganadores
+        'ganador',
+        'premio',
+        'fecha_ganador',
     ];
 
     protected $casts = [
@@ -31,6 +35,8 @@ class Reserva extends Model
         'comprobante' => 'array',
         'total' => 'decimal:2',
         'eliminado' => 'boolean',
+        'ganador' => 'boolean',        // Cast para el campo ganador
+        'fecha_ganador' => 'datetime', // Cast para la fecha de ganador
     ];
 
     /**
@@ -64,5 +70,35 @@ class Reserva extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Método para verificar si un número de serie específico pertenece a esta reserva
+     */
+    public function tieneSerie($serie)
+    {
+        if (!is_array($this->series)) {
+            return false;
+        }
+        
+        return in_array($serie, $this->series);
+    }
+
+    /**
+     * Método para obtener el número de cartón a partir de un número de serie
+     */
+    public function getNumeroCarton($serie)
+    {
+        if (!is_array($this->series)) {
+            return null;
+        }
+        
+        $indice = array_search($serie, $this->series);
+        if ($indice === false) {
+            return null;
+        }
+        
+        // Formatea el número de cartón con ceros a la izquierda (formato 000001)
+        return str_pad($indice + 1, 6, '0', STR_PAD_LEFT);
     }
 }

@@ -78,16 +78,19 @@
           @endif
         </td>
         <td>
-          @if($reserva->estado == 'revision')
-            <span class="badge bg-warning text-dark">Disponible</span>
-          @elseif($reserva->estado == 'aprobado')
-            <span class="badge bg-success">Aprobado</span>
-          @elseif($reserva->estado == 'rechazado')
-            <span class="badge bg-danger">Rechazado</span>
-          @else
-            <span class="badge bg-secondary">{{ ucfirst($reserva->estado) }}</span>
-          @endif
-        </td>
+  @if(isset($reserva->ganador) && $reserva->ganador)
+    <span class="badge bg-info text-dark"><i class="bi bi-trophy-fill"></i> Ganador</span>
+  @elseif($reserva->estado == 'revision')
+    <span class="badge bg-warning text-dark">Disponible</span>
+  @elseif($reserva->estado == 'aprobado')
+    <span class="badge bg-success">Aprobado</span>
+  @elseif($reserva->estado == 'rechazado')
+    <span class="badge bg-danger">Rechazado</span>
+  @else
+    <span class="badge bg-secondary">{{ ucfirst($reserva->estado) }}</span>
+  @endif
+</td>
+
         <td>
          <!-- Cambiado de "revision o aprobado" a solo "revision" -->
          @if($reserva->estado == 'revision')
