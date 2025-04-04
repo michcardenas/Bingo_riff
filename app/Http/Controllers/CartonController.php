@@ -112,11 +112,6 @@ class CartonController extends Controller
         ]);
     }
 
-  /**
-     * Descarga el cartón si está aprobado.
-     * Solo permite descargar si el bingo está 'abierto'.
-     * No permite descargar si el bingo está 'cerrado' o 'archivado'.
-     */
     public function descargar($numero, $bingoId = null)
     {
         Log::info("Iniciando descarga de cartón: $numero, Bingo ID: $bingoId");
@@ -124,14 +119,20 @@ class CartonController extends Controller
         // Eliminar ceros a la izquierda
         $numeroSinCeros = ltrim($numero, '0');
     
-        // Buscar reservas aprobadas o en revisión (disponibles)
+        // Preparar la consulta base para las reservas
         $query = Reserva::where(function($q) {
             $q->where('estado', 'aprobado')
               ->orWhere('estado', 'revision');
         })->where('eliminado', 0);
         
+        // Si se proporciona un bingoId específico, priorizar ese bingo
         if ($bingoId) {
             $query->where('bingo_id', $bingoId);
+        } else {
+            // Si no se proporciona un bingoId, unir con la tabla de bingos para ordenar
+            $query->join('bingos', 'reservas.bingo_id', '=', 'bingos.id')
+                  ->where('bingos.estado', '!=', 'archivado')
+                  ->orderBy('bingos.created_at', 'desc'); // Ordenar por fecha de creación descendente
         }
     
         $reservas = $query->get();
@@ -143,7 +144,7 @@ class CartonController extends Controller
                 $seriesArray = json_decode($reserva->series, true);
                 if (is_array($seriesArray) && in_array($numero, $seriesArray)) {
                     $reservaEncontrada = $reserva;
-                    break;
+                    break; // Romper el ciclo al encontrar la primera reserva (la más reciente debido al orderBy)
                 }
             }
         }
@@ -170,7 +171,7 @@ class CartonController extends Controller
     
         // Convertir el número a entero para quitar ceros iniciales
         $numeroSinCeros = intval($numero);
-        $rutaCompleta = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroSinCeros . '.pdf');
+        $rutaCompleta = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroSinCeros . '.jpg');
     
         if (!file_exists($rutaCompleta)) {
             Log::warning("Archivo de cartón no encontrado: $rutaCompleta");
