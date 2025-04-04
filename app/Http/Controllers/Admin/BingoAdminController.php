@@ -392,7 +392,8 @@ class BingoAdminController extends Controller
 
             // Actualizar el bingo para marcarlo como oculto y cerrado
             $bingo->update([
-                'visible' => 0
+                'visible' => 0,
+                'estado' => 'cerrado'
             ]);
 
             return redirect()->route('bingos.index')
