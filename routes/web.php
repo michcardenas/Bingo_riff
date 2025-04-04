@@ -192,13 +192,32 @@ Route::prefix('api')->group(function () {
     });
 
     Route::get('/bingos/{id}', function ($id) {
-        $bingo = Bingo::find($id);
-
-        if (!$bingo) {
-            return response()->json(['error' => 'Bingo no encontrado'], 404);
+        // Agregar log para depuración
+        Log::info("Consultando bingo con ID: $id");
+        
+        try {
+            // Consulta directa a la base de datos para verificar
+            $bingoRaw = DB::table('bingos')->where('id', $id)->first();
+            if ($bingoRaw) {
+                Log::info("Bingo encontrado directamente en DB: " . json_encode($bingoRaw));
+            } else {
+                Log::warning("Bingo no encontrado directamente en DB con ID: $id");
+            }
+    
+            // Consulta a través del modelo
+            $bingo = Bingo::find($id);
+            
+            if (!$bingo) {
+                Log::warning("Bingo no encontrado a través del modelo Eloquent con ID: $id");
+                return response()->json(['error' => 'Bingo no encontrado'], 404);
+            }
+    
+            Log::info("Bingo encontrado a través del modelo Eloquent: " . json_encode($bingo));
+            return response()->json($bingo);
+        } catch (\Exception $e) {
+            Log::error("Error al consultar bingo con ID $id: " . $e->getMessage());
+            return response()->json(['error' => 'Error interno del servidor'], 500);
         }
-
-        return response()->json($bingo);
     });
 });
 
