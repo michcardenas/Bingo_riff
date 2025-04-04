@@ -9,23 +9,53 @@ use App\Models\Enlace;
 class HomeController extends Controller
 {
     public function index() {
-        // Primero intentar obtener un bingo abierto (ordenando por fecha descendente para tener el más reciente)
-        $bingo = Bingo::where('estado', 'abierto')
-                      ->orderBy('fecha', 'desc')
-                      ->first();
-        
-        // Si no hay bingos abiertos, obtener el primer bingo cerrado más reciente
-        if (!$bingo) {
-            $bingo = Bingo::orderBy('fecha', 'desc')->first();
+        \Log::info('Iniciando carga de página principal');
+    
+        try {
+            // Primero intentar obtener un bingo abierto (ordenando por fecha descendente para tener el más reciente)
+            $bingo = Bingo::where('estado', 'abierto')
+                          ->orderBy('fecha', 'desc')
+                          ->first();
+            
+            \Log::info('Búsqueda de bingo abierto', [
+                'bingo_encontrado' => $bingo ? $bingo->id : 'No encontrado'
+            ]);
+            
+            // Si no hay bingos abiertos, obtener el primer bingo cerrado más reciente
+            if (!$bingo) {
+                $bingo = Bingo::orderBy('fecha', 'desc')->first();
+                
+                \Log::info('Búsqueda de bingo más reciente', [
+                    'bingo_encontrado' => $bingo ? $bingo->id : 'No encontrado'
+                ]);
+            }
+            
+            // Comprobar si el bingo está cerrado
+            $esBingoCerrado = $bingo && $bingo->estado !== 'abierto';
+            
+            \Log::info('Estado del bingo', [
+                'bingo_id' => $bingo ? $bingo->id : null,
+                'estado' => $bingo ? $bingo->estado : 'Sin bingo',
+                'es_bingo_cerrado' => $esBingoCerrado
+            ]);
+            
+            // Obtener enlaces para WhatsApp
+            $enlaces = Enlace::first() ?? new Enlace();
+            
+            \Log::info('Carga de enlaces para WhatsApp', [
+                'enlaces_encontrados' => $enlaces->id ? 'Sí' : 'No'
+            ]);
+            
+            return view('home', compact('bingo', 'esBingoCerrado', 'enlaces'));
+        } catch (\Exception $e) {
+            \Log::error('Error al cargar la página principal', [
+                'mensaje' => $e->getMessage(),
+                'traza' => $e->getTraceAsString()
+            ]);
+            
+            // Puedes manejar el error como prefieras, por ejemplo:
+            return view('home')->with('error', 'Ocurrió un error al cargar la página');
         }
-        
-        // Comprobar si el bingo está cerrado
-        $esBingoCerrado = $bingo && $bingo->estado !== 'abierto';
-        
-        // Obtener enlaces para WhatsApp
-        $enlaces = Enlace::first() ?? new Enlace();
-        
-        return view('home', compact('bingo', 'esBingoCerrado', 'enlaces'));
     }
     
     // Método para obtener solo bingos abiertos (para compatibilidad)
