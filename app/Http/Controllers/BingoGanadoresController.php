@@ -33,6 +33,12 @@ class BingoGanadoresController extends Controller
             return response()->json(['error' => 'Este bingo ha sido archivado.'], 403);
         }
     
+        // Asegúrate de que el formato de la serie coincida con como está guardado
+        // Si no tiene los ceros a la izquierda, los agregamos
+        $seriePadded = str_pad($serie, 6, '0', STR_PAD_LEFT);
+        
+        Log::info("Buscando serie: '$serie' (Formateada: '$seriePadded') en el bingo ID: " . $bingo->id);
+    
         try {
             // Obtienes las reservas del bingo actual
             $reservas = Reserva::where('bingo_id', $bingo->id)
@@ -41,42 +47,38 @@ class BingoGanadoresController extends Controller
     
             $reservaEncontrada = null;
             $numeroCarton = null;
-            
-            // Registra lo que estamos buscando para depuración
-            Log::info("Buscando serie: '$serie' en el bingo ID: " . $bingo->id);
     
             foreach ($reservas as $reserva) {
-                // Aquí aseguramos que las series sean siempre un array
-                $series = is_string($reserva->series)
-                    ? json_decode($reserva->series, true)
-                    : $reserva->series;
-    
+                // Decodificamos las series JSON a un array PHP
+                $series = json_decode($reserva->series, true);
+                
                 if (!is_array($series)) {
-                    Log::warning("Series no es un array para reserva ID: " . $reserva->id);
+                    Log::warning("Series no es un array para reserva ID: " . $reserva->id . ", Valor: " . $reserva->series);
                     continue;
                 }
                 
-                // Registra las series para depuración
-                Log::info("Reserva ID: " . $reserva->id . ", Series: " . json_encode($series));
-    
-                // IMPORTANTE: La búsqueda debe incluir conversión a cadena y eliminar ceros a la izquierda
-                foreach ($series as $indice => $serieBD) {
-                    // Convertimos ambos a string y eliminamos ceros a la izquierda para comparar
-                    $serieLimpia = ltrim($serie, '0');
-                    $serieBDLimpia = ltrim($serieBD, '0');
+                Log::info("Reserva ID: " . $reserva->id . ", Series: " . $reserva->series);
+                
+                // Verificamos si la serie (con o sin padding) está en el array
+                if (in_array($serie, $series) || in_array($seriePadded, $series)) {
+                    // Encontramos la serie en esta reserva
+                    $reservaEncontrada = $reserva;
                     
-                    // También compara con la serie original por si acaso
-                    if ($serieBDLimpia === $serieLimpia || $serieBD === $serie) {
-                        $reservaEncontrada = $reserva;
-                        $numeroCarton = str_pad($indice + 1, 6, '0', STR_PAD_LEFT);
-                        Log::info("Serie encontrada! Reserva ID: " . $reserva->id . ", Índice: " . $indice);
-                        break 2; // Salir de ambos bucles
+                    // Buscamos la posición del carton en el array
+                    $indice = array_search($serie, $series);
+                    if ($indice === false) {
+                        $indice = array_search($seriePadded, $series);
                     }
+                    
+                    $numeroCarton = $seriePadded; // Usamos la serie con el padding
+                    
+                    Log::info("Serie encontrada! Reserva ID: " . $reserva->id . ", Serie: " . $series[$indice]);
+                    break; // Salir del bucle
                 }
             }
     
             if (!$reservaEncontrada) {
-                Log::warning("No se encontró ningún participante con la serie: '$serie'");
+                Log::warning("No se encontró ningún participante con la serie: '$serie' o '$seriePadded'");
                 return response()->json(['error' => 'No se encontró ningún participante con ese número de serie.'], 404);
             }
     
@@ -86,7 +88,7 @@ class BingoGanadoresController extends Controller
     
             return response()->json([
                 'id' => $reservaEncontrada->id,
-                'serie' => $serie,
+                'serie' => $seriePadded,
                 'nombre' => $reservaEncontrada->nombre,
                 'telefono' => $telefono,
                 'carton' => $numeroCarton,
@@ -94,7 +96,7 @@ class BingoGanadoresController extends Controller
                 'ganador' => $esGanador
             ]);
         } catch (\Exception $e) {
-            Log::error('Error al buscar participante: ' . $e->getMessage());
+            Log::error('Error al buscar participante: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return response()->json(['error' => 'Ocurrió un error al buscar el participante.'], 500);
         }
     }
