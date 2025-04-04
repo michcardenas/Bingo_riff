@@ -92,142 +92,154 @@
             }
         }
         
-        // Función para buscar participante por número de serie
-        function buscarParticipante(numeroSerie) {
-            const resultadosDiv = document.getElementById('searchResults');
-            if (!resultadosDiv) return;
-            
-            // Si el bingo está archivado, no mostrar datos
-            if (bingo.archivado) {
-                resultadosDiv.innerHTML = '';
-                return;
+// Función para buscar participante por número de serie
+function buscarParticipante(numeroSerie) {
+    const resultadosDiv = document.getElementById('searchResults');
+    if (!resultadosDiv) return;
+    
+    // Si el bingo está archivado, no mostrar datos
+    if (bingo.archivado) {
+        resultadosDiv.innerHTML = '';
+        return;
+    }
+    
+    // Formatear el número de serie con ceros a la izquierda
+    const serieFormateada = numeroSerie.padStart(6, '0');
+    
+    // Mostrar indicador de carga
+    resultadosDiv.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-info" role="status">
+                <span class="visually-hidden">Buscando...</span>
+            </div>
+            <p class="mt-2">Buscando participante con serie: ${serieFormateada}...</p>
+        </div>
+    `;
+    
+    // Capturar errores de red y servidor adecuadamente
+    fetch(`/admin/api/bingos/${bingo.id}/participantes/serie/${serieFormateada}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log('Respuesta del servidor:', response.status);
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('No se encontró ningún participante con ese número de serie');
+            } else {
+                return response.text().then(text => {
+                    console.error('Error respuesta:', text);
+                    throw new Error(`Error al buscar el participante (${response.status})`);
+                });
             }
-            
-            // Mostrar indicador de carga
-            resultadosDiv.innerHTML = `
-                <div class="text-center">
-                    <div class="spinner-border text-info" role="status">
-                        <span class="visually-hidden">Buscando...</span>
-                    </div>
-                    <p class="mt-2">Buscando participante...</p>
+        }
+        return response.json();
+    })
+    .then(participante => {
+        console.log('Datos del participante:', participante);
+        
+        // Construir HTML para mostrar los datos del participante
+        let html = `
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Telefono</th>
+                        <th>#Cartón</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>${participante.nombre}</td>
+                        <td>${participante.telefono}</td>
+                        <td>${participante.carton}</td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+        
+        // Si ya es ganador, mostrar el premio
+        if (participante.ganador) {
+            html += `
+                <div class="alert alert-success" role="alert">
+                    <i class="bi bi-trophy"></i> 
+                    Este participante ya fue marcado como ganador del premio: 
+                    <strong>${participante.premio}</strong>
                 </div>
             `;
-            
-            // Realizar petición AJAX al servidor
-            fetch(`/admin/api/bingos/${bingo.id}/participantes/serie/${numeroSerie}`, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(response.status === 404 
-                        ? 'No se encontró ningún participante con ese número de serie' 
-                        : 'Error al buscar el participante');
-                }
-                return response.json();
-            })
-            .then(participante => {
-                // Construir HTML para mostrar los datos del participante
-                let html = `
-                    <table class="table table-dark table-striped">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Telefono</th>
-                                <th>#Cartón</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>${participante.nombre}</td>
-                                <td>${participante.telefono}</td>
-                                <td>${participante.carton}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                `;
-                
-                // Si ya es ganador, mostrar el premio
-                if (participante.ganador) {
-                    html += `
-                        <div class="alert alert-success" role="alert">
-                            <i class="bi bi-trophy"></i> 
-                            Este participante ya fue marcado como ganador del premio: 
-                            <strong>${participante.premio}</strong>
-                        </div>
-                    `;
-                } else {
-                    // Agregar campo para el premio y botón de ganador
-                    html += `
-                        <form id="ganadorForm">
-                            @csrf
-                            <div class="input-group mb-3">
-                                <input type="text" name="premio" id="premioInput" class="form-control" 
-                                    placeholder="Escribir premio ganado" value="">
-                                <button type="submit" class="btn btn-success">ganador</button>
-                            </div>
-                        </form>
-                    `;
-                }
-                
-                resultadosDiv.innerHTML = html;
-                
-                // Configurar evento para el formulario de ganador si existe
-                const ganadorForm = document.getElementById('ganadorForm');
-                if (ganadorForm) {
-                    ganadorForm.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        
-                        const premio = document.getElementById('premioInput').value.trim();
-                        if (premio === "") {
-                            alert("Por favor, ingrese el premio ganado");
-                            return;
-                        }
-                        
-                        // Crear formData y agregar el token CSRF
-                        const formData = new FormData();
-                        formData.append('premio', premio);
-                        formData.append('_token', '{{ csrf_token() }}');
-                        formData.append('_method', 'PATCH');
-                        
-                        // Enviar petición AJAX
-                        fetch(`/admin/api/bingos/${bingo.id}/participantes/${participante.id}/ganador`, {
-                            method: 'POST',
-                            body: formData,
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json'
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                alert(`¡${participante.nombre} ha sido marcado como ganador de: ${premio}!`);
-                                // Volver a buscar para actualizar la vista
-                                buscarParticipante(numeroSerie);
-                            } else {
-                                alert(data.error || 'Ocurrió un error al marcar el ganador');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Ocurrió un error al marcar el ganador');
-                        });
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                resultadosDiv.innerHTML = `
-                    <div class="alert alert-warning text-center" role="alert">
-                        <i class="bi bi-exclamation-triangle"></i> 
-                        ${error.message || 'No se encontró ningún participante con ese número de serie'}
+        } else {
+            // Agregar campo para el premio y botón de ganador
+            html += `
+                <form id="ganadorForm">
+                    @csrf
+                    <div class="input-group mb-3">
+                        <input type="text" name="premio" id="premioInput" class="form-control" 
+                            placeholder="Escribir premio ganado" value="">
+                        <button type="submit" class="btn btn-success">ganador</button>
                     </div>
-                `;
+                </form>
+            `;
+        }
+        
+        resultadosDiv.innerHTML = html;
+        
+        // Configurar evento para el formulario de ganador si existe
+        const ganadorForm = document.getElementById('ganadorForm');
+        if (ganadorForm) {
+            ganadorForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const premio = document.getElementById('premioInput').value.trim();
+                if (premio === "") {
+                    alert("Por favor, ingrese el premio ganado");
+                    return;
+                }
+                
+                // Crear formData y agregar el token CSRF
+                const formData = new FormData();
+                formData.append('premio', premio);
+                formData.append('_token', '{{ csrf_token() }}');
+                formData.append('_method', 'PATCH');
+                
+                // Enviar petición AJAX
+                fetch(`/admin/api/bingos/${bingo.id}/participantes/${participante.id}/ganador`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`¡${participante.nombre} ha sido marcado como ganador de: ${premio}!`);
+                        // Volver a buscar para actualizar la vista
+                        buscarParticipante(numeroSerie);
+                    } else {
+                        alert(data.error || 'Ocurrió un error al marcar el ganador');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Ocurrió un error al marcar el ganador');
+                });
             });
         }
+    })
+    .catch(error => {
+        console.error('Error en la búsqueda:', error);
+        resultadosDiv.innerHTML = `
+            <div class="alert alert-warning text-center" role="alert">
+                <i class="bi bi-exclamation-triangle"></i> 
+                ${error.message || 'No se encontró ningún participante con ese número de serie'}
+            </div>
+        `;
+    });
+}
     });
 </script>
 @endsection
