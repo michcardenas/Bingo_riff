@@ -92,7 +92,7 @@
             }
         }
         
-// Función para buscar participante por número de serie
+// Función para buscar participante por número de serie con URL base específica
 function buscarParticipante(numeroSerie) {
     console.group('🔍 INICIANDO BÚSQUEDA DE PARTICIPANTE');
     console.log('Número de serie original:', numeroSerie);
@@ -130,11 +130,9 @@ function buscarParticipante(numeroSerie) {
         </div>
     `;
     
-    // Construir URL relativa a la ubicación actual (importante para evitar problemas de ruta)
-    // Obtenemos la ruta base para asegurarnos que funcione sin importar dónde estamos
-    const baseUrl = window.location.pathname.split('/').slice(0, -2).join('/');
-    const apiUrl = `${baseUrl}/api/bingos/${bingo.id}/participantes/serie/${serieFormateada}`;
-    console.log('URL de la API (calculada):', apiUrl);
+    // URL ABSOLUTA con base específica
+    const apiUrl = `/~ecqeqzgf/admin/api/bingos/${bingo.id}/participantes/serie/${serieFormateada}`;
+    console.log('URL de la API:', apiUrl);
     
     // Capturar errores de red y servidor adecuadamente
     console.log('⏳ Iniciando petición fetch');
@@ -259,8 +257,8 @@ function buscarParticipante(numeroSerie) {
                     return;
                 }
                 
-                // Usar la misma lógica de URL relativa para el formulario de ganador
-                const ganadorUrl = `${baseUrl}/api/bingos/${bingo.id}/participantes/${participante.id}/ganador`;
+                // URL para marcar ganador con ruta base específica
+                const ganadorUrl = `/~ecqeqzgf/admin/api/bingos/${bingo.id}/participantes/${participante.id}/ganador`;
                 console.log('URL para marcar ganador:', ganadorUrl);
                 
                 // Crear formData y agregar el token CSRF
