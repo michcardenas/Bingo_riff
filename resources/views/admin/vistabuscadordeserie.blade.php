@@ -92,7 +92,7 @@
             }
         }
         
-// Función para buscar participante por número de serie con URL correcta
+// Función para buscar participante por número de serie
 function buscarParticipante(numeroSerie) {
     console.group('🔍 INICIANDO BÚSQUEDA DE PARTICIPANTE');
     console.log('Número de serie original:', numeroSerie);
@@ -130,9 +130,11 @@ function buscarParticipante(numeroSerie) {
         </div>
     `;
     
-    // URL CORREGIDA - considerando el prefijo admin dentro de la estructura de rutas correcta
-    const apiUrl = `/admin/api/bingos/${bingo.id}/participantes/serie/${serieFormateada}`;
-    console.log('URL de la API:', apiUrl);
+    // Construir URL relativa a la ubicación actual (importante para evitar problemas de ruta)
+    // Obtenemos la ruta base para asegurarnos que funcione sin importar dónde estamos
+    const baseUrl = window.location.pathname.split('/').slice(0, -2).join('/');
+    const apiUrl = `${baseUrl}/api/bingos/${bingo.id}/participantes/serie/${serieFormateada}`;
+    console.log('URL de la API (calculada):', apiUrl);
     
     // Capturar errores de red y servidor adecuadamente
     console.log('⏳ Iniciando petición fetch');
@@ -257,15 +259,15 @@ function buscarParticipante(numeroSerie) {
                     return;
                 }
                 
+                // Usar la misma lógica de URL relativa para el formulario de ganador
+                const ganadorUrl = `${baseUrl}/api/bingos/${bingo.id}/participantes/${participante.id}/ganador`;
+                console.log('URL para marcar ganador:', ganadorUrl);
+                
                 // Crear formData y agregar el token CSRF
                 const formData = new FormData();
                 formData.append('premio', premio);
                 formData.append('_token', document.querySelector('input[name="_token"]')?.value || '{{ csrf_token() }}');
                 formData.append('_method', 'PATCH');
-                
-                // URL para marcar ganador
-                const ganadorUrl = `/admin/api/bingos/${bingo.id}/participantes/${participante.id}/ganador`;
-                console.log('URL para marcar ganador:', ganadorUrl);
                 
                 console.log('⏳ Enviando petición para marcar ganador');
                 // Enviar petición AJAX

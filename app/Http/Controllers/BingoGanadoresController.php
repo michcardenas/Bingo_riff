@@ -27,159 +27,73 @@ class BingoGanadoresController extends Controller
         return view('admin.vistabuscadordeserie', compact('bingo'));
     }
 
-    public function buscarPorSerie(Bingo $bingo, $serie)
-    {
-        Log::channel('debug')->info('===============================================');
-        Log::channel('debug')->info('INICIO BÚSQUEDA POR SERIE', [
-            'bingo_id' => $bingo->id,
-            'bingo_nombre' => $bingo->nombre,
-            'serie_buscada' => $serie,
-            'ip_solicitante' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-            'headers' => request()->headers->all(),
-        ]);
-    
-        if ($bingo->estado === 'archivado') {
-            Log::channel('debug')->warning('Intento de búsqueda en bingo archivado', [
-                'bingo_id' => $bingo->id,
-                'serie' => $serie
-            ]);
-            return response()->json(['error' => 'Este bingo ha sido archivado.'], 403);
-        }
-    
-        // Asegúrate de que el formato de la serie coincida con como está guardado
-        $seriePadded = str_pad($serie, 6, '0', STR_PAD_LEFT);
-        
-        Log::channel('debug')->info('Serie formateada', [
-            'original' => $serie,
-            'formateada' => $seriePadded
-        ]);
-    
-        try {
-            // Obtienes las reservas del bingo actual
-            $reservas = Reserva::where('bingo_id', $bingo->id)
-                ->where('eliminado', false)
-                ->get();
-    
-            Log::channel('debug')->info('Reservas encontradas para el bingo', [
-                'cantidad_reservas' => $reservas->count(),
-                'ids_reservas' => $reservas->pluck('id')->toArray()
-            ]);
-    
-            $reservaEncontrada = null;
-            $numeroCarton = null;
-            $serieEncontrada = null;
-            $detalleBusqueda = [];
-    
-            foreach ($reservas as $index => $reserva) {
-                // Decodificamos las series JSON a un array PHP
-                $seriesJSON = $reserva->series;
-                
-                Log::channel('debug')->info("Analizando reserva #{$index}", [
-                    'id' => $reserva->id,
-                    'nombre' => $reserva->nombre,
-                    'series_raw' => $seriesJSON
-                ]);
-                
-                $series = json_decode($seriesJSON, true);
-                
-                if (!is_array($series)) {
-                    Log::channel('debug')->warning("Series no es un array para reserva", [
-                        'id' => $reserva->id, 
-                        'series_raw' => $seriesJSON,
-                        'type' => gettype($series),
-                        'decode_result' => $series
-                    ]);
-                    $detalleBusqueda[] = [
-                        'reserva_id' => $reserva->id,
-                        'error' => 'Series no es un array',
-                        'series_raw' => $seriesJSON
-                    ];
-                    continue;
-                }
-                
-                Log::channel('debug')->info("Series decodificadas para reserva #{$index}", [
-                    'id' => $reserva->id,
-                    'series_decoded' => $series
-                ]);
-                
-                // Buscamos tanto con la serie original como con la formateada
-                $encontrado = false;
-                $posicion = null;
-                
-                if (in_array($serie, $series)) {
-                    $encontrado = true;
-                    $posicion = array_search($serie, $series);
-                    $serieEncontrada = $serie;
-                    Log::channel('debug')->info("Serie original encontrada en posición {$posicion}");
-                } elseif (in_array($seriePadded, $series)) {
-                    $encontrado = true;
-                    $posicion = array_search($seriePadded, $series);
-                    $serieEncontrada = $seriePadded;
-                    Log::channel('debug')->info("Serie con padding encontrada en posición {$posicion}");
-                }
-                
-                $detalleBusqueda[] = [
-                    'reserva_id' => $reserva->id,
-                    'series' => $series,
-                    'encontrado' => $encontrado,
-                    'posicion' => $posicion,
-                    'serie_buscada_original' => $serie,
-                    'serie_buscada_padded' => $seriePadded
-                ];
-                
-                if ($encontrado) {
-                    $reservaEncontrada = $reserva;
-                    $numeroCarton = $serieEncontrada;
-                    Log::channel('debug')->info("Serie encontrada en reserva", [
-                        'reserva_id' => $reserva->id,
-                        'nombre' => $reserva->nombre,
-                        'serie' => $serieEncontrada,
-                        'posicion' => $posicion
-                    ]);
-                    break;
-                }
-            }
-    
-            if (!$reservaEncontrada) {
-                Log::channel('debug')->warning("No se encontró ningún participante", [
-                    'serie_original' => $serie,
-                    'serie_padded' => $seriePadded,
-                    'detalle_busqueda' => $detalleBusqueda
-                ]);
-                
-                return response()->json(['error' => 'No se encontró ningún participante con ese número de serie.'], 404);
-            }
-    
-            $telefono = $this->censurarTelefono($reservaEncontrada->celular);
-            $esGanador = isset($reservaEncontrada->ganador) && $reservaEncontrada->ganador;
-            $premio = $reservaEncontrada->premio ?? '';
-    
-            $respuesta = [
-                'id' => $reservaEncontrada->id,
-                'serie' => $serieEncontrada,
-                'nombre' => $reservaEncontrada->nombre,
-                'telefono' => $telefono,
-                'carton' => $numeroCarton,
-                'premio' => $premio,
-                'ganador' => $esGanador
-            ];
-            
-            Log::channel('debug')->info('Respuesta final de búsqueda', $respuesta);
-            Log::channel('debug')->info('FIN BÚSQUEDA POR SERIE EXITOSA');
-            
-            return response()->json($respuesta);
-        } catch (\Exception $e) {
-            Log::channel('debug')->error('Error en búsqueda por serie', [
-                'error' => $e->getMessage(),
-                'linea' => $e->getLine(),
-                'archivo' => $e->getFile(),
-                'traza' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json(['error' => 'Ocurrió un error al buscar el participante: ' . $e->getMessage()], 500);
-        }
+// Y el método en BingoGanadoresController.php debe ser:
+public function buscarPorSerie(Bingo $bingo, $serie)
+{
+    if ($bingo->estado === 'archivado') {
+        return response()->json(['error' => 'Este bingo ha sido archivado.'], 403);
     }
+
+    // Asegúrate de que el formato de la serie coincida con como está guardado
+    $seriePadded = str_pad($serie, 6, '0', STR_PAD_LEFT);
+    
+    Log::info("Buscando serie: '$serie' (Formateada: '$seriePadded') en el bingo ID: " . $bingo->id);
+
+    try {
+        // Obtienes las reservas del bingo actual
+        $reservas = Reserva::where('bingo_id', $bingo->id)
+            ->where('eliminado', false)
+            ->get();
+
+        if ($reservas->isEmpty()) {
+            Log::warning("No hay reservas para este bingo");
+            return response()->json(['error' => 'No hay participantes registrados en este bingo.'], 404);
+        }
+
+        $reservaEncontrada = null;
+        $numeroCarton = null;
+
+        foreach ($reservas as $reserva) {
+            // Decodificamos las series JSON a un array PHP
+            $series = json_decode($reserva->series, true);
+            
+            if (!is_array($series)) {
+                Log::warning("Series no es un array para reserva ID: " . $reserva->id . ", Valor: " . $reserva->series);
+                continue;
+            }
+            
+            // Verificamos si la serie (con o sin padding) está en el array
+            if (in_array($serie, $series) || in_array($seriePadded, $series)) {
+                // Encontramos la serie en esta reserva
+                $reservaEncontrada = $reserva;
+                $numeroCarton = $seriePadded; // Usamos la serie con el padding
+                break; // Salir del bucle
+            }
+        }
+
+        if (!$reservaEncontrada) {
+            Log::warning("No se encontró ningún participante con la serie: '$serie' o '$seriePadded'");
+            return response()->json(['error' => 'No se encontró ningún participante con ese número de serie.'], 404);
+        }
+
+        $telefono = substr_replace($reservaEncontrada->celular, '****', 3, 4); // Censurar parte del número
+        $esGanador = isset($reservaEncontrada->ganador) && $reservaEncontrada->ganador;
+        $premio = $reservaEncontrada->premio ?? '';
+
+        return response()->json([
+            'id' => $reservaEncontrada->id,
+            'serie' => $seriePadded,
+            'nombre' => $reservaEncontrada->nombre,
+            'telefono' => $telefono,
+            'carton' => $numeroCarton,
+            'premio' => $premio,
+            'ganador' => $esGanador
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error en búsqueda por serie: ' . $e->getMessage());
+        return response()->json(['error' => 'Ocurrió un error al buscar el participante: ' . $e->getMessage()], 500);
+    }
+}
     
 
     /**
