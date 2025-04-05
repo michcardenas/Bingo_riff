@@ -251,8 +251,143 @@
             });
         }
 
-        // Función para cargar la tabla vía AJAX
-// Modificar la función loadTableContent para usar AbortController
+// Función para inicializar DataTable
+function initializeDataTable() {
+    const table = document.querySelector('#tableContent table');
+    if (!table) {
+        console.error('No se encontró ninguna tabla en #tableContent');
+        return;
+    }
+
+    try {
+        // Destruir tabla existente si ya existe
+        if (dataTable !== null) {
+            dataTable.destroy();
+            dataTable = null;
+        }
+
+        // Inicializar nueva DataTable
+        dataTable = $(table).DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/es-ES.json'
+            },
+            responsive: true,
+            order: [
+                [0, 'desc']
+            ],
+            columnDefs: [{
+                    orderable: true,
+                    targets: [0, 1, 2, 3, 7]
+                },
+                {
+                    orderable: false,
+                    targets: '_all'
+                },
+                {
+                    targets: 11,
+                    searchable: false
+                }
+            ],
+            pageLength: 25,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Todos"]
+            ],
+            stateSave: true,
+            // Asegurarse de que los filtros personalizados funcionen con la paginación
+            drawCallback: function(settings) {
+                // Verificar si hay un filtro personalizado activo
+                const filtroActivo = document.querySelector('#filterType') ? 
+                                    document.querySelector('#filterType').value : 'todas';
+                
+                if (filtroActivo !== 'todas') {
+                    // Si hay un filtro personalizado activo, aplicamos visibilidad personalizada
+                    console.log('Manteniendo filtro activo:', filtroActivo);
+                    
+                    // Asegurarse de que las filas filtradas permanezcan visibles
+                    // y las no filtradas permanezcan ocultas después de cambiar de página
+                    dataTable.rows().every(function(rowIdx) {
+                        const node = this.node();
+                        const esFiltrada = $(node).hasClass('duplicado-comprobante') || 
+                                         $(node).hasClass('duplicado-pedido') || 
+                                         $(node).hasClass('carton-eliminado');
+                        
+                        if (!esFiltrada) {
+                            $(node).addClass('d-none');
+                        } else {
+                            $(node).removeClass('d-none');
+                        }
+                    });
+                }
+            }
+        });
+
+        console.log('DataTable inicializado correctamente');
+
+        // Configurar eventos después de inicializar DataTable
+        setupEventHandlers();
+        
+        // Configuración de los selectores de filtro
+        configurarFiltros();
+    } catch (error) {
+        console.error('Error al inicializar DataTable:', error);
+    }
+}
+
+// Función para configurar los filtros personalizados
+function configurarFiltros() {
+    // Si ya existe el selector de filtros, actualizamos eventos
+    const selectorFiltro = document.getElementById('filterType');
+    
+    if (selectorFiltro) {
+        console.log('Configurando eventos para selector de filtros existente');
+        selectorFiltro.addEventListener('change', function() {
+            const tipoFiltro = this.value;
+            filtrarPorTipo(tipoFiltro);
+        });
+    } else {
+        // Si no existe, podemos crearlo de manera dinámica
+        console.log('Creando selector de filtros personalizado');
+        
+        // Crear el contenedor de filtros si no existe
+        let filterContainer = document.querySelector('.dataTables_filter');
+        if (!filterContainer) {
+            // Si no hay un contenedor existente, crear uno
+            const tableTools = document.createElement('div');
+            tableTools.className = 'table-tools-container mt-2 mb-3 d-flex flex-wrap justify-content-between align-items-center';
+            const tableWrapper = document.querySelector('.dataTables_wrapper');
+            if (tableWrapper) {
+                tableWrapper.prepend(tableTools);
+                filterContainer = tableTools;
+            }
+        }
+        
+        if (filterContainer) {
+            // Agregar el selector de filtros personalizados
+            const filterDiv = document.createElement('div');
+            filterDiv.className = 'custom-filter-container me-2';
+            filterDiv.innerHTML = `
+                <label class="me-2">Filtros rápidos:</label>
+                <select id="filterType" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                    <option value="todas" selected>Todas las reservas</option>
+                    <option value="comprobantes-duplicados">Comprobantes duplicados</option>
+                    <option value="pedidos-duplicados">Pedidos con celular duplicado</option>
+                    <option value="cartones-eliminados">Cartones rechazados</option>
+                </select>
+            `;
+            
+            filterContainer.prepend(filterDiv);
+            
+            // Agregar evento al selector
+            document.getElementById('filterType').addEventListener('change', function() {
+                const tipoFiltro = this.value;
+                filtrarPorTipo(tipoFiltro);
+            });
+        }
+    }
+}
+
+// Función para cargar la tabla vía AJAX con soporte para filtros
 function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
     // Cancelar cualquier solicitud de carga previa
     if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
@@ -267,12 +402,6 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
 
     // Mostrar indicador de carga
     document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
-
-    // Destruir DataTable existente si existe
-    if (dataTable !== null) {
-        dataTable.destroy();
-        dataTable = null;
-    }
 
     // Hacer la petición AJAX
     fetch(url, {
@@ -312,8 +441,14 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         // Si hay que filtrar después de cargar, aplicar el filtro
         if (filtrarDespues && dataTable) {
             setTimeout(() => {
+                // Actualizar también el selector visual si existe
+                const selectorFiltro = document.getElementById('filterType');
+                if (selectorFiltro) {
+                    selectorFiltro.value = tipoFiltro;
+                }
+                
                 filtrarPorTipo(tipoFiltro);
-            }, 100);
+            }, 300); // Aumentamos el tiempo para asegurar que DataTable está completamente inicializado
         }
     })
     .catch(error => {
@@ -337,7 +472,6 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         }
     });
 }
-
         // Función para inicializar DataTable
         function initializeDataTable() {
             const table = document.querySelector('#tableContent table');
