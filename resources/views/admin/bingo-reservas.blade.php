@@ -732,70 +732,40 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         // Cargar inicialmente la tabla de todas las reservas
         loadTableContent(rutaTablaTodasReservas);
 
-        // Asignar eventos a los botones
-        document.getElementById('btnTodasReservas').addEventListener('click', function() {
-            updateActiveButton(this);
-            tipoActual = 'todas';
-            loadTableContent(rutaTablaTodasReservas);
-        });
+        // Modificar los event listeners para los botones de filtro
+document.getElementById('btnTodasReservas').addEventListener('click', function() {
+    updateActiveButton(this);
+    tipoActual = 'todas';
+    
+    // Siempre cargar la tabla completa para "Todas las reservas"
+    loadTableContent(rutaTablaTodasReservas);
+});
 
-        document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
-    // Cancelar cualquier carga de tabla en progreso
-    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
-        window.currentTableLoadRequest.abort();
-    }
-
+document.getElementById('btnComprobanteDuplicado').addEventListener('click', async function() {
     updateActiveButton(this);
     tipoActual = 'comprobantes-duplicados';
-
-    // Filtrar directamente en el frontend sin recargar
-    if (dataTable) {
-        filtrarPorTipo('comprobantes-duplicados');
-    }
+    
+    // Siempre cargar la tabla completa primero, luego filtrar
+    await loadTableContent(rutaTablaTodasReservas);
+    filtrarPorTipo('comprobantes-duplicados');
 });
 
-document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
-    // Cancelar cualquier carga de tabla en progreso
-    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
-        window.currentTableLoadRequest.abort();
-    }
-
+document.getElementById('btnPedidoDuplicado').addEventListener('click', async function() {
     updateActiveButton(this);
     tipoActual = 'pedidos-duplicados';
-
-    // Verificar si dataTable existe y tiene datos
-    if (!dataTable || dataTable.rows().count() === 0) {
-        // Si no hay datos, cargar primero todas las reservas
-        loadTableContent(rutaTablaTodasReservas).then(function() {
-            // Una vez cargada la tabla, aplicar el filtro
-            filtrarPorTipo('pedidos-duplicados');
-        });
-    } else {
-        // Si ya hay datos, filtrar directamente
-        filtrarPorTipo('pedidos-duplicados');
-    }
+    
+    // Siempre cargar la tabla completa primero, luego filtrar
+    await loadTableContent(rutaTablaTodasReservas);
+    filtrarPorTipo('pedidos-duplicados');
 });
 
-document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
-    // Cancelar cualquier carga de tabla en progreso
-    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
-        window.currentTableLoadRequest.abort();
-    }
-
+document.getElementById('btnCartonesEliminados').addEventListener('click', async function() {
     updateActiveButton(this);
     tipoActual = 'cartones-eliminados';
-
-    // Verificar si dataTable existe y tiene datos
-    if (!dataTable || dataTable.rows().count() === 0) {
-        // Si no hay datos, cargar primero todas las reservas
-        loadTableContent(rutaTablaTodasReservas).then(function() {
-            // Una vez cargada la tabla, aplicar el filtro
-            filtrarPorTipo('cartones-eliminados');
-        });
-    } else {
-        // Si ya hay datos, filtrar directamente
-        filtrarPorTipo('cartones-eliminados');
-    }
+    
+    // Siempre cargar la tabla completa primero, luego filtrar
+    await loadTableContent(rutaTablaTodasReservas);
+    filtrarPorTipo('cartones-eliminados');
 });
 
       // Evento para el botón de Filtrar
