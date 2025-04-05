@@ -398,15 +398,18 @@ function filtrarPorTipo(tipo) {
     $('#mensaje-filtro').remove();
 
     // Resetear DataTable para mostrar todas las filas
-    dataTable.search('').columns().search('').draw();
+    dataTable.search('').columns().search('').draw(false);
     
     // Eliminar clases de resaltado previas
     dataTable.rows().nodes().to$().removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
 
     if (tipo === 'todas') {
         console.log('Mostrando todas las filas sin filtrar');
-        dataTable.rows().nodes().to$().removeClass('d-none');
-        dataTable.draw();
+        // Asegurarse de que todas las filas sean visibles
+        dataTable.rows().every(function() {
+            $(this.node()).removeClass('d-none');
+        });
+        dataTable.draw(false);
         return;
     }
 
@@ -539,16 +542,19 @@ function filtrarPorTipo(tipo) {
     // Función común para mostrar los resultados del filtro
     function mostrarResultadosFiltro(filasEncontradas, claseResaltado, mensajeVacio, tipoAlerta) {
         if (filasEncontradas.length > 0) {
-            // Ocultar todas primero
-            dataTable.rows().nodes().to$().addClass('d-none');
+            // Ocultar TODAS las filas primero sin excepción
+            dataTable.rows().every(function(rowIdx) {
+                $(this.node()).addClass('d-none');
+            });
             
-            // Mostrar solo las filtradas
+            // Mostrar SOLO las filas que cumplen con el filtro
             filasEncontradas.forEach(rowIdx => {
                 const node = dataTable.row(rowIdx).node();
                 $(node).removeClass('d-none').addClass(claseResaltado);
             });
             
-            dataTable.draw();
+            // Forzar redibujado completo de la tabla
+            dataTable.draw(false); // false para no resetear la página
             
             // Mostrar mensaje con la cantidad de elementos encontrados
             $('#tableContent').prepend(`
@@ -562,14 +568,17 @@ function filtrarPorTipo(tipo) {
             
             console.log(`Filtro aplicado correctamente. Se encontraron ${filasEncontradas.length} resultados.`);
         } else {
-            // No hay resultados
-            dataTable.rows().nodes().to$().addClass('d-none');
-            dataTable.draw();
+            // No hay resultados - ocultar todas las filas
+            dataTable.rows().every(function(rowIdx) {
+                $(this.node()).addClass('d-none');
+            });
+            dataTable.draw(false);
             $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-${tipoAlerta}">${mensajeVacio}</div>`);
             console.log('No se encontraron resultados para este filtro');
         }
     }
 }
+
         // Configurar manejadores de eventos
         function setupEventHandlers() {
             // Eventos para edición de series
