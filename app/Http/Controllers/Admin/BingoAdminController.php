@@ -509,7 +509,7 @@ class BingoAdminController extends Controller
         // Obtener todas las reservas con metadatos
         $query = Reserva::whereNotNull('comprobante_metadata')
             ->orderBy('created_at', 'desc');
-            
+                
         // Aplicar filtro de bingo_id si se proporciona
         if ($bingoId) {
             $query->where('bingo_id', $bingoId);
@@ -639,7 +639,10 @@ class BingoAdminController extends Controller
     
             // Comparar con las demás reservas
             foreach ($reservas as $otraReserva) {
-                if ($reserva->id == $otraReserva->id || in_array($otraReserva->id, $procesados)) {
+                // Modificación clave: Verificar que sean del mismo bingo
+                if ($reserva->id == $otraReserva->id || 
+                    in_array($otraReserva->id, $procesados) || 
+                    ($bingoId && $reserva->bingo_id != $otraReserva->bingo_id)) {
                     continue;
                 }
     
