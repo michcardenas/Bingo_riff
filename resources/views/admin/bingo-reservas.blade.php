@@ -740,18 +740,32 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         });
 
         document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
+    // Extraer bingo_id de la URL actual
+    const urlParts = window.location.pathname.split('/');
+    const bingoId = urlParts[urlParts.indexOf('bingos') + 1];
+
     // Cancelar cualquier carga de tabla en progreso
     if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
         window.currentTableLoadRequest.abort();
     }
-
+    
     updateActiveButton(this);
     tipoActual = 'comprobantes-duplicados';
 
-    // Filtrar directamente en el frontend sin recargar
-    if (dataTable) {
-        filtrarPorTipo('comprobantes-duplicados');
-    }
+    // Añadir el bingo_id a la solicitud AJAX
+    $.ajax({
+        url: '/admin/reservas/comprobantes-duplicados',
+        method: 'GET',
+        data: { bingo_id: bingoId },
+        success: function(response) {
+            // Manejar la respuesta
+            $('#tableContent').html(response);
+        },
+        error: function(xhr, status, error) {
+            console.error('Error al cargar comprobantes duplicados:', error);
+            // Manejar el error (mostrar mensaje al usuario, etc.)
+        }
+    });
 });
 
 document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
