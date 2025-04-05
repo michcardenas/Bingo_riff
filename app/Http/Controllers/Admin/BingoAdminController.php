@@ -425,27 +425,9 @@ class BingoAdminController extends Controller
     }
 
     public function cartonesEliminados(Request $request)
-{
-    try {
-        // Obtener bingo_id si está presente
-        $bingoId = $request->input('bingo_id');
-        
-        \Log::info("Buscando cartones eliminados", [
-            'bingo_id' => $bingoId ? $bingoId : 'Todos los bingos'
-        ]);
-
-        // Consulta base para reservas con cartones eliminados
-        $query = Reserva::where('eliminado', 1);
-        
-        // Añadir filtro de bingo_id si está presente
-        if ($bingoId) {
-            $query->where('bingo_id', $bingoId);
-        }
-        
-        // Ejecutar la consulta
-        $reservas = $query->orderBy('created_at', 'desc')->get();
-        
-        \Log::info('Encontrados ' . count($reservas) . ' cartones eliminados');
+    {
+        // Obtener las reservas con cartones eliminados
+        $reservas = Reserva::where('eliminado', 1)->get();
 
         // Si la solicitud es AJAX, devolver solo la tabla
         if ($request->ajax()) {
@@ -454,15 +436,7 @@ class BingoAdminController extends Controller
 
         // Si no es AJAX, devolver la vista completa
         return view('admin.indexclientes', compact('reservas'));
-    } catch (\Exception $e) {
-        \Log::error("Error en cartonesEliminados: " . $e->getMessage());
-        \Log::error("Trace: " . $e->getTraceAsString());
-        
-        return response()->json([
-            'error' => 'Error interno al buscar cartones eliminados: ' . $e->getMessage()
-        ], 500);
     }
-}
 
 
     public function comprobantesDuplicados(Request $request)
@@ -1537,56 +1511,21 @@ private function compararMetadatos($metadatosA, $metadatosB)
 
     public function pedidosDuplicados(Request $request)
     {
-        try {
-            // Obtener bingo_id si está presente
-            $bingoId = $request->input('bingo_id');
-            
-            \Log::info("Buscando pedidos duplicados", [
-                'bingo_id' => $bingoId ? $bingoId : 'Todos los bingos'
-            ]);
-    
-            // Consulta base para celulares duplicados
-            $baseQuery = Reserva::select('celular');
-            
-            // Añadir filtro de bingo_id para la consulta de duplicados si está presente
-            if ($bingoId) {
-                $baseQuery->where('bingo_id', $bingoId);
-            }
-            
-            // Obtener celulares duplicados
-            $duplicados = $baseQuery->groupBy('celular')
-                ->havingRaw('COUNT(*) > 1')
-                ->pluck('celular')
-                ->toArray();
-            
-            // Consulta para obtener las reservas con celulares duplicados
-            $reservasQuery = Reserva::whereIn('celular', $duplicados);
-            
-            // Añadir filtro de bingo_id para la consulta de reservas si está presente
-            if ($bingoId) {
-                $reservasQuery->where('bingo_id', $bingoId);
-            }
-            
-            // Ejecutar la consulta
-            $reservas = $reservasQuery->orderBy('celular')->orderBy('created_at', 'desc')->get();
-            
-            \Log::info('Encontrados ' . count($reservas) . ' pedidos con celulares duplicados');
-    
-            // Si la solicitud es AJAX, devolver solo la tabla
-            if ($request->ajax()) {
-                return view('admin.pedidos-duplicados-table', compact('reservas'))->render();
-            }
-    
-            // Si no es AJAX, devolver la vista completa
-            return view('admin.indexclientes', compact('reservas'));
-        } catch (\Exception $e) {
-            \Log::error("Error en pedidosDuplicados: " . $e->getMessage());
-            \Log::error("Trace: " . $e->getTraceAsString());
-            
-            return response()->json([
-                'error' => 'Error interno al buscar pedidos duplicados: ' . $e->getMessage()
-            ], 500);
+        $duplicados = Reserva::select('celular')
+            ->groupBy('celular')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('celular')
+            ->toArray();
+
+        $reservas = Reserva::whereIn('celular', $duplicados)->get();
+
+        // Si la solicitud es AJAX, devolver solo la tabla
+        if ($request->ajax()) {
+            return view('admin.pedidos-duplicados-table', compact('reservas'))->render();
         }
+
+        // Si no es AJAX, devolver la vista completa
+        return view('admin.indexclientes', compact('reservas'));
     }
 
     /**
