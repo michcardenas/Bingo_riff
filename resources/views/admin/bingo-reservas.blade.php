@@ -396,41 +396,52 @@ function filtrarPorTipo(tipo) {
 
     // Limpiar mensajes previos
     $('#mensaje-filtro').remove();
-
-    // Resetear DataTable para mostrar todas las filas
-    dataTable.search('').columns().search('').draw(false);
     
-    // Eliminar clases de resaltado previas
-    dataTable.rows().nodes().to$().removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
-
+    // Si es "todas", simplemente mostramos todo y salimos
     if (tipo === 'todas') {
         console.log('Mostrando todas las filas sin filtrar');
-        // Asegurarse de que todas las filas sean visibles
-        dataTable.rows().every(function() {
-            $(this.node()).removeClass('d-none');
-        });
-        dataTable.draw(false);
+        
+        // Quitar filtros de DataTable
+        dataTable.search('').columns().search('');
+        
+        // Quitar clase de ocultamiento de TODAS las filas
+        dataTable.$('tr').removeClass('d-none');
+        
+        // Quitar clases de resaltado
+        dataTable.$('tr').removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
+        
+        // Redibujar la tabla
+        dataTable.draw();
         return;
     }
 
+    // Si llegamos aquí, es un filtro específico
     console.log(`Procesando filtro específico: ${tipo}`);
     
     try {
+        // IMPORTANTE: Primero ocultamos TODAS las filas
+        dataTable.$('tr').addClass('d-none');
+        
         // Aplicar el filtro según el tipo
+        let filasEncontradas = [];
+        
         if (tipo === 'comprobantes-duplicados') {
-            aplicarFiltroComprobantes();
+            filasEncontradas = buscarComprobantesDuplicados();
         } else if (tipo === 'pedidos-duplicados') {
-            aplicarFiltroPedidos();
+            filasEncontradas = buscarPedidosDuplicados();
         } else if (tipo === 'cartones-eliminados') {
-            aplicarFiltroCartones();
+            filasEncontradas = buscarCartonesEliminados();
         }
+        
+        // Mostrar los resultados
+        mostrarResultadosFiltro(filasEncontradas, tipo);
     } catch (error) {
         console.error(`Error al aplicar filtro ${tipo}:`, error);
         $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-danger">Error al aplicar filtro: ${error.message}</div>`);
     }
     
-    // Funciones específicas para cada tipo de filtro
-    function aplicarFiltroComprobantes() {
+    // Funciones para buscar cada tipo de elemento
+    function buscarComprobantesDuplicados() {
         console.log('Buscando comprobantes duplicados...');
         const comprobantes = {};
         let filasDuplicadas = [];
@@ -462,10 +473,10 @@ function filtrarPorTipo(tipo) {
         }
 
         console.log('Filas con comprobantes duplicados:', filasDuplicadas.length);
-        mostrarResultadosFiltro(filasDuplicadas, 'duplicado-comprobante', 'No se encontraron comprobantes duplicados.', 'success');
+        return filasDuplicadas;
     }
 
-    function aplicarFiltroPedidos() {
+    function buscarPedidosDuplicados() {
         console.log('Buscando pedidos con números de teléfono duplicados...');
         const telefonos = {};
         let filasDuplicadas = [];
@@ -504,10 +515,10 @@ function filtrarPorTipo(tipo) {
         }
 
         console.log('Filas con teléfonos duplicados:', filasDuplicadas.length);
-        mostrarResultadosFiltro(filasDuplicadas, 'duplicado-pedido', 'No se encontraron números de teléfono duplicados.', 'info');
+        return filasDuplicadas;
     }
 
-    function aplicarFiltroCartones() {
+    function buscarCartonesEliminados() {
         console.log('Buscando cartones eliminados (estado rechazado)...');
         let filasRechazadas = [];
 
@@ -536,25 +547,55 @@ function filtrarPorTipo(tipo) {
         });
 
         console.log('Filas con cartones rechazados:', filasRechazadas.length);
-        mostrarResultadosFiltro(filasRechazadas, 'carton-eliminado', 'No se encontraron reservas con estado rechazado.', 'danger');
+        return filasRechazadas;
     }
     
-    // Función común para mostrar los resultados del filtro
-    function mostrarResultadosFiltro(filasEncontradas, claseResaltado, mensajeVacio, tipoAlerta) {
+    // Función para mostrar los resultados del filtro
+    function mostrarResultadosFiltro(filasEncontradas, tipoFiltro) {
+        // Determinar mensaje y clase según tipo de filtro
+        let mensajeVacio, tipoAlerta, claseResaltado;
+        
+        switch (tipoFiltro) {
+            case 'comprobantes-duplicados':
+                mensajeVacio = 'No se encontraron comprobantes duplicados.';
+                tipoAlerta = 'success';
+                claseResaltado = 'duplicado-comprobante';
+                break;
+            case 'pedidos-duplicados':
+                mensajeVacio = 'No se encontraron números de teléfono duplicados.';
+                tipoAlerta = 'info';
+                claseResaltado = 'duplicado-pedido';
+                break;
+            case 'cartones-eliminados':
+                mensajeVacio = 'No se encontraron reservas con estado rechazado.';
+                tipoAlerta = 'danger';
+                claseResaltado = 'carton-eliminado';
+                break;
+            default:
+                mensajeVacio = 'No se encontraron resultados.';
+                tipoAlerta = 'warning';
+                claseResaltado = '';
+        }
+        
         if (filasEncontradas.length > 0) {
-            // Ocultar TODAS las filas primero sin excepción
-            dataTable.rows().every(function(rowIdx) {
-                $(this.node()).addClass('d-none');
-            });
+            console.log(`Se encontraron ${filasEncontradas.length} filas que cumplen el criterio`);
             
-            // Mostrar SOLO las filas que cumplen con el filtro
+            // MOSTRAR SOLO las filas filtradas
             filasEncontradas.forEach(rowIdx => {
-                const node = dataTable.row(rowIdx).node();
-                $(node).removeClass('d-none').addClass(claseResaltado);
+                try {
+                    const row = dataTable.row(rowIdx);
+                    if (row && row.node) {
+                        const node = row.node();
+                        $(node).removeClass('d-none').addClass(claseResaltado);
+                        console.log(`Mostrando fila ${rowIdx}`);
+                    }
+                } catch (e) {
+                    console.error(`Error al mostrar fila ${rowIdx}:`, e);
+                }
             });
             
-            // Forzar redibujado completo de la tabla
-            dataTable.draw(false); // false para no resetear la página
+            // Redibujar la tabla
+            dataTable.draw();
             
             // Mostrar mensaje con la cantidad de elementos encontrados
             $('#tableContent').prepend(`
@@ -565,14 +606,9 @@ function filtrarPorTipo(tipo) {
                     </button>
                 </div>
             `);
-            
-            console.log(`Filtro aplicado correctamente. Se encontraron ${filasEncontradas.length} resultados.`);
         } else {
-            // No hay resultados - ocultar todas las filas
-            dataTable.rows().every(function(rowIdx) {
-                $(this.node()).addClass('d-none');
-            });
-            dataTable.draw(false);
+            // No hay resultados, pero ya ocultamos todas las filas al inicio
+            dataTable.draw();
             $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-${tipoAlerta}">${mensajeVacio}</div>`);
             console.log('No se encontraron resultados para este filtro');
         }
