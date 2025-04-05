@@ -710,14 +710,78 @@
             loadTableContent(rutaTablaTodasReservas);
         });
 
-        // Usar filtrado en el frontend para las demás opciones
-        document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
-            updateActiveButton(this);
-            tipoActual = 'comprobantes-duplicados';
+        document.getElementById('btnComprobanteDuplicado').addEventListener('click', function(e) {
+    // Prevenir cualquier acción por defecto
+    e.preventDefault();
+    e.stopPropagation();
 
-            // Cargar todas las reservas primero y después filtrar en el frontend
-            loadTableContent(rutaTablaTodasReservas, true, 'comprobantes-duplicados');
+    // Extraer el ID del bingo de la URL actual
+    const currentUrl = window.location.href;
+    const bingoUrlMatch = currentUrl.match(/\/bingos\/(\d+)\/reservas/);
+    
+    if (bingoUrlMatch && bingoUrlMatch[1]) {
+        const bingoId = bingoUrlMatch[1];
+        console.log('Cargando comprobantes duplicados para el Bingo ID:', bingoId);
+        
+        // Construir la URL específica para comprobantes duplicados de este bingo
+        const fullUrl = `/admin/bingos/${bingoId}/reservas/comprobantesDuplicados`;
+        
+        // Mostrar indicador de carga
+        document.getElementById('tableContent').innerHTML = `
+            <div class="text-center p-5">
+                <div class="spinner-border text-light" role="status"></div>
+                <p class="mt-2 text-light">Cargando comprobantes duplicados...</p>
+            </div>
+        `;
+
+        // Hacer la petición fetch
+        fetch(fullUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            console.log('Estado de respuesta:', response.status);
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+            
+            // Actualizar el contenedor con la tabla
+            document.getElementById('tableContent').innerHTML = html;
+            
+            // Reinicializar DataTable
+            if (dataTable !== null) {
+                dataTable.destroy();
+            }
+            initializeDataTable();
+            
+            // Actualizar estado de los botones
+            document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            });
+            
+            document.getElementById('btnComprobanteDuplicado').classList.add('btn-primary');
+            document.getElementById('btnComprobanteDuplicado').classList.remove('btn-secondary');
+        })
+        .catch(error => {
+            console.error('Error cargando comprobantes duplicados:', error);
+            document.getElementById('tableContent').innerHTML = `
+                <div class="alert alert-danger text-center">
+                    Error al cargar los comprobantes duplicados: ${error.message}<br>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
+                </div>
+            `;
         });
+    } else {
+        console.error('No se pudo encontrar el ID del bingo en la URL');
+        alert('Error: No se pudo identificar el bingo actual');
+    }
+});
 
         document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
             updateActiveButton(this);
