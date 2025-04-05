@@ -251,8 +251,7 @@
             });
         }
 
-        // Función para cargar la tabla vía AJAX
-// Modificar la función loadTableContent para usar AbortController
+// Modificar tu función loadTableContent para manejar mejor los casos sin resultados
 function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
     // Cancelar cualquier solicitud de carga previa
     if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
@@ -298,22 +297,36 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
         
         // Si el HTML está vacío o contiene mensaje de no resultados
-        if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
-            document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
+        if (html.trim() === '') {
+            document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No se encontraron resultados para esta consulta.</div>';
+            return;
+        }
+        
+        // Manejar el caso cuando la respuesta indica que no hay datos
+        if (html.includes('No hay reservas') || html.includes('No se encontraron')) {
+            document.getElementById('tableContent').innerHTML = html; // Mostramos el mensaje que viene del servidor
             return;
         }
         
         // Actualizar el contenedor con la tabla
         document.getElementById('tableContent').innerHTML = html;
         
-        // Inicializar DataTable
-        initializeDataTable();
-        
-        // Si hay que filtrar después de cargar, aplicar el filtro
-        if (filtrarDespues && dataTable) {
-            setTimeout(() => {
-                filtrarPorTipo(tipoFiltro);
-            }, 100);
+        // Intentar inicializar DataTable
+        try {
+            initializeDataTable();
+            
+            // Si hay que filtrar después de cargar, aplicar el filtro
+            if (filtrarDespues && dataTable) {
+                setTimeout(() => {
+                    filtrarPorTipo(tipoFiltro);
+                }, 100);
+            }
+        } catch (error) {
+            console.error('Error al inicializar DataTable:', error);
+            document.getElementById('tableContent').innerHTML += 
+                `<div class="alert alert-danger mt-3">
+                    Error al inicializar la tabla: ${error.message}
+                </div>`;
         }
     })
     .catch(error => {
