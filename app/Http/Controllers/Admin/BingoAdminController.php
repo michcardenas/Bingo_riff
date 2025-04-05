@@ -432,8 +432,9 @@ class BingoAdminController extends Controller
     }
 
     public function comprobantesDuplicados(Request $request)
-    set_time_limit(120); // 2 minutos
+
 {
+    set_time_limit(120); // 2 minutos
     try {
         // Obtener bingo_id si está presente
         $bingoId = $request->input('bingo_id');
