@@ -432,7 +432,7 @@ class BingoAdminController extends Controller
     }
 
 
-    ppublic function comprobantesDuplicados(Request $request)
+    public function comprobantesDuplicados(Request $request)
     {
         set_time_limit(120); // 2 minutos
         try {
