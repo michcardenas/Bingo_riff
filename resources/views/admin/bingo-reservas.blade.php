@@ -252,62 +252,91 @@
         }
 
         // Función para cargar la tabla vía AJAX
-        function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
-            console.log('Intentando cargar tabla desde URL:', url);
+// Modificar la función loadTableContent para usar AbortController
+function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
+    // Cancelar cualquier solicitud de carga previa
+    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
+        window.currentTableLoadRequest.abort();
+    }
 
-            // Mostrar indicador de carga
-            document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
+    console.log('Intentando cargar tabla desde URL:', url);
 
-            // Destruir DataTable existente si existe
-            if (dataTable !== null) {
-                dataTable.destroy();
-                dataTable = null;
-            }
+    // Crear un nuevo AbortController
+    const controller = new AbortController();
+    window.currentTableLoadRequest = controller;
 
-            // Hacer la petición AJAX
-            fetch(url, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => {
-                    console.log('Estado de respuesta:', response.status);
-                    if (!response.ok) {
-                        throw new Error(`Error HTTP: ${response.status}`);
-                    }
-                    return response.text();
-                })
-                .then(html => {
-                    console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+    // Mostrar indicador de carga
+    document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
 
-                    // Si el HTML está vacío o contiene mensaje de no resultados
-                    if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
-                        document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
-                        return;
-                    }
+    // Destruir DataTable existente si existe
+    if (dataTable !== null) {
+        dataTable.destroy();
+        dataTable = null;
+    }
 
-                    // Actualizar el contenedor con la tabla
-                    document.getElementById('tableContent').innerHTML = html;
+    // Hacer la petición AJAX
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        signal: controller.signal // Añadir la señal de aborto
+    })
+    .then(response => {
+        console.log('Estado de respuesta:', response.status);
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Verificar si la solicitud ha sido abortada
+        if (controller.signal.aborted) {
+            console.log('Carga de tabla cancelada');
+            return;
+        }
 
-                    // Inicializar DataTable
-                    initializeDataTable();
+        console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+        
+        // Si el HTML está vacío o contiene mensaje de no resultados
+        if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
+            document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
+            return;
+        }
+        
+        // Actualizar el contenedor con la tabla
+        document.getElementById('tableContent').innerHTML = html;
+        
+        // Inicializar DataTable
+        initializeDataTable();
+        
+        // Si hay que filtrar después de cargar, aplicar el filtro
+        if (filtrarDespues && dataTable) {
+            setTimeout(() => {
+                filtrarPorTipo(tipoFiltro);
+            }, 100);
+        }
+    })
+    .catch(error => {
+        // Ignorar errores de aborto
+        if (error.name === 'AbortError') {
+            console.log('Carga de tabla cancelada');
+            return;
+        }
 
-                    // Si hay que filtrar después de cargar, aplicar el filtro
-                    if (filtrarDespues && dataTable) {
-                        setTimeout(() => {
-                            filtrarPorTipo(tipoFiltro);
-                        }, 100);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error cargando tabla:', error);
-                    document.getElementById('tableContent').innerHTML =
-                        `<div class="alert alert-danger text-center">
+        console.error('Error cargando tabla:', error);
+        document.getElementById('tableContent').innerHTML =
+            `<div class="alert alert-danger text-center">
                 Error al cargar los datos: ${error.message}<br>
                 <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
             </div>`;
-                });
+    })
+    .finally(() => {
+        // Limpiar la referencia al request actual
+        if (window.currentTableLoadRequest === controller) {
+            window.currentTableLoadRequest = null;
         }
+    });
+}
 
         // Función para inicializar DataTable
         function initializeDataTable() {
@@ -711,7 +740,11 @@
         });
 
         document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
-    // No recargar la tabla, solo filtrar
+    // Cancelar cualquier carga de tabla en progreso
+    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
+        window.currentTableLoadRequest.abort();
+    }
+
     updateActiveButton(this);
     tipoActual = 'comprobantes-duplicados';
 
@@ -722,6 +755,11 @@
 });
 
 document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
+    // Cancelar cualquier carga de tabla en progreso
+    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
+        window.currentTableLoadRequest.abort();
+    }
+
     updateActiveButton(this);
     tipoActual = 'pedidos-duplicados';
 
@@ -732,6 +770,11 @@ document.getElementById('btnPedidoDuplicado').addEventListener('click', function
 });
 
 document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
+    // Cancelar cualquier carga de tabla en progreso
+    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
+        window.currentTableLoadRequest.abort();
+    }
+
     updateActiveButton(this);
     tipoActual = 'cartones-eliminados';
 
