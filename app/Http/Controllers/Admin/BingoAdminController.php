@@ -455,7 +455,6 @@ class BingoAdminController extends Controller
         $duplicadosPorNumero = $query
             ->groupBy('numero_comprobante')
             ->havingRaw('COUNT(*) > 1')
-            ->limit(500)
             ->pluck('numero_comprobante')
             ->toArray();
         
@@ -525,7 +524,6 @@ private function verificarDuplicadosInterno($bingoId = null)
     }
 
     $reservas = $query
-        ->limit(2000) // Limitar para prevenir timeout
         ->get();
 
     // Si no hay reservas, retornar vacío
