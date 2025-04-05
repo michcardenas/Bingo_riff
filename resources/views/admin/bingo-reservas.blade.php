@@ -1006,34 +1006,67 @@ document.getElementById('btnFiltrar').addEventListener('click', function() {
 </script>
 
 <script>
-document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
-    // Extraer bingo_id de la URL actual
-    const urlParts = window.location.pathname.split('/');
-    const bingoId = urlParts[urlParts.indexOf('bingos') + 1];
-
-    // Cancelar cualquier carga de tabla en progreso
-    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
-        window.currentTableLoadRequest.abort();
+document.addEventListener('DOMContentLoaded', function() {
+    const btnComprobanteDuplicado = document.getElementById('btnComprobanteDuplicado');
+    if (!btnComprobanteDuplicado) {
+        console.error('Botón Comprobante Duplicado no encontrado');
+        return;
     }
     
-    updateActiveButton(this);
-    tipoActual = 'comprobantes-duplicados';
+    btnComprobanteDuplicado.addEventListener('click', function() {
+        console.log('Botón Comprobante Duplicado clickeado');
+        mostrarCargando();
+        
+        // Extraer bingo_id de la URL actual
+        const urlParts = window.location.pathname.split('/');
+        const bingoId = urlParts[urlParts.indexOf('bingos') + 1];
 
-    // Añadir el bingo_id a la solicitud
-    fetch('/admin/reservas/comprobantes-duplicados?bingo_id=' + bingoId)
+        if (!bingoId) {
+            console.error('No se pudo encontrar el bingo_id en la URL');
+            ocultarCargando();
+            mostrarMensaje('Error: No se pudo identificar el bingo', 'danger');
+            return;
+        }
+
+        // Modificar la ruta para incluir el bingo_id
+        const url = `{{ route('admin.comprobantesDuplicados') }}?bingo_id=${bingoId}`;
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
         .then(response => {
+            console.log('Estado de respuesta:', response.status);
             if (!response.ok) {
                 throw new Error('Error en la respuesta del servidor');
             }
             return response.text();
         })
         .then(html => {
-            $('#tableContent').html(html);
+            console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+            
+            // En lugar de buscar un tbody específico, actualizamos el contenedor general.
+            const container = document.getElementById('tableContent');
+            if (!container) {
+                throw new Error('Contenedor "tableContent" no encontrado');
+            }
+            container.innerHTML = html;
+            console.log('HTML inyectado en tableContent:', container.innerHTML);
+            
+            reinicializarDataTable();
+            mostrarMensaje('Comprobantes duplicados cargados correctamente', 'success');
+            activarBoton(btnComprobanteDuplicado);
+            ocultarCargando();
         })
         .catch(error => {
-            console.error('Error al cargar comprobantes duplicados:', error);
-            // Manejar el error (mostrar mensaje al usuario, etc.)
+            console.error('Error:', error);
+            ocultarCargando();
+            mostrarMensaje('Error al cargar comprobantes duplicados: ' + error.message, 'danger');
         });
+    });
 });
     
     function mostrarCargando() {
