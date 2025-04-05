@@ -763,8 +763,15 @@ document.getElementById('btnPedidoDuplicado').addEventListener('click', function
     updateActiveButton(this);
     tipoActual = 'pedidos-duplicados';
 
-    // Filtrar directamente en el frontend sin recargar
-    if (dataTable) {
+    // Verificar si dataTable existe y tiene datos
+    if (!dataTable || dataTable.rows().count() === 0) {
+        // Si no hay datos, cargar primero todas las reservas
+        loadTableContent(rutaTablaTodasReservas).then(function() {
+            // Una vez cargada la tabla, aplicar el filtro
+            filtrarPorTipo('pedidos-duplicados');
+        });
+    } else {
+        // Si ya hay datos, filtrar directamente
         filtrarPorTipo('pedidos-duplicados');
     }
 });
@@ -778,8 +785,15 @@ document.getElementById('btnCartonesEliminados').addEventListener('click', funct
     updateActiveButton(this);
     tipoActual = 'cartones-eliminados';
 
-    // Filtrar directamente en el frontend sin recargar
-    if (dataTable) {
+    // Verificar si dataTable existe y tiene datos
+    if (!dataTable || dataTable.rows().count() === 0) {
+        // Si no hay datos, cargar primero todas las reservas
+        loadTableContent(rutaTablaTodasReservas).then(function() {
+            // Una vez cargada la tabla, aplicar el filtro
+            filtrarPorTipo('cartones-eliminados');
+        });
+    } else {
+        // Si ya hay datos, filtrar directamente
         filtrarPorTipo('cartones-eliminados');
     }
 });
