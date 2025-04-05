@@ -385,136 +385,211 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
             }
         }
 
-        // Función para filtrar según el tipo seleccionado
-        function filtrarPorTipo(tipo) {
-            if (!dataTable) return;
+    // Función mejorada para filtrar según el tipo seleccionado
+function filtrarPorTipo(tipo) {
+    console.log(`Aplicando filtro: ${tipo}`);
+    
+    if (!dataTable) {
+        console.error('DataTable no está inicializada, no se puede filtrar');
+        return;
+    }
 
-            // Limpiar mensajes previos
-            $('#mensaje-filtro').remove();
+    // Limpiar mensajes previos
+    $('#mensaje-filtro').remove();
 
-            // Resetear DataTable para mostrar todas las filas
-            dataTable.search('').columns().search('').draw();
+    // Resetear DataTable para mostrar todas las filas
+    dataTable.search('').columns().search('').draw();
+    
+    // Eliminar clases de resaltado previas
+    dataTable.rows().nodes().to$().removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
 
-            if (tipo === 'todas') {
-                return; // No hacer nada, mostrar todas
+    if (tipo === 'todas') {
+        console.log('Mostrando todas las filas sin filtrar');
+        dataTable.rows().nodes().to$().removeClass('d-none');
+        dataTable.draw();
+        return;
+    }
+
+    console.log(`Procesando filtro específico: ${tipo}`);
+    
+    try {
+        // Aplicar el filtro según el tipo
+        if (tipo === 'comprobantes-duplicados') {
+            aplicarFiltroComprobantes();
+        } else if (tipo === 'pedidos-duplicados') {
+            aplicarFiltroPedidos();
+        } else if (tipo === 'cartones-eliminados') {
+            aplicarFiltroCartones();
+        }
+    } catch (error) {
+        console.error(`Error al aplicar filtro ${tipo}:`, error);
+        $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-danger">Error al aplicar filtro: ${error.message}</div>`);
+    }
+    
+    // Funciones específicas para cada tipo de filtro
+    function aplicarFiltroComprobantes() {
+        console.log('Buscando comprobantes duplicados...');
+        const comprobantes = {};
+        let filasDuplicadas = [];
+
+        // Primera pasada: recopilar todos los comprobantes
+        dataTable.rows().every(function(rowIdx) {
+            try {
+                const fila = this.node();
+                const comprobante = $(fila).find('input[type="text"]').val();
+
+                if (comprobante && comprobante.trim() !== '') {
+                    if (!comprobantes[comprobante]) {
+                        comprobantes[comprobante] = [];
+                    }
+                    comprobantes[comprobante].push(rowIdx);
+                }
+            } catch (e) {
+                console.warn('Error procesando fila para comprobante duplicado:', e);
             }
+        });
 
-            // Aplicar el filtro según el tipo
-            if (tipo === 'comprobantes-duplicados') {
-                // Buscar comprobantes duplicados
-                const comprobantes = {};
-                let filasDuplicadas = [];
+        console.log('Comprobantes encontrados:', Object.keys(comprobantes).length);
 
-                dataTable.rows().every(function(rowIdx) {
-                    const fila = this.node();
-                    const comprobante = $(fila).find('input[type="text"]').val();
-
-                    if (comprobante && comprobante.trim() !== '') {
-                        if (!comprobantes[comprobante]) {
-                            comprobantes[comprobante] = [];
-                        }
-                        comprobantes[comprobante].push(rowIdx);
-                    }
-                });
-
-                // Identificar filas con comprobantes duplicados
-                for (const comp in comprobantes) {
-                    if (comprobantes[comp].length > 1) {
-                        filasDuplicadas = filasDuplicadas.concat(comprobantes[comp]);
-                    }
-                }
-
-                if (filasDuplicadas.length > 0) {
-                    // Mostrar solo las filas con comprobantes duplicados
-                    dataTable.rows().every(function(rowIdx) {
-                        if (!filasDuplicadas.includes(rowIdx)) {
-                            $(this.node()).addClass('d-none');
-                        } else {
-                            $(this.node()).removeClass('d-none').addClass('duplicado-comprobante');
-                        }
-                    });
-                    dataTable.draw();
-                } else {
-                    // No hay duplicados
-                    dataTable.rows().nodes().to$().addClass('d-none');
-                    dataTable.draw();
-                    $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-success">No se encontraron comprobantes duplicados.</div>');
-                }
-            } else if (tipo === 'pedidos-duplicados') {
-                // Buscar pedidos duplicados (mismo número de teléfono)
-                const telefonos = {};
-                let filasDuplicadas = [];
-
-                dataTable.rows().every(function(rowIdx) {
-                    const fila = this.node();
-                    const celular = $(fila).find('td:eq(2)').text().trim();
-
-                    if (celular) {
-                        // Solo usar el teléfono como clave
-                        if (!telefonos[celular]) {
-                            telefonos[celular] = [];
-                        }
-                        telefonos[celular].push(rowIdx);
-                    }
-                });
-
-                // Identificar filas con teléfonos duplicados
-                for (const telefono in telefonos) {
-                    if (telefonos[telefono].length > 1) {
-                        filasDuplicadas = filasDuplicadas.concat(telefonos[telefono]);
-                    }
-                }
-
-                if (filasDuplicadas.length > 0) {
-                    // Mostrar solo las filas con teléfonos duplicados
-                    dataTable.rows().every(function(rowIdx) {
-                        if (!filasDuplicadas.includes(rowIdx)) {
-                            $(this.node()).addClass('d-none');
-                        } else {
-                            $(this.node()).removeClass('d-none').addClass('duplicado-pedido');
-                        }
-                    });
-                    dataTable.draw();
-                } else {
-                    // No hay duplicados
-                    dataTable.rows().nodes().to$().addClass('d-none');
-                    dataTable.draw();
-                    $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-info">No se encontraron números de teléfono duplicados.</div>');
-                }
-            } else if (tipo === 'cartones-eliminados') {
-                // Simplemente buscar reservas con estado "rechazado"
-                let filasRechazadas = [];
-
-                dataTable.rows().every(function(rowIdx) {
-                    const fila = this.node();
-                    // Obtener el texto de la columna de estado (columna 10)
-                    const estadoCell = $(fila).find('td:eq(10)');
-                    const estadoTexto = estadoCell.text().trim().toLowerCase();
-
-                    // Si tiene la clase 'bg-danger' o el texto contiene 'rechazado'
-                    if (estadoTexto.includes('rechazado') || estadoCell.find('.badge.bg-danger').length > 0) {
-                        filasRechazadas.push(rowIdx);
-                    }
-                });
-
-                if (filasRechazadas.length > 0) {
-                    // Mostrar solo las filas con estado rechazado
-                    dataTable.rows().every(function(rowIdx) {
-                        if (!filasRechazadas.includes(rowIdx)) {
-                            $(this.node()).addClass('d-none');
-                        } else {
-                            $(this.node()).removeClass('d-none').addClass('carton-eliminado');
-                        }
-                    });
-                    dataTable.draw();
-                } else {
-                    // No hay reservas rechazadas
-                    dataTable.rows().nodes().to$().addClass('d-none');
-                    dataTable.draw();
-                    $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-danger">No se encontraron reservas con estado rechazado.</div>');
-                }
+        // Segunda pasada: identificar duplicados
+        for (const comp in comprobantes) {
+            if (comprobantes[comp].length > 1) {
+                filasDuplicadas = filasDuplicadas.concat(comprobantes[comp]);
             }
         }
+
+        console.log('Filas con comprobantes duplicados:', filasDuplicadas.length);
+
+        // Aplicar visibilidad según corresponda
+        if (filasDuplicadas.length > 0) {
+            // Ocultar todas primero
+            dataTable.rows().nodes().to$().addClass('d-none');
+            
+            // Mostrar solo las duplicadas
+            filasDuplicadas.forEach(rowIdx => {
+                const node = dataTable.row(rowIdx).node();
+                $(node).removeClass('d-none').addClass('duplicado-comprobante');
+            });
+            
+            dataTable.draw();
+            console.log('Filtro de comprobantes duplicados aplicado correctamente');
+        } else {
+            // No hay duplicados
+            dataTable.rows().nodes().to$().addClass('d-none');
+            dataTable.draw();
+            $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-success">No se encontraron comprobantes duplicados.</div>');
+            console.log('No se encontraron comprobantes duplicados');
+        }
+    }
+
+    function aplicarFiltroPedidos() {
+        console.log('Buscando pedidos con números de teléfono duplicados...');
+        const telefonos = {};
+        let filasDuplicadas = [];
+
+        // Primera pasada: recopilar todos los teléfonos
+        dataTable.rows().every(function(rowIdx) {
+            try {
+                const fila = this.node();
+                // Buscar en la tercera columna (índice 2)
+                const celular = $(fila).find('td:eq(2)').text().trim();
+
+                if (celular) {
+                    if (!telefonos[celular]) {
+                        telefonos[celular] = [];
+                    }
+                    telefonos[celular].push(rowIdx);
+                }
+            } catch (e) {
+                console.warn('Error procesando fila para pedido duplicado:', e);
+            }
+        });
+
+        console.log('Teléfonos únicos encontrados:', Object.keys(telefonos).length);
+
+        // Segunda pasada: identificar duplicados
+        for (const telefono in telefonos) {
+            if (telefonos[telefono].length > 1) {
+                filasDuplicadas = filasDuplicadas.concat(telefonos[telefono]);
+            }
+        }
+
+        console.log('Filas con teléfonos duplicados:', filasDuplicadas.length);
+
+        // Aplicar visibilidad según corresponda
+        if (filasDuplicadas.length > 0) {
+            // Ocultar todas primero
+            dataTable.rows().nodes().to$().addClass('d-none');
+            
+            // Mostrar solo las duplicadas
+            filasDuplicadas.forEach(rowIdx => {
+                const node = dataTable.row(rowIdx).node();
+                $(node).removeClass('d-none').addClass('duplicado-pedido');
+            });
+            
+            dataTable.draw();
+            console.log('Filtro de pedidos duplicados aplicado correctamente');
+        } else {
+            // No hay duplicados
+            dataTable.rows().nodes().to$().addClass('d-none');
+            dataTable.draw();
+            $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-info">No se encontraron números de teléfono duplicados.</div>');
+            console.log('No se encontraron pedidos duplicados');
+        }
+    }
+
+    function aplicarFiltroCartones() {
+        console.log('Buscando cartones eliminados (estado rechazado)...');
+        let filasRechazadas = [];
+
+        // Buscar filas con estado rechazado
+        dataTable.rows().every(function(rowIdx) {
+            try {
+                const fila = this.node();
+                // Buscar en la columna de estado (suponiendo que es la 11ª, índice 10)
+                // Verificar primero si la columna existe
+                const celdasTotales = $(fila).find('td').length;
+                if (celdasTotales <= 10) {
+                    console.warn(`La fila ${rowIdx} no tiene suficientes columnas (${celdasTotales})`);
+                    return;
+                }
+                
+                const estadoCell = $(fila).find('td:eq(10)');
+                const estadoTexto = estadoCell.text().trim().toLowerCase();
+
+                // Verificar el estado rechazado por texto o clase
+                if (estadoTexto.includes('rechazado') || estadoCell.find('.badge.bg-danger').length > 0) {
+                    filasRechazadas.push(rowIdx);
+                }
+            } catch (e) {
+                console.warn('Error procesando fila para cartón eliminado:', e);
+            }
+        });
+
+        console.log('Filas con cartones rechazados:', filasRechazadas.length);
+
+        // Aplicar visibilidad según corresponda
+        if (filasRechazadas.length > 0) {
+            // Ocultar todas primero
+            dataTable.rows().nodes().to$().addClass('d-none');
+            
+            // Mostrar solo las rechazadas
+            filasRechazadas.forEach(rowIdx => {
+                const node = dataTable.row(rowIdx).node();
+                $(node).removeClass('d-none').addClass('carton-eliminado');
+            });
+            
+            dataTable.draw();
+            console.log('Filtro de cartones eliminados aplicado correctamente');
+        } else {
+            // No hay rechazados
+            dataTable.rows().nodes().to$().addClass('d-none');
+            dataTable.draw();
+            $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-danger">No se encontraron reservas con estado rechazado.</div>');
+            console.log('No se encontraron cartones eliminados');
+        }
+    }
+}
 
         // Configurar manejadores de eventos
         function setupEventHandlers() {
@@ -750,18 +825,14 @@ document.getElementById('btnComprobanteDuplicado').addEventListener('click', asy
     filtrarPorTipo('comprobantes-duplicados');
 });
 
-document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
+document.getElementById('btnPedidoDuplicado').addEventListener('click', async function() {
     updateActiveButton(this);
     tipoActual = 'pedidos-duplicados';
     
-    // Construir la ruta para pedidos duplicados
-    const rutaPedidosDuplicados = `${basePath}/admin/pedidos-duplicados`;
-    console.log('Cargando pedidos duplicados desde URL:', rutaPedidosDuplicados);
-    
-    // Cargar directamente la tabla de pedidos duplicados desde el backend
-    loadTableContent(rutaPedidosDuplicados);
+    // Siempre cargar la tabla completa primero, luego filtrar
+    await loadTableContent(rutaTablaTodasReservas);
+    filtrarPorTipo('pedidos-duplicados');
 });
-
 
 document.getElementById('btnCartonesEliminados').addEventListener('click', async function() {
     updateActiveButton(this);
