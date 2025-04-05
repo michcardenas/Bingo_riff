@@ -588,6 +588,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Construir la URL específica para comprobantes duplicados de este bingo
         const fullUrl = `/admin/bingos/${bingoId}/reservas/comprobantesDuplicados`;
         
+        // Mostrar indicador de carga
+        const tableContainer = document.getElementById('tableContent');
+        tableContainer.innerHTML = `
+            <div class="text-center p-5">
+                <div class="spinner-border text-light" role="status"></div>
+                <p class="mt-2 text-light">Cargando comprobantes duplicados...</p>
+            </div>
+        `;
+        
         // Usar fetch para cargar el contenido
         fetch(fullUrl, {
             headers: {
@@ -603,22 +612,29 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(html => {
             // Actualizar el contenido de la tabla
-            const tableContainer = document.getElementById('tableContent');
             if (tableContainer) {
-                tableContainer.innerHTML = html;
-                
-                // Reinicializar DataTable
+                // Destruir DataTable existente si existe
                 if ($.fn.DataTable.isDataTable('.table')) {
                     $('.table').DataTable().destroy();
                 }
+
+                // Insertar el HTML de comprobantes duplicados
+                tableContainer.innerHTML = html;
                 
+                // Reinicializar DataTable específicamente para comprobantes duplicados
                 $('.table').DataTable({
                     language: {
                         url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
                         emptyTable: "No hay comprobantes duplicados para este bingo"
                     },
                     responsive: true,
-                    order: [[0, 'desc']]
+                    order: [[0, 'desc']],
+                    // Añadir clases para tema oscuro
+                    initComplete: function() {
+                        $('.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate').addClass('text-white');
+                        $('.dataTables_wrapper .form-control').addClass('bg-dark text-white border-secondary');
+                        $('.dataTables_wrapper .page-link').addClass('bg-dark text-white border-secondary');
+                    }
                 });
                 
                 // Actualizar estado de los botones
@@ -637,7 +653,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error al cargar comprobantes duplicados:', error);
             
             // Mostrar mensaje de error
-            const tableContainer = document.getElementById('tableContent');
             if (tableContainer) {
                 tableContainer.innerHTML = `
                     <div class="alert alert-danger">
@@ -652,6 +667,8 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Error: No se pudo identificar el bingo actual');
     }
 });
+
+
     // Configurar el botón de borrar clientes y el modal de confirmación
     const btnBorrarClientes = document.getElementById('btnBorrarClientes');
     if (btnBorrarClientes) {
