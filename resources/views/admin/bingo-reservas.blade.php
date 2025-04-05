@@ -1024,9 +1024,10 @@ document.addEventListener('DOMContentLoaded', function() {
     btnComprobanteDuplicado.addEventListener('click', function() {
         console.log('Botón Comprobante Duplicado clickeado');
         
-        // Extraer bingo_id de la URL actual
+        // Extraer bingo_id de la URL si está presente
         const urlParts = window.location.pathname.split('/');
-        const bingoId = urlParts[urlParts.indexOf('bingos') + 1];
+        const bingoIdIndex = urlParts.indexOf('bingos');
+        const bingoId = bingoIdIndex !== -1 ? urlParts[bingoIdIndex + 1] : null;
 
         console.log('Bingo ID extraído:', bingoId);
 
@@ -1043,7 +1044,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // URL con bingo_id como parámetro
-        const url = `{{ route('admin.comprobantesDuplicados') }}?bingo_id=${bingoId}`;
+        const url = bingoId 
+            ? `{{ route('admin.comprobantesDuplicados') }}?bingo_id=${bingoId}`
+            : "{{ route('admin.comprobantesDuplicados') }}";
         console.log('URL de solicitud:', url);
 
         fetch(url, {

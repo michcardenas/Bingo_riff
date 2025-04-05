@@ -432,121 +432,107 @@ class BingoAdminController extends Controller
     }
 
     public function comprobantesDuplicados(Request $request)
-    {
-        set_time_limit(120); // 2 minutos
+{
+    try {
+        // Obtener bingo_id si está presente
+        $bingoId = $request->input('bingo_id');
+        
+        \Log::info("Buscando comprobantes duplicados", [
+            'bingo_id' => $bingoId ? $bingoId : 'Todos los bingos'
+        ]);
 
-        try {
-            $bingoId = $request->input('bingo_id');
-            
-            // Log de depuración inicial
-            \Log::error("Solicitud de comprobantes duplicados - Bingo ID recibido: " . $bingoId);
-            
-            // Validación estricta de bingo_id
-            if (!$bingoId) {
-                \Log::error('Intento de buscar comprobantes duplicados sin especificar bingo_id');
-                return response()->json([
-                    'error' => 'Debe proporcionar un bingo_id válido'
-                ], 400);
-            }
-    
-            // Verificar que el bingo existe
-            $bingoExiste = Bingo::where('id', $bingoId)->exists();
-            if (!$bingoExiste) {
-                \Log::error("Intento de buscar comprobantes duplicados para bingo_id inexistente: {$bingoId}");
-                return response()->json([
-                    'error' => 'El bingo especificado no existe'
-                ], 404);
-            }
-    
-            \Log::info("Buscando comprobantes duplicados para Bingo ID: {$bingoId}");
-            
-            // Parte 1: Duplicados por número de comprobante
-            $duplicadosPorNumero = Reserva::select('numero_comprobante')
-                ->whereNotNull('numero_comprobante')
-                ->where('bingo_id', $bingoId)
-                ->groupBy('numero_comprobante')
-                ->havingRaw('COUNT(*) > 1')
-                ->pluck('numero_comprobante')
-                ->toArray();
-            
-            $reservasPorNumero = Reserva::whereIn('numero_comprobante', $duplicadosPorNumero)
-                ->where('bingo_id', $bingoId)
-                ->get();
-            
-            // Preparar grupos de duplicados por número
-            $duplicados = [];
-            foreach ($duplicadosPorNumero as $numeroComprobante) {
-                $grupo = $reservasPorNumero->filter(function ($reserva) use ($numeroComprobante) {
-                    return $reserva->numero_comprobante === $numeroComprobante;
-                })->values()->all();
-            
-                // Solo considerar grupos con más de una reserva
-                if (count($grupo) > 1) {
-                    // Añadir similaridad del 100% a cada reserva del grupo
-                    foreach ($grupo as $reserva) {
-                        $reserva->similaridad = 100;
-                    }
-            
-                    $duplicados[] = $grupo;
+        // Consulta base para número de comprobante
+        $query = Reserva::select('numero_comprobante')
+            ->whereNotNull('numero_comprobante');
+        
+        // Añadir filtro de bingo_id si está presente
+        if ($bingoId) {
+            $query->where('bingo_id', $bingoId);
+        }
+        
+        $duplicadosPorNumero = $query
+            ->groupBy('numero_comprobante')
+            ->havingRaw('COUNT(*) > 1')
+            ->limit(500)
+            ->pluck('numero_comprobante')
+            ->toArray();
+        
+        // Consulta de reservas
+        $queryReservas = Reserva::whereIn('numero_comprobante', $duplicadosPorNumero);
+        
+        // Filtrar por bingo_id si está presente
+        if ($bingoId) {
+            $queryReservas->where('bingo_id', $bingoId);
+        }
+        
+        $reservasPorNumero = $queryReservas
+            ->limit(1000)
+            ->get();
+        
+        // Preparar grupos de duplicados por número
+        $duplicados = [];
+        foreach ($duplicadosPorNumero as $numeroComprobante) {
+            $grupo = $reservasPorNumero->filter(function ($reserva) use ($numeroComprobante) {
+                return $reserva->numero_comprobante === $numeroComprobante;
+            })->values()->all();
+        
+            // Solo considerar grupos con más de una reserva
+            if (count($grupo) > 1) {
+                // Añadir similaridad del 100% a cada reserva del grupo
+                foreach ($grupo as $reserva) {
+                    $reserva->similaridad = 100;
                 }
-            }
-            
-            // Parte 2: Duplicados por metadatos
-            $duplicadosPorMetadatos = $this->verificarDuplicadosInterno($bingoId);
-            
-            // Añadir los duplicados por metadatos a la lista general
-            foreach ($duplicadosPorMetadatos as $grupo) {
+        
                 $duplicados[] = $grupo;
             }
-            
-            // Log de resumen
-            \Log::info("Total de grupos de duplicados encontrados: " . count($duplicados));
-            
-            // Verificar si hay duplicados antes de renderizar
-            if (empty($duplicados)) {
-                return view('admin.comprobantes-duplicados-table', [
-                    'duplicados' => [],
-                    'mensaje' => 'No se encontraron comprobantes duplicados.'
-                ]);
-            }
-            
-            return view('admin.comprobantes-duplicados-table', compact('duplicados'));
-         } catch (\Exception $e) {
-            // Log del error completo con más detalles
-            \Log::error("Error en comprobantesDuplicados: " . $e->getMessage());
-            \Log::error("Trace completo: " . $e->getTraceAsString());
-            
-            // Respuesta de error genérica
-            return response()->json([
-                'error' => 'Error interno del servidor: ' . $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
         }
+        
+        // Parte 2: Duplicados por metadatos
+        $duplicadosPorMetadatos = $this->verificarDuplicadosInterno($bingoId);
+        
+        // Añadir los duplicados por metadatos a la lista general
+        foreach ($duplicadosPorMetadatos as $grupo) {
+            $duplicados[] = $grupo;
+        }
+        
+        // Limitar el número total de duplicados
+        $duplicados = array_slice($duplicados, 0, 200);
+        
+        return view('admin.comprobantes-duplicados-table', compact('duplicados'));
+    } catch (\Exception $e) {
+        \Log::error("Error en comprobantesDuplicados: " . $e->getMessage());
+        \Log::error("Trace: " . $e->getTraceAsString());
+        
+        return response()->json([
+            'error' => 'Error interno al buscar comprobantes duplicados: ' . $e->getMessage()
+        ], 500);
     }
+}
+
+private function verificarDuplicadosInterno($bingoId = null)
+{
+    // Consulta base para reservas con metadatos
+    $query = Reserva::whereNotNull('comprobante_metadata')
+        ->orderBy('created_at', 'desc');
     
-    private function verificarDuplicadosInterno($bingoId)
-    {
-        // Validación de bingo_id
-        if (!$bingoId) {
-            \Log::error('Intento de verificar duplicados sin bingo_id');
-            return [];
-        }
-    
-        // Obtener SOLO las reservas del bingo específico con metadatos
-        $reservas = Reserva::whereNotNull('comprobante_metadata')
-            ->where('bingo_id', $bingoId)
-            ->orderBy('created_at', 'desc')
-            ->limit(1000) // Limitar para rendimiento
-            ->get();
-    
-        // Si no hay reservas, retornar vacío
-        if ($reservas->isEmpty()) {
-            \Log::info("No hay reservas para verificar duplicados en Bingo ID: {$bingoId}");
-            return [];
-        }
-    
-        $posiblesDuplicados = [];
-        $procesados = [];
+    // Añadir filtro de bingo_id si está presente
+    if ($bingoId) {
+        $query->where('bingo_id', $bingoId);
+    }
+
+    $reservas = $query
+        ->limit(2000) // Limitar para prevenir timeout
+        ->get();
+
+    // Si no hay reservas, retornar vacío
+    if ($reservas->isEmpty()) {
+        \Log::info("No hay reservas para verificar duplicados");
+        return [];
+    }
+
+    $posiblesDuplicados = [];
+    $procesados = [];
+
     
         // Iterar sobre cada reserva
         foreach ($reservas as $reserva) {
