@@ -532,14 +532,15 @@ function filtrarPorTipo(tipo) {
     $('#mensaje-filtro').remove();
     
     // Quitar clases de resaltado previas
-    dataTable.rows().nodes().to$().removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
+    $('.duplicado-comprobante, .duplicado-pedido, .carton-eliminado').removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
     
     // Si es "todas", simplemente mostramos todo y salimos
     if (tipo === 'todas') {
         console.log('Mostrando todas las filas sin filtrar');
         
         // Restaurar tabla normal sin filtros
-        dataTable.search('').columns().search('').draw();
+        $('tr.d-none').removeClass('d-none');
+        dataTable.draw();
         return;
     }
 
@@ -579,36 +580,18 @@ function filtrarPorTipo(tipo) {
         if (filasEncontradas.length > 0) {
             console.log(`Se encontraron ${filasEncontradas.length} filas que cumplen el criterio`);
             
-            // MÉTODO DIRECTO: Usar fnFilter de DataTables para filtrar las filas específicas
-            // 1. Primero, crear un array con los IDs de las filas encontradas
-            const idsFilas = filasEncontradas.map(rowIdx => {
-                // Asignar un ID único a cada fila para poder filtrarla
-                const row = dataTable.row(rowIdx);
-                const $node = $(row.node());
-                
-                // Agregar clase de resaltado
-                $node.addClass(claseResaltado);
-                
-                // Devolver el ID de la fila (tomamos el ID de la primera celda)
-                return rowIdx;
+            // SOLUCIÓN DIRECTA CON JQUERY:
+            // 1. Primero ocultamos TODAS las filas con jQuery
+            const tabla = $('#tableContent table');
+            tabla.find('tbody tr').addClass('d-none');
+            
+            // 2. Luego mostramos solo las filas que queremos
+            filasEncontradas.forEach(function(rowIdx) {
+                const fila = dataTable.row(rowIdx).node();
+                $(fila).removeClass('d-none').addClass(claseResaltado);
             });
             
-            // 2. Crear un filtro personalizado para DataTables
-            $.fn.dataTable.ext.search.push(
-                function(settings, data, dataIndex) {
-                    // Solo mostrar las filas que están en nuestro array de IDs
-                    return filasEncontradas.includes(dataIndex);
-                }
-            );
-            
-            // 3. Aplicar el filtro
-            dataTable.draw();
-            
-            // 4. Eliminar el filtro personalizado después de aplicarlo
-            // (importante para no afectar futuras operaciones)
-            $.fn.dataTable.ext.search.pop();
-            
-            // 5. Mostrar mensaje con la cantidad de elementos encontrados
+            // 3. Mostrar mensaje con la cantidad de elementos encontrados
             $('#tableContent').prepend(`
                 <div id="mensaje-filtro" class="alert alert-${tipoAlerta}">
                     Se encontraron ${filasEncontradas.length} resultados.
@@ -618,12 +601,8 @@ function filtrarPorTipo(tipo) {
                 </div>
             `);
         } else {
-            // No hay resultados, mostrar mensaje y filtrar para que no muestre nada
-            $.fn.dataTable.ext.search.push(
-                function() { return false; } // No mostrar ninguna fila
-            );
-            dataTable.draw();
-            $.fn.dataTable.ext.search.pop(); // Eliminar el filtro
+            // No hay resultados, ocultar todas las filas y mostrar mensaje
+            $('#tableContent table tbody tr').addClass('d-none');
             
             $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-${tipoAlerta}">${mensajeVacio}</div>`);
             console.log('No se encontraron resultados para este filtro');
@@ -772,13 +751,157 @@ function agregarEstilosCSS() {
             .carton-eliminado:hover {
                 background-color: rgba(220, 53, 69, 0.3) !important;
             }
+            
+            /* Estilo para verificar visibilidad durante depuración */
+            /* tr:not(.d-none) {
+                border: 2px solid green !important;
+            } */
         `;
         document.head.appendChild(estilos);
     }
 }
 
-// Asegurarse de que los estilos se agreguen al cargar la página
-document.addEventListener('DOMContentLoaded', agregarEstilosCSS);
+// Función para exportar los resultados filtrados
+function exportarResultados(tipoFiltro) {
+    // Crear un nuevo objeto de libro de trabajo
+    const wb = XLSX.utils.book_new();
+    
+    // Obtener solo las filas visibles (las que no tienen clase d-none)
+    const filasVisibles = [];
+    $('#tableContent table tbody tr:not(.d-none)').each(function() {
+        const datosFilas = [];
+        $(this).find('td').each(function() {
+            // Obtener texto sin HTML
+            datosFilas.push($(this).text().trim());
+        });
+        filasVisibles.push(datosFilas);
+    });
+    
+    // Obtener los nombres de las columnas
+    const columnas = [];
+    $('#tableContent table thead th').each(function() {
+        columnas.push($(this).text().trim());
+    });
+    
+    // Preparar los datos para la exportación
+    const datos = [columnas].concat(filasVisibles);
+    
+    // Crear hoja de cálculo
+    const ws = XLSX.utils.aoa_to_sheet(datos);
+    
+    // Añadir la hoja al libro
+    XLSX.utils.book_append_sheet(wb, ws, "Resultados");
+    
+    // Determinar nombre del archivo basado en el tipo de filtro
+    let nombreArchivo = 'resultados';
+    switch (tipoFiltro) {
+        case 'comprobantes-duplicados':
+            nombreArchivo = 'comprobantes_duplicados';
+            break;
+        case 'pedidos-duplicados':
+            nombreArchivo = 'pedidos_celular_duplicado';
+            break;
+        case 'cartones-eliminados':
+            nombreArchivo = 'cartones_rechazados';
+            break;
+    }
+    
+    // Descargar el archivo
+    const fechaActual = new Date().toISOString().slice(0,10);
+    nombreArchivo = `${nombreArchivo}_${fechaActual}.xlsx`;
+    XLSX.writeFile(wb, nombreArchivo);
+    
+    console.log(`Exportados ${filasVisibles.length} resultados a ${nombreArchivo}`);
+}
+
+// Función para cargar la tabla vía AJAX con soporte para filtros
+function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
+    // Cancelar cualquier solicitud de carga previa
+    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
+        window.currentTableLoadRequest.abort();
+    }
+
+    console.log('Intentando cargar tabla desde URL:', url);
+
+    // Crear un nuevo AbortController
+    const controller = new AbortController();
+    window.currentTableLoadRequest = controller;
+
+    // Mostrar indicador de carga
+    document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
+
+    // Hacer la petición AJAX
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        signal: controller.signal // Añadir la señal de aborto
+    })
+    .then(response => {
+        console.log('Estado de respuesta:', response.status);
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Verificar si la solicitud ha sido abortada
+        if (controller.signal.aborted) {
+            console.log('Carga de tabla cancelada');
+            return;
+        }
+
+        console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+        
+        // Si el HTML está vacío o contiene mensaje de no resultados
+        if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
+            document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
+            return;
+        }
+        
+        // Actualizar el contenedor con la tabla
+        document.getElementById('tableContent').innerHTML = html;
+        
+        // Inicializar DataTable
+        initializeDataTable();
+        
+        // Configurar selector de filtros personalizado
+        configurarFiltros();
+        
+        // Si hay que filtrar después de cargar, aplicar el filtro
+        if (filtrarDespues && dataTable) {
+            setTimeout(() => {
+                // Actualizar también el selector visual si existe
+                const selectorFiltro = document.getElementById('filterType');
+                if (selectorFiltro) {
+                    selectorFiltro.value = tipoFiltro;
+                }
+                
+                filtrarPorTipo(tipoFiltro);
+            }, 500); // Aumentamos el tiempo para asegurar que DataTable está completamente inicializado
+        }
+    })
+    .catch(error => {
+        // Ignorar errores de aborto
+        if (error.name === 'AbortError') {
+            console.log('Carga de tabla cancelada');
+            return;
+        }
+
+        console.error('Error cargando tabla:', error);
+        document.getElementById('tableContent').innerHTML =
+            `<div class="alert alert-danger text-center">
+                Error al cargar los datos: ${error.message}<br>
+                <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
+            </div>`;
+    })
+    .finally(() => {
+        // Limpiar la referencia al request actual
+        if (window.currentTableLoadRequest === controller) {
+            window.currentTableLoadRequest = null;
+        }
+    });
+}
 
 // Función para configurar los filtros personalizados
 function configurarFiltros() {
@@ -839,67 +962,6 @@ function configurarFiltros() {
     }
 }
 
-// Función para exportar los resultados visibles a Excel
-function exportarResultados(tipoFiltro) {
-    // Crear un nuevo objeto de libro de trabajo
-    const wb = XLSX.utils.book_new();
-    
-    // Obtener solo las filas visibles
-    const filasVisibles = [];
-    dataTable.rows({search:'applied', page:'all'}).every(function() {
-        filasVisibles.push(this.data());
-    });
-    
-    // Obtener los nombres de las columnas
-    const columnas = [];
-    dataTable.columns().every(function() {
-        columnas.push($(this.header()).text().trim());
-    });
-    
-    // Preparar los datos para la exportación
-    const datos = [columnas];
-    filasVisibles.forEach(fila => {
-        // Limpiar los datos HTML si es necesario
-        const filaLimpia = Array.from(fila).map(celda => {
-            if (typeof celda === 'string') {
-                // Crear un elemento temporal para extraer el texto
-                const temp = document.createElement('div');
-                temp.innerHTML = celda;
-                return temp.textContent || temp.innerText || celda;
-            }
-            return celda;
-        });
-        datos.push(filaLimpia);
-    });
-    
-    // Crear hoja de cálculo
-    const ws = XLSX.utils.aoa_to_sheet(datos);
-    
-    // Añadir la hoja al libro
-    XLSX.utils.book_append_sheet(wb, ws, "Resultados");
-    
-    // Determinar nombre del archivo basado en el tipo de filtro
-    let nombreArchivo = 'resultados';
-    switch (tipoFiltro) {
-        case 'comprobantes-duplicados':
-            nombreArchivo = 'comprobantes_duplicados';
-            break;
-        case 'pedidos-duplicados':
-            nombreArchivo = 'pedidos_celular_duplicado';
-            break;
-        case 'cartones-eliminados':
-            nombreArchivo = 'cartones_rechazados';
-            break;
-    }
-    
-    // Descargar el archivo
-    const fechaActual = new Date().toISOString().slice(0,10);
-    nombreArchivo = `${nombreArchivo}_${fechaActual}.xlsx`;
-    XLSX.writeFile(wb, nombreArchivo);
-    
-    console.log(`Exportados ${filasVisibles.length} resultados a ${nombreArchivo}`);
-}
-
 // Función mejorada para inicializar DataTable
 function initializeDataTable() {
     const table = document.querySelector('#tableContent table');
@@ -951,10 +1013,9 @@ function initializeDataTable() {
         console.log('DataTable inicializado correctamente');
 
         // Configurar eventos después de inicializar DataTable
-        setupEventHandlers();
-        
-        // Configuración de los selectores de filtro
-        configurarFiltros();
+        if (typeof setupEventHandlers === 'function') {
+            setupEventHandlers();
+        }
     } catch (error) {
         console.error('Error al inicializar DataTable:', error);
     }
