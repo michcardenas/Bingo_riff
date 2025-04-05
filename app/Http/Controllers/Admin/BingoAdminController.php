@@ -592,6 +592,7 @@ private function verificarDuplicadosInterno($bingoId = null)
         }
     
         return $posiblesDuplicados;
+    }
 /**
  * Compara dos conjuntos de metadatos para determinar si son similares
  * 
