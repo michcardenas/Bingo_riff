@@ -750,14 +750,18 @@ document.getElementById('btnComprobanteDuplicado').addEventListener('click', asy
     filtrarPorTipo('comprobantes-duplicados');
 });
 
-document.getElementById('btnPedidoDuplicado').addEventListener('click', async function() {
+document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
     updateActiveButton(this);
     tipoActual = 'pedidos-duplicados';
     
-    // Siempre cargar la tabla completa primero, luego filtrar
-    await loadTableContent(rutaTablaTodasReservas);
-    filtrarPorTipo('pedidos-duplicados');
+    // Construir la ruta para pedidos duplicados
+    const rutaPedidosDuplicados = `${basePath}/admin/pedidos-duplicados`;
+    console.log('Cargando pedidos duplicados desde URL:', rutaPedidosDuplicados);
+    
+    // Cargar directamente la tabla de pedidos duplicados desde el backend
+    loadTableContent(rutaPedidosDuplicados);
 });
+
 
 document.getElementById('btnCartonesEliminados').addEventListener('click', async function() {
     updateActiveButton(this);
