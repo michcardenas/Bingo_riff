@@ -1062,11 +1062,26 @@ document.addEventListener('DOMContentLoaded', function() {
             ocultarCargando();
         })
         .catch(error => {
-            console.error('Error:', error);
-            ocultarCargando();
-            mostrarMensaje('Error al cargar comprobantes duplicados: ' + error.message, 'danger');
+    console.error('Error completo:', error);
+    
+    // Intentar parsear el error como JSON si es posible
+    if (error.response) {
+        error.response.json().then(errorData => {
+            console.error('Datos de error del servidor:', errorData);
+            mostrarMensaje(errorData.error || 'Error desconocido', 'danger');
+        }).catch(() => {
+            mostrarMensaje('Error al cargar comprobantes duplicados', 'danger');
         });
-
+    } else {
+        mostrarMensaje('Error de red o servidor', 'danger');
+    }
+    
+    // Asegurarse de ocultar la carga
+    if (typeof ocultarCargando === 'function') {
+        ocultarCargando();
+    }
+});
+    });
 
     
     function mostrarCargando() {
