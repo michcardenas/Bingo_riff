@@ -509,14 +509,15 @@ class BingoAdminController extends Controller
             }
             
             return view('admin.comprobantes-duplicados-table', compact('duplicados'));
-        } catch (\Exception $e) {
-            // Log del error completo
+         } catch (\Exception $e) {
+            // Log del error completo con más detalles
             \Log::error("Error en comprobantesDuplicados: " . $e->getMessage());
-            \Log::error("Trace: " . $e->getTraceAsString());
+            \Log::error("Trace completo: " . $e->getTraceAsString());
             
             // Respuesta de error genérica
             return response()->json([
-                'error' => 'Error interno del servidor: ' . $e->getMessage()
+                'error' => 'Error interno del servidor: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ], 500);
         }
     }

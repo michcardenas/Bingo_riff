@@ -1015,11 +1015,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     btnComprobanteDuplicado.addEventListener('click', function() {
         console.log('Botón Comprobante Duplicado clickeado');
+        console.log('URL actual:', window.location.pathname);
+        
         mostrarCargando();
         
         // Extraer bingo_id de la URL actual
         const urlParts = window.location.pathname.split('/');
         const bingoId = urlParts[urlParts.indexOf('bingos') + 1];
+
+        console.log('Bingo ID extraído:', bingoId);
 
         if (!bingoId) {
             console.error('No se pudo encontrar el bingo_id en la URL');
@@ -1030,6 +1034,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Modificar la ruta para incluir el bingo_id
         const url = `{{ route('admin.comprobantesDuplicados') }}?bingo_id=${bingoId}`;
+        console.log('URL de solicitud:', url);
 
         fetch(url, {
             method: 'GET',
@@ -1040,15 +1045,20 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             console.log('Estado de respuesta:', response.status);
+            console.log('Headers de respuesta:', Object.fromEntries(response.headers.entries()));
+            
             if (!response.ok) {
-                throw new Error('Error en la respuesta del servidor');
+                // Intentar leer el cuerpo del error
+                return response.text().then(errorText => {
+                    console.error('Cuerpo del error:', errorText);
+                    throw new Error('Error en la respuesta del servidor: ' + errorText);
+                });
             }
             return response.text();
         })
         .then(html => {
             console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
             
-            // En lugar de buscar un tbody específico, actualizamos el contenedor general.
             const container = document.getElementById('tableContent');
             if (!container) {
                 throw new Error('Contenedor "tableContent" no encontrado');
@@ -1062,26 +1072,13 @@ document.addEventListener('DOMContentLoaded', function() {
             ocultarCargando();
         })
         .catch(error => {
-    console.error('Error completo:', error);
-    
-    // Intentar parsear el error como JSON si es posible
-    if (error.response) {
-        error.response.json().then(errorData => {
-            console.error('Datos de error del servidor:', errorData);
-            mostrarMensaje(errorData.error || 'Error desconocido', 'danger');
-        }).catch(() => {
-            mostrarMensaje('Error al cargar comprobantes duplicados', 'danger');
+            console.error('Error completo:', error);
+            
+            ocultarCargando();
+            mostrarMensaje('Error al cargar comprobantes duplicados: ' + error.message, 'danger');
         });
-    } else {
-        mostrarMensaje('Error de red o servidor', 'danger');
-    }
-    
-    // Asegurarse de ocultar la carga
-    if (typeof ocultarCargando === 'function') {
-        ocultarCargando();
-    }
-});
     });
+
 
     
     function mostrarCargando() {
