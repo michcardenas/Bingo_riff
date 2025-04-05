@@ -433,6 +433,8 @@ class BingoAdminController extends Controller
 
     public function comprobantesDuplicados(Request $request)
     {
+        set_time_limit(120); // 2 minutos
+
         try {
             $bingoId = $request->input('bingo_id');
             
@@ -524,6 +526,8 @@ class BingoAdminController extends Controller
     
     private function verificarDuplicadosInterno($bingoId)
     {
+        set_time_limit(120); // 2 minutos
+
         // Validación de bingo_id
         if (!$bingoId) {
             \Log::error('Intento de verificar duplicados sin bingo_id');
@@ -621,11 +625,6 @@ class BingoAdminController extends Controller
      */
     private function compararMetadatos($metadatosA, $metadatosB)
     {
-        \Log::debug("Comparando metadatos", [
-            'A' => array_keys($metadatosA),
-            'B' => array_keys($metadatosB)
-        ]);
-
         $coincidencias = 0;
         $totalComparaciones = 0;
         $ponderacion = 0;

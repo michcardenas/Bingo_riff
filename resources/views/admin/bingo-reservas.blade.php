@@ -1013,11 +1013,16 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
+    // Añadir una función de respaldo para ocultar cargando
+    function ocultarCargando() {
+        const loadingElement = document.getElementById('loading-spinner');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+    
     btnComprobanteDuplicado.addEventListener('click', function() {
         console.log('Botón Comprobante Duplicado clickeado');
-        console.log('URL actual:', window.location.pathname);
-        
-        mostrarCargando();
         
         // Extraer bingo_id de la URL actual
         const urlParts = window.location.pathname.split('/');
@@ -1032,7 +1037,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Modificar la ruta para incluir el bingo_id
+        // Mostrar cargando
+        if (typeof mostrarCargando === 'function') {
+            mostrarCargando();
+        }
+
+        // URL con bingo_id como parámetro
         const url = `{{ route('admin.comprobantesDuplicados') }}?bingo_id=${bingoId}`;
         console.log('URL de solicitud:', url);
 
@@ -1045,7 +1055,6 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             console.log('Estado de respuesta:', response.status);
-            console.log('Headers de respuesta:', Object.fromEntries(response.headers.entries()));
             
             if (!response.ok) {
                 // Intentar leer el cuerpo del error
@@ -1066,18 +1075,33 @@ document.addEventListener('DOMContentLoaded', function() {
             container.innerHTML = html;
             console.log('HTML inyectado en tableContent:', container.innerHTML);
             
-            reinicializarDataTable();
-            mostrarMensaje('Comprobantes duplicados cargados correctamente', 'success');
-            activarBoton(btnComprobanteDuplicado);
-            ocultarCargando();
+            // Reinicializar DataTable si existe la función
+            if (typeof reinicializarDataTable === 'function') {
+                reinicializarDataTable();
+            }
+            
+            // Mostrar mensaje de éxito
+            if (typeof mostrarMensaje === 'function') {
+                mostrarMensaje('Comprobantes duplicados cargados correctamente', 'success');
+            }
+            
+            // Activar botón si existe la función
+            if (typeof activarBoton === 'function') {
+                activarBoton(btnComprobanteDuplicado);
+            }
+            
         })
         .catch(error => {
             console.error('Error completo:', error);
+        
             
-            ocultarCargando();
-            mostrarMensaje('Error al cargar comprobantes duplicados: ' + error.message, 'danger');
+            // Mostrar mensaje de error
+            if (typeof mostrarMensaje === 'function') {
+                mostrarMensaje('Error al cargar comprobantes duplicados: ' + error.message, 'danger');
+            }
         });
     });
+
 
 
     
