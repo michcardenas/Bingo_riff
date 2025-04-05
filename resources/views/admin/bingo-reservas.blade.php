@@ -815,34 +815,32 @@ document.getElementById('btnTodasReservas').addEventListener('click', function()
     // Siempre cargar la tabla completa para "Todas las reservas"
     loadTableContent(rutaTablaTodasReservas);
 });
-
-document.getElementById('btnComprobanteDuplicado').addEventListener('click', async function() {
+document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
     updateActiveButton(this);
     tipoActual = 'comprobantes-duplicados';
     
-    // Siempre cargar la tabla completa primero, luego filtrar
-    await loadTableContent(rutaTablaTodasReservas);
-    filtrarPorTipo('comprobantes-duplicados');
+    // Usar la ruta específica para comprobantes duplicados
+    const url = `${basePath}/reservas/comprobantes-duplicados?bingo_id=${bingoId}`;
+    loadTableContent(url);
 });
 
-document.getElementById('btnPedidoDuplicado').addEventListener('click', async function() {
+document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
     updateActiveButton(this);
     tipoActual = 'pedidos-duplicados';
     
-    // Siempre cargar la tabla completa primero, luego filtrar
-    await loadTableContent(rutaTablaTodasReservas);
-    filtrarPorTipo('pedidos-duplicados');
+    // Usar la ruta específica para pedidos duplicados
+    const url = `${basePath}/reservas/pedidos-duplicados?bingo_id=${bingoId}`;
+    loadTableContent(url);
 });
 
-document.getElementById('btnCartonesEliminados').addEventListener('click', async function() {
+document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
     updateActiveButton(this);
     tipoActual = 'cartones-eliminados';
     
-    // Siempre cargar la tabla completa primero, luego filtrar
-    await loadTableContent(rutaTablaTodasReservas);
-    filtrarPorTipo('cartones-eliminados');
+    // Usar la ruta específica para cartones eliminados
+    const url = `${basePath}/reservas/cartones-eliminados?bingo_id=${bingoId}`;
+    loadTableContent(url);
 });
-
       // Evento para el botón de Filtrar
 document.getElementById('btnFiltrar').addEventListener('click', function() {
     const nombre = document.getElementById('nombre').value.trim();
