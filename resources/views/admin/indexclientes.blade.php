@@ -477,6 +477,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para cargar contenido en el contenedor 'tableContent'
     function loadTableContent(url) {
+        console.log('loadTableContent llamado con URL:', url);
+        console.trace();
         // Guardar los valores actuales de los filtros
         const filtros = {
             nombre: document.getElementById('nombre')?.value || '',
@@ -577,7 +579,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('btnComprobanteDuplicado').addEventListener('click', function(e) {
-    // Prevenir cualquier comportamiento por defecto
     e.preventDefault();
     e.stopPropagation();
 
@@ -589,10 +590,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const bingoId = bingoUrlMatch[1];
         console.log('Cargando comprobantes duplicados para el Bingo ID:', bingoId);
         
-        // Construir la URL específica para comprobantes duplicados de este bingo
+        // URL específica para comprobantes duplicados
         const fullUrl = `/admin/bingos/${bingoId}/reservas/comprobantesDuplicados`;
         
-        // Usar fetch directamente
+        // Mostrar indicador de carga
+        document.getElementById('tableContent').innerHTML = `
+            <div class="text-center p-5">
+                <div class="spinner-border text-light" role="status"></div>
+                <p class="mt-2 text-light">Cargando comprobantes duplicados...</p>
+            </div>
+        `;
+
+        // Destruir DataTable existente si existe
+        if (dataTable !== null) {
+            dataTable.destroy();
+            dataTable = null;
+        }
+        
+        // Hacer la petición fetch
         fetch(fullUrl, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -600,31 +615,22 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             console.log('Estado de respuesta:', response.status);
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
             return response.text();
         })
         .then(html => {
-            // Mostrar solo los primeros 100 caracteres para depuración
-            console.log('Contenido recibido (primeros 100 caracteres):', html.slice(0, 100));
+            console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
             
-            // Reemplazar solo el contenido de la tabla
-            const tableContainer = document.getElementById('tableContent');
-            
-            // Inyectar HTML directamente
-            tableContainer.innerHTML = html;
-            console.log('HTML inyectado en tableContent');
+            // Actualizar el contenedor con la tabla
+            document.getElementById('tableContent').innerHTML = html;
             
             // Reinicializar DataTable
-            if ($.fn.DataTable.isDataTable('.table')) {
-                $('.table').DataTable().destroy();
+            if (dataTable !== null) {
+                dataTable.destroy();
             }
-            
-            $('.table').DataTable({
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-                },
-                responsive: true,
-                order: [[0, 'desc']]
-            });
+            initializeDataTable();
             
             // Actualizar estado de los botones
             document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(btn => {
@@ -636,14 +642,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('btnComprobanteDuplicado').classList.remove('btn-secondary');
         })
         .catch(error => {
-            console.error('Error al cargar comprobantes duplicados:', error);
-            
-            // Mostrar mensaje de error
-            const tableContainer = document.getElementById('tableContent');
-            tableContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    <strong>Error:</strong> No se pudieron cargar los comprobantes duplicados. 
-                    Por favor, intenta nuevamente.
+            console.error('Error cargando comprobantes duplicados:', error);
+            document.getElementById('tableContent').innerHTML = `
+                <div class="alert alert-danger text-center">
+                    Error al cargar los comprobantes duplicados: ${error.message}<br>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
                 </div>
             `;
         });
@@ -652,6 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Error: No se pudo identificar el bingo actual');
     }
 });
+
     // Configurar el botón de borrar clientes y el modal de confirmación
     const btnBorrarClientes = document.getElementById('btnBorrarClientes');
     if (btnBorrarClientes) {
