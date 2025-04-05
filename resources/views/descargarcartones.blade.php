@@ -465,7 +465,6 @@
                 </div>
                 <!-- Campo oculto para identificar la vista -->
                 <input type="hidden" name="vista" value="descargarcartones">
-                <button type="submit" class="btn btn-orange">BUSCAR MIS CARTONES</button>
             </form>
 
             @if(isset($cartones) && count($cartones) > 0)
