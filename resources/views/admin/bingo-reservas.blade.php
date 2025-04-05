@@ -385,136 +385,96 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
             }
         }
 
-        // Función para filtrar según el tipo seleccionado
-        function filtrarPorTipo(tipo) {
-            if (!dataTable) return;
+// Función para filtrar según el tipo seleccionado
+function filtrarPorTipo(tipo) {
+    if (!dataTable) return;
 
-            // Limpiar mensajes previos
-            $('#mensaje-filtro').remove();
+    // Limpiar mensajes previos
+    $('#mensaje-filtro').remove();
 
-            // Resetear DataTable para mostrar todas las filas
-            dataTable.search('').columns().search('').draw();
+    // Resetear DataTable para mostrar todas las filas
+    dataTable.search('').columns().search('').draw();
 
-            if (tipo === 'todas') {
-                return; // No hacer nada, mostrar todas
+    if (tipo === 'todas') {
+        return; // No hacer nada, mostrar todas
+    }
+
+    if (tipo === 'pedidos-duplicados') {
+        // Buscar pedidos duplicados (mismo número de teléfono)
+        const telefonos = {};
+        let filasDuplicadas = [];
+
+        dataTable.rows().every(function(rowIdx) {
+            const fila = this.node();
+            const celular = $(fila).find('td:eq(2)').text().trim();
+
+            if (celular) {
+                if (!telefonos[celular]) {
+                    telefonos[celular] = [];
+                }
+                telefonos[celular].push(rowIdx);
             }
+        });
 
-            // Aplicar el filtro según el tipo
-            if (tipo === 'comprobantes-duplicados') {
-                // Buscar comprobantes duplicados
-                const comprobantes = {};
-                let filasDuplicadas = [];
-
-                dataTable.rows().every(function(rowIdx) {
-                    const fila = this.node();
-                    const comprobante = $(fila).find('input[type="text"]').val();
-
-                    if (comprobante && comprobante.trim() !== '') {
-                        if (!comprobantes[comprobante]) {
-                            comprobantes[comprobante] = [];
-                        }
-                        comprobantes[comprobante].push(rowIdx);
-                    }
-                });
-
-                // Identificar filas con comprobantes duplicados
-                for (const comp in comprobantes) {
-                    if (comprobantes[comp].length > 1) {
-                        filasDuplicadas = filasDuplicadas.concat(comprobantes[comp]);
-                    }
-                }
-
-                if (filasDuplicadas.length > 0) {
-                    // Mostrar solo las filas con comprobantes duplicados
-                    dataTable.rows().every(function(rowIdx) {
-                        if (!filasDuplicadas.includes(rowIdx)) {
-                            $(this.node()).addClass('d-none');
-                        } else {
-                            $(this.node()).removeClass('d-none').addClass('duplicado-comprobante');
-                        }
-                    });
-                    dataTable.draw();
-                } else {
-                    // No hay duplicados
-                    dataTable.rows().nodes().to$().addClass('d-none');
-                    dataTable.draw();
-                    $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-success">No se encontraron comprobantes duplicados.</div>');
-                }
-            } else if (tipo === 'pedidos-duplicados') {
-                // Buscar pedidos duplicados (mismo número de teléfono)
-                const telefonos = {};
-                let filasDuplicadas = [];
-
-                dataTable.rows().every(function(rowIdx) {
-                    const fila = this.node();
-                    const celular = $(fila).find('td:eq(2)').text().trim();
-
-                    if (celular) {
-                        // Solo usar el teléfono como clave
-                        if (!telefonos[celular]) {
-                            telefonos[celular] = [];
-                        }
-                        telefonos[celular].push(rowIdx);
-                    }
-                });
-
-                // Identificar filas con teléfonos duplicados
-                for (const telefono in telefonos) {
-                    if (telefonos[telefono].length > 1) {
-                        filasDuplicadas = filasDuplicadas.concat(telefonos[telefono]);
-                    }
-                }
-
-                if (filasDuplicadas.length > 0) {
-                    // Mostrar solo las filas con teléfonos duplicados
-                    dataTable.rows().every(function(rowIdx) {
-                        if (!filasDuplicadas.includes(rowIdx)) {
-                            $(this.node()).addClass('d-none');
-                        } else {
-                            $(this.node()).removeClass('d-none').addClass('duplicado-pedido');
-                        }
-                    });
-                    dataTable.draw();
-                } else {
-                    // No hay duplicados
-                    dataTable.rows().nodes().to$().addClass('d-none');
-                    dataTable.draw();
-                    $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-info">No se encontraron números de teléfono duplicados.</div>');
-                }
-            } else if (tipo === 'cartones-eliminados') {
-                // Simplemente buscar reservas con estado "rechazado"
-                let filasRechazadas = [];
-
-                dataTable.rows().every(function(rowIdx) {
-                    const fila = this.node();
-                    // Obtener el texto de la columna de estado (columna 10)
-                    const estadoCell = $(fila).find('td:eq(10)');
-                    const estadoTexto = estadoCell.text().trim().toLowerCase();
-
-                    // Si tiene la clase 'bg-danger' o el texto contiene 'rechazado'
-                    if (estadoTexto.includes('rechazado') || estadoCell.find('.badge.bg-danger').length > 0) {
-                        filasRechazadas.push(rowIdx);
-                    }
-                });
-
-                if (filasRechazadas.length > 0) {
-                    // Mostrar solo las filas con estado rechazado
-                    dataTable.rows().every(function(rowIdx) {
-                        if (!filasRechazadas.includes(rowIdx)) {
-                            $(this.node()).addClass('d-none');
-                        } else {
-                            $(this.node()).removeClass('d-none').addClass('carton-eliminado');
-                        }
-                    });
-                    dataTable.draw();
-                } else {
-                    // No hay reservas rechazadas
-                    dataTable.rows().nodes().to$().addClass('d-none');
-                    dataTable.draw();
-                    $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-danger">No se encontraron reservas con estado rechazado.</div>');
-                }
+        // Identificar filas con teléfonos duplicados
+        for (const telefono in telefonos) {
+            if (telefonos[telefono].length > 1) {
+                filasDuplicadas = filasDuplicadas.concat(telefonos[telefono]);
             }
         }
+
+        if (filasDuplicadas.length > 0) {
+            // Mostrar solo las filas con teléfonos duplicados
+            dataTable.rows().every(function(rowIdx) {
+                if (!filasDuplicadas.includes(rowIdx)) {
+                    $(this.node()).addClass('d-none');
+                } else {
+                    $(this.node()).removeClass('d-none').addClass('duplicado-pedido');
+                }
+            });
+            // Mostrar todos los resultados en una sola página
+            dataTable.page.len(-1).draw('page');
+        } else {
+            // No hay duplicados
+            dataTable.rows().nodes().to$().addClass('d-none');
+            dataTable.page.len(-1).draw('page');
+            $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-info">No se encontraron números de teléfono duplicados.</div>');
+        }
+    } else if (tipo === 'cartones-eliminados') {
+        // Buscar reservas con estado "rechazado"
+        let filasRechazadas = [];
+
+        dataTable.rows().every(function(rowIdx) {
+            const fila = this.node();
+            const estadoCell = $(fila).find('td:eq(10)');
+            const estadoTexto = estadoCell.text().trim().toLowerCase();
+
+            // Verificar si el texto contiene "rechazado" o si la celda posee una etiqueta con clase bg-danger
+            if (estadoTexto.includes('rechazado') || estadoCell.find('.badge.bg-danger').length > 0) {
+                filasRechazadas.push(rowIdx);
+            }
+        });
+
+        if (filasRechazadas.length > 0) {
+            // Mostrar solo las filas con estado rechazado
+            dataTable.rows().every(function(rowIdx) {
+                if (!filasRechazadas.includes(rowIdx)) {
+                    $(this.node()).addClass('d-none');
+                } else {
+                    $(this.node()).removeClass('d-none').addClass('carton-eliminado');
+                }
+            });
+            // Mostrar todos los resultados en una sola página
+            dataTable.page.len(-1).draw('page');
+        } else {
+            // No hay reservas rechazadas
+            dataTable.rows().nodes().to$().addClass('d-none');
+            dataTable.page.len(-1).draw('page');
+            $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-danger">No se encontraron reservas con estado rechazado.</div>');
+        }
+    }
+}
+
 
         // Configurar manejadores de eventos
         function setupEventHandlers() {
