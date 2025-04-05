@@ -431,91 +431,90 @@ class BingoAdminController extends Controller
         return view('admin.indexclientes', compact('reservas'));
     }
 
-
     public function comprobantesDuplicados(Request $request)
     {
         $bingoId = $request->input('bingo_id');
         
-        \Log::info('Iniciando búsqueda de comprobantes duplicados' . ($bingoId ? ' para bingo ID: ' . $bingoId : ' (todos los bingos)'));
-    
-        // Parte 1: Duplicados por número de comprobante
-        $queryNumeroComprobante = Reserva::select('numero_comprobante')
-            ->whereNotNull('numero_comprobante');
-        
-        // Aplicar filtro de bingo_id si se proporciona
-        if ($bingoId) {
-            $queryNumeroComprobante->where('bingo_id', $bingoId);
+        // Validación estricta de bingo_id
+        if (!$bingoId) {
+            \Log::error('Intento de buscar comprobantes duplicados sin especificar bingo_id');
+            return response()->json([
+                'error' => 'Debe proporcionar un bingo_id válido'
+            ], 400);
         }
+    
+        // Verificar que el bingo existe
+        $bingoExiste = Bingo::where('id', $bingoId)->exists();
+        if (!$bingoExiste) {
+            \Log::error("Intento de buscar comprobantes duplicados para bingo_id inexistente: {$bingoId}");
+            return response()->json([
+                'error' => 'El bingo especificado no existe'
+            ], 404);
+        }
+    
+        \Log::info("Buscando comprobantes duplicados para Bingo ID: {$bingoId}");
         
-        $duplicadosPorNumero = $queryNumeroComprobante->groupBy('numero_comprobante')
+        // Parte 1: Duplicados por número de comprobante
+        $duplicadosPorNumero = Reserva::select('numero_comprobante')
+            ->whereNotNull('numero_comprobante')
+            ->where('bingo_id', $bingoId)
+            ->groupBy('numero_comprobante')
             ->havingRaw('COUNT(*) > 1')
             ->pluck('numero_comprobante')
             ->toArray();
-    
-        $queryReservasPorNumero = Reserva::whereIn('numero_comprobante', $duplicadosPorNumero);
         
-        // Aplicar filtro de bingo_id también a la obtención de reservas
-        if ($bingoId) {
-            $queryReservasPorNumero->where('bingo_id', $bingoId);
-        }
+        $reservasPorNumero = Reserva::whereIn('numero_comprobante', $duplicadosPorNumero)
+            ->where('bingo_id', $bingoId)
+            ->get();
         
-        $reservasPorNumero = $queryReservasPorNumero->get();
-    
         // Preparar grupos de duplicados por número
         $duplicados = [];
         foreach ($duplicadosPorNumero as $numeroComprobante) {
             $grupo = $reservasPorNumero->filter(function ($reserva) use ($numeroComprobante) {
                 return $reserva->numero_comprobante === $numeroComprobante;
             })->values()->all();
-    
-            // Solo considerar grupos con más de una reserva después del filtrado por bingo_id
+        
+            // Solo considerar grupos con más de una reserva
             if (count($grupo) > 1) {
                 // Añadir similaridad del 100% a cada reserva del grupo
                 foreach ($grupo as $reserva) {
                     $reserva->similaridad = 100;
                 }
-    
+        
                 $duplicados[] = $grupo;
             }
         }
-    
-        \Log::info('Encontrados ' . count($duplicados) . ' grupos de duplicados por número de comprobante');
-    
-        // Parte 2: Duplicados por metadatos (usando verificarDuplicados)
-        // Esto asegura que usamos exactamente la misma lógica que antes
+        
+        // Parte 2: Duplicados por metadatos
         $duplicadosPorMetadatos = $this->verificarDuplicadosInterno($bingoId);
-    
-        \Log::info('Encontrados ' . count($duplicadosPorMetadatos) . ' grupos de duplicados por metadatos');
-    
+        
         // Añadir los duplicados por metadatos a la lista general
         foreach ($duplicadosPorMetadatos as $grupo) {
             $duplicados[] = $grupo;
         }
-    
-        \Log::info('Total de ' . count($duplicados) . ' grupos de duplicados encontrados');
-    
+        
         return view('admin.comprobantes-duplicados-table', compact('duplicados'));
     }
     
-    /**
-     * Versión interna de verificarDuplicados que devuelve los resultados 
-     * en lugar de renderizar una vista
-     * 
-     * @param int|null $bingoId ID del bingo para filtrar, o null para todos
-     * @return array
-     */
-    private function verificarDuplicadosInterno($bingoId = null)
+    private function verificarDuplicadosInterno($bingoId)
     {
-        // Obtener todas las reservas con metadatos
-        $query = Reserva::whereNotNull('comprobante_metadata')
-            ->orderBy('created_at', 'desc');
-                
-        // Aplicar filtro de bingo_id si se proporciona
-        if ($bingoId) {
-            $query->where('bingo_id', $bingoId);
+        // Validación de bingo_id
+        if (!$bingoId) {
+            \Log::error('Intento de verificar duplicados sin bingo_id');
+            return [];
         }
-        
-        $reservas = $query->get();
+    
+        // Obtener SOLO las reservas del bingo específico con metadatos
+        $reservas = Reserva::whereNotNull('comprobante_metadata')
+            ->where('bingo_id', $bingoId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    
+        // Si no hay reservas, retornar vacío
+        if ($reservas->isEmpty()) {
+            \Log::info("No hay reservas para verificar duplicados en Bingo ID: {$bingoId}");
+            return [];
+        }
     
         $posiblesDuplicados = [];
         $procesados = [];
@@ -528,121 +527,36 @@ class BingoAdminController extends Controller
     
             $metadatos = json_decode($reserva->comprobante_metadata, true);
             if (!is_array($metadatos)) {
-                \Log::warning("Reserva ID {$reserva->id} tiene metadatos no válidos: " . $reserva->comprobante_metadata);
                 continue;
             }
     
             $hayDuplicadoMarcado = false;
             $reservasRelacionadas = [];
     
-            // Revisar si alguno de los archivos está marcado como posible duplicado
+            // Lógica de búsqueda de duplicados marcados
             if (isset($metadatos[0]) && is_array($metadatos[0])) {
                 // Caso de múltiples archivos
                 foreach ($metadatos as $archivoMetadatos) {
                     if (isset($archivoMetadatos['posible_duplicado']) && $archivoMetadatos['posible_duplicado']) {
                         $hayDuplicadoMarcado = true;
-                        \Log::info("Reserva ID {$reserva->id} tiene archivo marcado como posible duplicado");
-    
-                        // Si hay una reserva coincidente específica
-                        if (isset($archivoMetadatos['reserva_coincidente_id'])) {
-                            $reservaCoincidenteQuery = Reserva::where('id', $archivoMetadatos['reserva_coincidente_id']);
-                            
-                            // Si estamos filtrando por bingo_id, asegurarse de que la reserva coincidente también lo cumpla
-                            if ($bingoId) {
-                                $reservaCoincidenteQuery->where('bingo_id', $bingoId);
-                            }
-                            
-                            $reservaCoincidente = $reservaCoincidenteQuery->first();
-                            
-                            if ($reservaCoincidente && !in_array($reservaCoincidente->id, $procesados)) {
-                                $reservasRelacionadas[] = $reservaCoincidente;
-                                $procesados[] = $reservaCoincidente->id;
-                            }
-                        }
+                        break;
                     }
                 }
             } else {
                 // Caso de un solo archivo
-                if (isset($metadatos['posible_duplicado']) && $metadatos['posible_duplicado']) {
-                    $hayDuplicadoMarcado = true;
-                    \Log::info("Reserva ID {$reserva->id} está marcada como posible duplicado (archivo único)");
-    
-                    // Si hay una reserva coincidente específica
-                    if (isset($metadatos['reserva_coincidente_id'])) {
-                        $reservaCoincidenteQuery = Reserva::where('id', $metadatos['reserva_coincidente_id']);
-                        
-                        // Si estamos filtrando por bingo_id, asegurarse de que la reserva coincidente también lo cumpla
-                        if ($bingoId) {
-                            $reservaCoincidenteQuery->where('bingo_id', $bingoId);
-                        }
-                        
-                        $reservaCoincidente = $reservaCoincidenteQuery->first();
-                        
-                        if ($reservaCoincidente && !in_array($reservaCoincidente->id, $procesados)) {
-                            $reservasRelacionadas[] = $reservaCoincidente;
-                            $procesados[] = $reservaCoincidente->id;
-                        }
-                    }
-                }
+                $hayDuplicadoMarcado = isset($metadatos['posible_duplicado']) && $metadatos['posible_duplicado'];
             }
     
+            // Si hay duplicados marcados, procesarlos
             if ($hayDuplicadoMarcado) {
-                // Solo crear un grupo si hay reservas relacionadas después del filtrado por bingo_id
-                if (!empty($reservasRelacionadas) || !$bingoId) {
-                    // Asignamos la similitud a la reserva para mostrarla en la vista
-                    $reserva->similaridad = 100; // Esta es la reserva "original" para este grupo
-    
-                    // Crear grupo de duplicados
-                    $grupo = [$reserva];
-                    $procesados[] = $reserva->id;
-    
-                    // Añadir reservas relacionadas
-                    foreach ($reservasRelacionadas as $relacionada) {
-                        // Obtener la similitud desde los metadatos
-                        $similitud = 80; // Valor predeterminado
-                        $metadatosRelacionados = json_decode($relacionada->comprobante_metadata, true);
-    
-                        if (is_array($metadatosRelacionados)) {
-                            if (isset($metadatosRelacionados[0]) && is_array($metadatosRelacionados[0])) {
-                                foreach ($metadatosRelacionados as $metadatoArchivo) {
-                                    if (isset($metadatoArchivo['similaridad'])) {
-                                        $similitud = max($similitud, $metadatoArchivo['similaridad']);
-                                    }
-                                }
-                            } elseif (isset($metadatosRelacionados['similaridad'])) {
-                                $similitud = $metadatosRelacionados['similaridad'];
-                            }
-                        }
-    
-                        $relacionada->similaridad = $similitud;
-                        $grupo[] = $relacionada;
-                    }
-    
-                    $posiblesDuplicados[] = $grupo;
-                }
-            }
-        }
-    
-        // Segunda pasada: Comparación directa para encontrar más duplicados no marcados
-        foreach ($reservas as $reserva) {
-            if (in_array($reserva->id, $procesados)) {
-                continue;
+                $grupo = [$reserva];
+                $procesados[] = $reserva->id;
+                $posiblesDuplicados[] = $grupo;
             }
     
-            $metadatosA = json_decode($reserva->comprobante_metadata, true);
-            if (!is_array($metadatosA)) {
-                continue;
-            }
-    
-            $grupo = [];
-            $similitudesEncontradas = false;
-    
-            // Comparar con las demás reservas
+            // Segunda pasada: Comparación directa para encontrar más duplicados
             foreach ($reservas as $otraReserva) {
-                // Modificación clave: Verificar que sean del mismo bingo
-                if ($reserva->id == $otraReserva->id || 
-                    in_array($otraReserva->id, $procesados) || 
-                    ($bingoId && $reserva->bingo_id != $otraReserva->bingo_id)) {
+                if ($reserva->id == $otraReserva->id || in_array($otraReserva->id, $procesados)) {
                     continue;
                 }
     
@@ -651,71 +565,15 @@ class BingoAdminController extends Controller
                     continue;
                 }
     
-                // Comparar metadatos
+                // Comparación básica de metadatos
                 $similitudMax = 0;
+                $esDuplicado = $this->compararMetadatos($metadatos, $metadatosB);
     
-                // Manejo de múltiples archivos en ambas reservas
-                if (isset($metadatosA[0]) && is_array($metadatosA[0])) {
-                    foreach ($metadatosA as $metadatoA) {
-                        if (isset($metadatosB[0]) && is_array($metadatosB[0])) {
-                            foreach ($metadatosB as $metadatoB) {
-                                $resultado = $this->compararMetadatos($metadatoA, $metadatoB);
-                                if ($resultado['es_duplicado']) {
-                                    $similitudMax = max($similitudMax, $resultado['similaridad']);
-                                    \Log::info("Similitud encontrada entre reservas {$reserva->id} y {$otraReserva->id}: {$resultado['similaridad']}%");
-                                    $similitudesEncontradas = true;
-                                }
-                            }
-                        } else {
-                            $resultado = $this->compararMetadatos($metadatoA, $metadatosB);
-                            if ($resultado['es_duplicado']) {
-                                $similitudMax = max($similitudMax, $resultado['similaridad']);
-                                \Log::info("Similitud encontrada entre reservas {$reserva->id} y {$otraReserva->id}: {$resultado['similaridad']}%");
-                                $similitudesEncontradas = true;
-                            }
-                        }
-                    }
-                } else {
-                    if (isset($metadatosB[0]) && is_array($metadatosB[0])) {
-                        foreach ($metadatosB as $metadatoB) {
-                            $resultado = $this->compararMetadatos($metadatosA, $metadatoB);
-                            if ($resultado['es_duplicado']) {
-                                $similitudMax = max($similitudMax, $resultado['similaridad']);
-                                \Log::info("Similitud encontrada entre reservas {$reserva->id} y {$otraReserva->id}: {$resultado['similaridad']}%");
-                                $similitudesEncontradas = true;
-                            }
-                        }
-                    } else {
-                        $resultado = $this->compararMetadatos($metadatosA, $metadatosB);
-                        if ($resultado['es_duplicado']) {
-                            $similitudMax = max($similitudMax, $resultado['similaridad']);
-                            \Log::info("Similitud encontrada entre reservas {$reserva->id} y {$otraReserva->id}: {$resultado['similaridad']}%");
-                            $similitudesEncontradas = true;
-                        }
-                    }
-                }
-    
-                // Si encontramos similitud alta
-                if ($similitudMax > 75) {
-                    // Si es el primer duplicado, añadir la reserva original
-                    if (empty($grupo)) {
-                        $reserva->similaridad = 100;
-                        $grupo[] = $reserva;
-                        $procesados[] = $reserva->id;
-                    }
-    
-                    // Añadir la reserva con su similaridad
-                    $otraReserva->similaridad = $similitudMax;
-                    $grupo[] = $otraReserva;
+                if ($esDuplicado['es_duplicado'] && $esDuplicado['similaridad'] > 75) {
+                    $grupo = [$reserva, $otraReserva];
                     $procesados[] = $otraReserva->id;
+                    $posiblesDuplicados[] = $grupo;
                 }
-            }
-    
-            if (!empty($grupo)) {
-                $posiblesDuplicados[] = $grupo;
-                \Log::info("Creado grupo de duplicados por comparación con " . count($grupo) . " reservas");
-            } else if ($similitudesEncontradas) {
-                \Log::warning("Se encontraron similitudes, pero no se creó ningún grupo para la reserva {$reserva->id}");
             }
         }
     
