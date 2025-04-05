@@ -251,59 +251,90 @@
             });
         }
 
-// Función para cargar la tabla con promesa
-function loadTableContent(url) {
-    return new Promise((resolve, reject) => {
-        // Cancelar cualquier solicitud en progreso
-        if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
-            window.currentTableLoadRequest.abort();
+        // Función para cargar la tabla vía AJAX
+// Modificar la función loadTableContent para usar AbortController
+function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
+    // Cancelar cualquier solicitud de carga previa
+    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
+        window.currentTableLoadRequest.abort();
+    }
+
+    console.log('Intentando cargar tabla desde URL:', url);
+
+    // Crear un nuevo AbortController
+    const controller = new AbortController();
+    window.currentTableLoadRequest = controller;
+
+    // Mostrar indicador de carga
+    document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
+
+    // Destruir DataTable existente si existe
+    if (dataTable !== null) {
+        dataTable.destroy();
+        dataTable = null;
+    }
+
+    // Hacer la petición AJAX
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        signal: controller.signal // Añadir la señal de aborto
+    })
+    .then(response => {
+        console.log('Estado de respuesta:', response.status);
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Verificar si la solicitud ha sido abortada
+        if (controller.signal.aborted) {
+            console.log('Carga de tabla cancelada');
+            return;
+        }
+
+        console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+        
+        // Si el HTML está vacío o contiene mensaje de no resultados
+        if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
+            document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
+            return;
         }
         
-        // Mostrar indicador de carga
-        $('#tablaReservas').html('<tr><td colspan="100%" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>');
+        // Actualizar el contenedor con la tabla
+        document.getElementById('tableContent').innerHTML = html;
         
-        // Realizar la nueva solicitud
-        window.currentTableLoadRequest = $.ajax({
-            url: url,
-            type: 'GET',
-            success: function(response) {
-                $('#tablaReservas').html(response);
-                
-                // Destruir DataTable existente si hay uno
-                if (dataTable) {
-                    dataTable.destroy();
-                }
-                
-                // Inicializar nueva DataTable
-                dataTable = $('#reservasTable').DataTable({
-                    language: {
-                        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json',
-                    },
-                    responsive: true,
-                    order: [[9, 'desc']], // Ordenar por fecha de creación
-                    pageLength: 25,
-                    dom: 'Bfrtip',
-                    buttons: [
-                        'copy', 'excel', 'pdf'
-                    ]
-                });
-                
-                // Configurar manejadores de eventos después de inicializar
-                setupEventHandlers();
-                
-                // Resolver la promesa
-                resolve(dataTable);
-            },
-            error: function(xhr, status, error) {
-                if (status !== 'abort') {
-                    $('#tablaReservas').html('<tr><td colspan="100%" class="text-center text-danger">Error al cargar los datos. Intente nuevamente.</td></tr>');
-                    console.error('Error cargando tabla:', error);
-                    reject(error);
-                } else {
-                    resolve(null);
-                }
-            }
-        });
+        // Inicializar DataTable
+        initializeDataTable();
+        
+        // Si hay que filtrar después de cargar, aplicar el filtro
+        if (filtrarDespues && dataTable) {
+            setTimeout(() => {
+                filtrarPorTipo(tipoFiltro);
+            }, 100);
+        }
+    })
+    .catch(error => {
+        // Ignorar errores de aborto
+        if (error.name === 'AbortError') {
+            console.log('Carga de tabla cancelada');
+            return;
+        }
+
+        console.error('Error cargando tabla:', error);
+        document.getElementById('tableContent').innerHTML =
+            `<div class="alert alert-danger text-center">
+                Error al cargar los datos: ${error.message}<br>
+                <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
+            </div>`;
+    })
+    .finally(() => {
+        // Limpiar la referencia al request actual
+        if (window.currentTableLoadRequest === controller) {
+            window.currentTableLoadRequest = null;
+        }
     });
 }
 
@@ -701,63 +732,40 @@ function loadTableContent(url) {
         // Cargar inicialmente la tabla de todas las reservas
         loadTableContent(rutaTablaTodasReservas);
 
-        // Garantiza que filtrarPorTipo se ejecute después de que DataTable esté completamente inicializado
-function filtrarConDelay(tipo) {
-    // Pequeño delay para asegurar que DataTable esté completamente inicializado
-    setTimeout(() => {
-        if (dataTable) {
-            console.log("Aplicando filtro:", tipo);
-            filtrarPorTipo(tipo);
-        } else {
-            console.error("DataTable no está inicializado");
-        }
-    }, 300);
-}
-
-       // Modificar los event listeners para los botones de filtro
+        // Modificar los event listeners para los botones de filtro
 document.getElementById('btnTodasReservas').addEventListener('click', function() {
     updateActiveButton(this);
     tipoActual = 'todas';
+    
+    // Siempre cargar la tabla completa para "Todas las reservas"
     loadTableContent(rutaTablaTodasReservas);
 });
 
-document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
+document.getElementById('btnComprobanteDuplicado').addEventListener('click', async function() {
     updateActiveButton(this);
     tipoActual = 'comprobantes-duplicados';
     
-    // Cargar datos y luego aplicar filtro
-    loadTableContent(rutaTablaTodasReservas).then(() => {
-        console.log("Tabla cargada, aplicando filtro de comprobantes duplicados");
-        filtrarConDelay('comprobantes-duplicados');
-    }).catch(err => {
-        console.error("Error al cargar tabla:", err);
-    });
+    // Siempre cargar la tabla completa primero, luego filtrar
+    await loadTableContent(rutaTablaTodasReservas);
+    filtrarPorTipo('comprobantes-duplicados');
 });
 
-document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
+document.getElementById('btnPedidoDuplicado').addEventListener('click', async function() {
     updateActiveButton(this);
     tipoActual = 'pedidos-duplicados';
     
-    // Cargar datos y luego aplicar filtro
-    loadTableContent(rutaTablaTodasReservas).then(() => {
-        console.log("Tabla cargada, aplicando filtro de pedidos duplicados");
-        filtrarConDelay('pedidos-duplicados');
-    }).catch(err => {
-        console.error("Error al cargar tabla:", err);
-    });
+    // Siempre cargar la tabla completa primero, luego filtrar
+    await loadTableContent(rutaTablaTodasReservas);
+    filtrarPorTipo('pedidos-duplicados');
 });
 
-document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
+document.getElementById('btnCartonesEliminados').addEventListener('click', async function() {
     updateActiveButton(this);
     tipoActual = 'cartones-eliminados';
     
-    // Cargar datos y luego aplicar filtro
-    loadTableContent(rutaTablaTodasReservas).then(() => {
-        console.log("Tabla cargada, aplicando filtro de cartones eliminados");
-        filtrarConDelay('cartones-eliminados');
-    }).catch(err => {
-        console.error("Error al cargar tabla:", err);
-    });
+    // Siempre cargar la tabla completa primero, luego filtrar
+    await loadTableContent(rutaTablaTodasReservas);
+    filtrarPorTipo('cartones-eliminados');
 });
 
       // Evento para el botón de Filtrar
