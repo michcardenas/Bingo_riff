@@ -592,334 +592,500 @@ private function verificarDuplicadosInterno($bingoId = null)
         }
     
         return $posiblesDuplicados;
+/**
+ * Compara dos conjuntos de metadatos para determinar si son similares
+ * 
+ * @param array $metadatosA
+ * @param array $metadatosB
+ * @return array
+ */
+private function compararMetadatos($metadatosA, $metadatosB)
+{
+    $coincidencias = 0;
+    $totalComparaciones = 0;
+    $ponderacion = 0;
+    $debugInfo = [];
+
+    // Si tiene marca de verificación manual, lo respetamos
+    if (isset($metadatosB['verificado_manualmente']) && $metadatosB['verificado_manualmente']) {
+        \Log::debug("Metadatos B verificados manualmente, ignorando comparación");
+        return [
+            'es_duplicado' => false,
+            'similaridad' => 0
+        ];
     }
-    /**
-     * Compara dos conjuntos de metadatos para determinar si son similares
-     * 
-     * @param array $metadatosA
-     * @param array $metadatosB
-     * @return array
-     */
-    /**
-     * Compara dos conjuntos de metadatos para determinar si son similares
-     * 
-     * @param array $metadatosA
-     * @param array $metadatosB
-     * @return array
-     */
-    private function compararMetadatos($metadatosA, $metadatosB)
-    {
-        $coincidencias = 0;
-        $totalComparaciones = 0;
-        $ponderacion = 0;
 
-        // Si tiene marca de verificación manual, lo respetamos
-        if (isset($metadatosB['verificado_manualmente']) && $metadatosB['verificado_manualmente']) {
-            \Log::debug("Metadatos B verificados manualmente, ignorando comparación");
-            return [
-                'es_duplicado' => false,
-                'similaridad' => 0
-            ];
-        }
+    // Hash perceptual (alta prioridad - peso 4)
+    if (isset($metadatosA['perceptual_hash']) && isset($metadatosB['perceptual_hash']) &&
+        !empty($metadatosA['perceptual_hash']) && !empty($metadatosB['perceptual_hash'])) {
+        $totalComparaciones += 4;
+        $ponderacion += 4;
 
-        // Hash perceptual (alta prioridad - peso 3)
-        if (isset($metadatosA['perceptual_hash']) && isset($metadatosB['perceptual_hash'])) {
-            $totalComparaciones += 3;
-            $ponderacion += 3;
+        // Calcular distancia Hamming entre los hashes perceptuales
+        $hashA = $metadatosA['perceptual_hash'];
+        $hashB = $metadatosB['perceptual_hash'];
 
-            // Calcular distancia Hamming entre los hashes perceptuales
-            $hashA = $metadatosA['perceptual_hash'];
-            $hashB = $metadatosB['perceptual_hash'];
-
-            \Log::debug("Comparando hashes perceptuales", [
-                'hashA' => $hashA,
-                'hashB' => $hashB
-            ]);
-
+        // Asegurar que los hashes tienen la misma longitud
+        $longMinima = min(strlen($hashA), strlen($hashB));
+        if ($longMinima > 0) {
+            $hashA = substr($hashA, 0, $longMinima);
+            $hashB = substr($hashB, 0, $longMinima);
+            
             // Convertir a binario para comparar bit a bit
             $hashBinA = '';
             $hashBinB = '';
 
-            for ($i = 0; $i < strlen($hashA); $i++) {
-                $binA = str_pad(decbin(hexdec($hashA[$i])), 4, '0', STR_PAD_LEFT);
-                $binB = str_pad(decbin(hexdec($hashB[$i])), 4, '0', STR_PAD_LEFT);
-                $hashBinA .= $binA;
-                $hashBinB .= $binB;
+            for ($i = 0; $i < $longMinima; $i++) {
+                // Manejar posibles caracteres no hexadecimales
+                if (ctype_xdigit($hashA[$i]) && ctype_xdigit($hashB[$i])) {
+                    $binA = str_pad(decbin(hexdec($hashA[$i])), 4, '0', STR_PAD_LEFT);
+                    $binB = str_pad(decbin(hexdec($hashB[$i])), 4, '0', STR_PAD_LEFT);
+                    $hashBinA .= $binA;
+                    $hashBinB .= $binB;
+                }
             }
 
             // Contar bits diferentes (distancia Hamming)
             $distancia = 0;
-            for ($i = 0; $i < strlen($hashBinA); $i++) {
-                if ($hashBinA[$i] !== $hashBinB[$i]) {
-                    $distancia++;
+            $bitsComparados = strlen($hashBinA);
+            
+            if ($bitsComparados > 0) {
+                for ($i = 0; $i < $bitsComparados; $i++) {
+                    if ($hashBinA[$i] !== $hashBinB[$i]) {
+                        $distancia++;
+                    }
                 }
-            }
 
-            // Calcular similitud en porcentaje (0 distancia = 100% similaridad)
-            $maxDistancia = strlen($hashBinA); // Máxima distancia posible
-            $similitudHash = 100 - (($distancia / $maxDistancia) * 100);
-
-            \Log::debug("Similitud de hash perceptual: {$similitudHash}%", [
-                'distancia' => $distancia,
-                'maxDistancia' => $maxDistancia
-            ]);
-
-            // Si la similitud es mayor a 90%, consideramos alta coincidencia
-            if ($similitudHash > 90) {
-                $coincidencias += 3;
-                \Log::debug("Alta coincidencia de hash perceptual (>90%)");
-            } elseif ($similitudHash > 80) {
-                $coincidencias += 2;
-                \Log::debug("Media coincidencia de hash perceptual (>80%)");
-            } elseif ($similitudHash > 70) {
-                $coincidencias += 1;
-                \Log::debug("Baja coincidencia de hash perceptual (>70%)");
-            }
-
-            // Si la coincidencia de hash perceptual es muy alta, es probable que sea la misma imagen
-            if ($similitudHash > 95) {
-                \Log::info("Coincidencia muy alta de hash perceptual: {$similitudHash}%");
-                return [
-                    'es_duplicado' => true,
-                    'similaridad' => $similitudHash
+                // Calcular similitud en porcentaje (0 distancia = 100% similaridad)
+                $similitudHash = 100 - (($distancia / $bitsComparados) * 100);
+                $debugInfo['hash_perceptual'] = [
+                    'distancia' => $distancia,
+                    'bits_comparados' => $bitsComparados,
+                    'similitud' => $similitudHash
                 ];
-            }
-        }
 
-        // Histograma de colores (peso 2)
-        if (isset($metadatosA['histograma']) && isset($metadatosB['histograma'])) {
-            $totalComparaciones += 2;
-            $ponderacion += 2;
-
-            $histogramaA = $metadatosA['histograma'];
-            $histogramaB = $metadatosB['histograma'];
-
-            \Log::debug("Comparando histogramas de colores");
-
-            // Calcular distancia entre histogramas (diferencia cuadrática media)
-            $sumaDiferencias = 0;
-            for ($i = 0; $i < count($histogramaA); $i++) {
-                $diferencia = $histogramaA[$i] - $histogramaB[$i];
-                $sumaDiferencias += $diferencia * $diferencia;
-            }
-
-            $distanciaHistograma = sqrt($sumaDiferencias / count($histogramaA));
-
-            // Convertir distancia a similitud (menor distancia = mayor similitud)
-            $maxDistancia = 100; // Valor teórico máximo si los histogramas son completamente diferentes
-            $similitudHistograma = 100 - ($distanciaHistograma * 100 / $maxDistancia);
-
-            \Log::debug("Similitud de histograma: {$similitudHistograma}%");
-
-            // Añadir a coincidencias según nivel de similitud
-            if ($similitudHistograma > 90) {
-                $coincidencias += 2;
-                \Log::debug("Alta coincidencia de histograma (>90%)");
-            } elseif ($similitudHistograma > 75) {
-                $coincidencias += 1;
-                \Log::debug("Media coincidencia de histograma (>75%)");
-            }
-        }
-
-        // Si hay hash de contenido en ambos (peso 3)
-        if (isset($metadatosA['contenido_hash']) && isset($metadatosB['contenido_hash'])) {
-            $totalComparaciones += 3;
-            $ponderacion += 3;
-
-            \Log::debug("Comparando hashes de contenido", [
-                'hashA' => $metadatosA['contenido_hash'],
-                'hashB' => $metadatosB['contenido_hash']
-            ]);
-
-            if ($metadatosA['contenido_hash'] === $metadatosB['contenido_hash']) {
-                $coincidencias += 3;
-                \Log::info("Coincidencia exacta de hash de contenido");
-
-                // Si el hash de contenido coincide exactamente, es definitivamente la misma imagen
-                return [
-                    'es_duplicado' => true,
-                    'similaridad' => 100
-                ];
-            }
-        }
-
-        // Dimensiones de la imagen (peso 1)
-        if (isset($metadatosA['dimensions']) && isset($metadatosB['dimensions'])) {
-            $totalComparaciones += 1;
-            $ponderacion += 1;
-
-            \Log::debug("Comparando dimensiones de imagen", [
-                'A' => $metadatosA['dimensions'],
-                'B' => $metadatosB['dimensions']
-            ]);
-
-            // Si las dimensiones son iguales, es un indicio fuerte
-            if (
-                $metadatosA['dimensions']['width'] == $metadatosB['dimensions']['width'] &&
-                $metadatosA['dimensions']['height'] == $metadatosB['dimensions']['height']
-            ) {
-                $coincidencias += 1;
-                \Log::debug("Dimensiones idénticas");
-            }
-        }
-
-        // Fecha y hora (peso 2) - muy útil para fotos originales
-        if (
-            isset($metadatosA['datetime']) && isset($metadatosB['datetime']) &&
-            !empty($metadatosA['datetime']) && !empty($metadatosB['datetime'])
-        ) {
-            $totalComparaciones += 2;
-            $ponderacion += 2;
-
-            \Log::debug("Comparando fechas de imagen", [
-                'A' => $metadatosA['datetime'],
-                'B' => $metadatosB['datetime']
-            ]);
-
-            if ($metadatosA['datetime'] === $metadatosB['datetime']) {
-                $coincidencias += 2;
-                \Log::debug("Fechas idénticas");
-            }
-        }
-
-        // Marca y modelo de cámara (peso 1)
-        if (
-            isset($metadatosA['make']) && isset($metadatosB['make']) &&
-            isset($metadatosA['model']) && isset($metadatosB['model'])
-        ) {
-            $totalComparaciones += 1;
-            $ponderacion += 1;
-
-            \Log::debug("Comparando marca y modelo", [
-                'makeA' => $metadatosA['make'],
-                'makeB' => $metadatosB['make'],
-                'modelA' => $metadatosA['model'],
-                'modelB' => $metadatosB['model']
-            ]);
-
-            if ($metadatosA['make'] === $metadatosB['make'] && $metadatosA['model'] === $metadatosB['model']) {
-                $coincidencias += 1;
-                \Log::debug("Marca y modelo idénticos");
-            }
-        }
-
-        // Comparar tipo MIME y extensión (peso 2)
-        if (
-            isset($metadatosA['mime_type']) && isset($metadatosB['mime_type']) &&
-            isset($metadatosA['extension']) && isset($metadatosB['extension'])
-        ) {
-
-            $totalComparaciones += 2;
-            $ponderacion += 2;
-
-            \Log::debug("Comparando MIME y extensión", [
-                'mimeA' => $metadatosA['mime_type'],
-                'mimeB' => $metadatosB['mime_type'],
-                'extensionA' => $metadatosA['extension'],
-                'extensionB' => $metadatosB['extension']
-            ]);
-
-            // Si el tipo MIME base es el mismo (ej: ambos son image/*)
-            $mimeBaseA = explode('/', $metadatosA['mime_type'])[0];
-            $mimeBaseB = explode('/', $metadatosB['mime_type'])[0];
-
-            if ($mimeBaseA === $mimeBaseB) {
-                $coincidencias += 1;
-                \Log::debug("Mismo tipo base de MIME: {$mimeBaseA}");
-            }
-
-            // Si ambos son imágenes, agregar otra coincidencia
-            if ($mimeBaseA === 'image' && $mimeBaseB === 'image') {
-                $coincidencias += 1;
-                \Log::debug("Ambos son imágenes");
-            }
-        }
-
-        // Comparar nombres de archivo (peso 1)
-        if (isset($metadatosA['nombre_original']) && isset($metadatosB['nombre_original'])) {
-            $totalComparaciones += 1;
-            $ponderacion += 1;
-
-            $nombreA = pathinfo($metadatosA['nombre_original'], PATHINFO_FILENAME);
-            $nombreB = pathinfo($metadatosB['nombre_original'], PATHINFO_FILENAME);
-
-            \Log::debug("Comparando nombres de archivo", [
-                'nombreA' => $nombreA,
-                'nombreB' => $nombreB
-            ]);
-
-            // Si los nombres son idénticos o muy similares
-            similar_text($nombreA, $nombreB, $porcentajeSimilitud);
-
-            if ($porcentajeSimilitud > 80) {
-                $coincidencias += 1;
-                \Log::debug("Nombres muy similares: {$porcentajeSimilitud}%");
-            }
-        }
-
-        // Tamaño del archivo (peso 1)
-        if (isset($metadatosA['tamaño']) && isset($metadatosB['tamaño'])) {
-            $totalComparaciones += 1;
-            $ponderacion += 1;
-
-            \Log::debug("Comparando tamaños de archivo", [
-                'A' => $metadatosA['tamaño'],
-                'B' => $metadatosB['tamaño']
-            ]);
-
-            // Calcular diferencia de tamaño en porcentaje
-            $maxTamaño = max($metadatosA['tamaño'], $metadatosB['tamaño']);
-            $minTamaño = min($metadatosA['tamaño'], $metadatosB['tamaño']);
-
-            if ($maxTamaño > 0) {
-                $diferenciaPorcentaje = 100 - (($minTamaño / $maxTamaño) * 100);
-
-                \Log::debug("Diferencia de tamaño: {$diferenciaPorcentaje}%");
-
-                // Ser más permisivo con las diferencias de tamaño
-                if ($diferenciaPorcentaje < 10) {
+                // Mejorado el sistema de puntuación para hash perceptual
+                if ($similitudHash > 95) {
+                    $coincidencias += 4; // Máxima puntuación - coincidencia casi perfecta
+                    $debugInfo['hash_perceptual']['puntos'] = 4;
+                } elseif ($similitudHash > 90) {
+                    $coincidencias += 3;
+                    $debugInfo['hash_perceptual']['puntos'] = 3;
+                } elseif ($similitudHash > 85) {
+                    $coincidencias += 2;
+                    $debugInfo['hash_perceptual']['puntos'] = 2;
+                } elseif ($similitudHash > 75) {
                     $coincidencias += 1;
-                    \Log::debug("Tamaños muy similares (<10% diferencia)");
-                } else if ($diferenciaPorcentaje < 50) {
-                    $coincidencias += 0.5;
-                    \Log::debug("Tamaños moderadamente diferentes (<50% diferencia)");
-                } else if ($diferenciaPorcentaje < 90) {
-                    $coincidencias += 0.2;
-                    \Log::debug("Tamaños bastante diferentes pero aún considerados (<90% diferencia)");
+                    $debugInfo['hash_perceptual']['puntos'] = 1;
+                } else {
+                    $debugInfo['hash_perceptual']['puntos'] = 0;
+                }
+
+                // Si la coincidencia de hash perceptual es extremadamente alta, es casi seguro la misma imagen
+                if ($similitudHash > 98) {
+                    \Log::info("Coincidencia extremadamente alta de hash perceptual: {$similitudHash}%");
+                    return [
+                        'es_duplicado' => true,
+                        'similaridad' => $similitudHash,
+                        'debug' => $debugInfo
+                    ];
                 }
             }
         }
+    }
 
-        // Si no hay suficientes comparaciones, consideramos que no hay suficientes datos
-        if ($totalComparaciones < 1) {  // Reducido de 3 a 1
-            \Log::debug("No hay suficientes comparaciones: {$totalComparaciones}");
+    // Hash de contenido (peso 5) - Máxima prioridad
+    if (isset($metadatosA['contenido_hash']) && isset($metadatosB['contenido_hash']) &&
+        !empty($metadatosA['contenido_hash']) && !empty($metadatosB['contenido_hash'])) {
+        $totalComparaciones += 5;
+        $ponderacion += 5;
+
+        $similitudHash = 0;
+        
+        if ($metadatosA['contenido_hash'] === $metadatosB['contenido_hash']) {
+            $coincidencias += 5;
+            $similitudHash = 100;
+            $debugInfo['contenido_hash'] = [
+                'coincidencia' => true,
+                'puntos' => 5
+            ];
+            
+            // Si el hash de contenido coincide exactamente, es definitivamente la misma imagen
             return [
-                'es_duplicado' => false,
-                'similaridad' => 0
+                'es_duplicado' => true,
+                'similaridad' => 100,
+                'debug' => $debugInfo
+            ];
+        } else {
+            $debugInfo['contenido_hash'] = [
+                'coincidencia' => false,
+                'puntos' => 0
             ];
         }
+    }
 
-        // Calcular similitud ponderada
-        $similitud = $ponderacion > 0 ? ($coincidencias / $ponderacion) * 100 : 0;
+    // Histograma de colores (peso 3)
+    if (isset($metadatosA['histograma']) && isset($metadatosB['histograma']) &&
+        !empty($metadatosA['histograma']) && !empty($metadatosB['histograma']) &&
+        is_array($metadatosA['histograma']) && is_array($metadatosB['histograma'])) {
+        
+        $totalComparaciones += 3;
+        $ponderacion += 3;
 
-        \Log::debug("Similitud calculada: {$similitud}%", [
-            'coincidencias' => $coincidencias,
-            'ponderacion' => $ponderacion,
-            'totalComparaciones' => $totalComparaciones
-        ]);
+        $histogramaA = $metadatosA['histograma'];
+        $histogramaB = $metadatosB['histograma'];
 
-        // Reducimos el umbral de 75% a 50%
-        $esDuplicado = $similitud > 50;
+        // Asegurar que ambos histogramas tienen la misma longitud
+        $minLength = min(count($histogramaA), count($histogramaB));
+        
+        if ($minLength > 0) {
+            // Normalizar histogramas para que sumen 1
+            $sumaA = array_sum(array_slice($histogramaA, 0, $minLength));
+            $sumaB = array_sum(array_slice($histogramaB, 0, $minLength));
+            
+            $histogramaA_norm = $sumaA > 0 ? array_map(function($v) use ($sumaA) { return $v / $sumaA; }, array_slice($histogramaA, 0, $minLength)) : array_slice($histogramaA, 0, $minLength);
+            $histogramaB_norm = $sumaB > 0 ? array_map(function($v) use ($sumaB) { return $v / $sumaB; }, array_slice($histogramaB, 0, $minLength)) : array_slice($histogramaB, 0, $minLength);
+            
+            // Calcular distancia entre histogramas usando Chi-cuadrado
+            $distanciaHistograma = 0;
+            for ($i = 0; $i < $minLength; $i++) {
+                $suma = $histogramaA_norm[$i] + $histogramaB_norm[$i];
+                if ($suma > 0) {
+                    $diff = $histogramaA_norm[$i] - $histogramaB_norm[$i];
+                    $distanciaHistograma += ($diff * $diff) / $suma;
+                }
+            }
+            $distanciaHistograma /= 2; // Normalizar
+            
+            // Convertir distancia a similitud (menor distancia = mayor similitud)
+            $similitudHistograma = 100 * (1 - min(1, $distanciaHistograma));
+            
+            $debugInfo['histograma'] = [
+                'similitud' => $similitudHistograma
+            ];
 
-        if ($esDuplicado) {
-            \Log::info("Duplicado detectado con similitud: {$similitud}%");
+            // Añadir a coincidencias según nivel de similitud
+            if ($similitudHistograma > 95) {
+                $coincidencias += 3;
+                $debugInfo['histograma']['puntos'] = 3;
+            } elseif ($similitudHistograma > 90) {
+                $coincidencias += 2;
+                $debugInfo['histograma']['puntos'] = 2;
+            } elseif ($similitudHistograma > 80) {
+                $coincidencias += 1;
+                $debugInfo['histograma']['puntos'] = 1;
+            } else {
+                $debugInfo['histograma']['puntos'] = 0;
+            }
         }
+    }
 
+    // Dimensiones de la imagen (peso 2)
+    if (isset($metadatosA['dimensions']) && isset($metadatosB['dimensions']) &&
+        isset($metadatosA['dimensions']['width']) && isset($metadatosB['dimensions']['width']) &&
+        isset($metadatosA['dimensions']['height']) && isset($metadatosB['dimensions']['height'])) {
+        
+        $totalComparaciones += 2;
+        $ponderacion += 2;
+
+        $widthA = (int) $metadatosA['dimensions']['width'];
+        $heightA = (int) $metadatosA['dimensions']['height'];
+        $widthB = (int) $metadatosB['dimensions']['width'];
+        $heightB = (int) $metadatosB['dimensions']['height'];
+        
+        $areaA = $widthA * $heightA;
+        $areaB = $widthB * $heightB;
+        
+        $ratioA = $widthA > 0 ? $heightA / $widthA : 0;
+        $ratioB = $widthB > 0 ? $heightB / $widthB : 0;
+        
+        $debugInfo['dimensiones'] = [
+            'A' => [$widthA, $heightA],
+            'B' => [$widthB, $heightB]
+        ];
+
+        // Si las dimensiones son exactamente iguales
+        if ($widthA == $widthB && $heightA == $heightB) {
+            $coincidencias += 2;
+            $debugInfo['dimensiones']['puntos'] = 2;
+            $debugInfo['dimensiones']['tipo'] = 'idénticas';
+        } 
+        // Si tienen la misma relación de aspecto (proporción) y tamaños similares
+        elseif (abs($ratioA - $ratioB) < 0.05 && max($areaA, $areaB) > 0) {
+            $relacion = min($areaA, $areaB) / max($areaA, $areaB);
+            if ($relacion > 0.9) {
+                $coincidencias += 1.5; // Las dimensiones son muy similares
+                $debugInfo['dimensiones']['puntos'] = 1.5;
+                $debugInfo['dimensiones']['tipo'] = 'muy_similares';
+            } elseif ($relacion > 0.7) {
+                $coincidencias += 1; // Las dimensiones son algo similares
+                $debugInfo['dimensiones']['puntos'] = 1;
+                $debugInfo['dimensiones']['tipo'] = 'similares';
+            } else {
+                $debugInfo['dimensiones']['puntos'] = 0;
+                $debugInfo['dimensiones']['tipo'] = 'diferente_tamaño';
+            }
+        } else {
+            $debugInfo['dimensiones']['puntos'] = 0;
+            $debugInfo['dimensiones']['tipo'] = 'diferentes';
+        }
+    }
+
+    // Fecha y hora (peso 3) - muy útil para fotos originales
+    if (isset($metadatosA['datetime']) && isset($metadatosB['datetime']) &&
+        !empty($metadatosA['datetime']) && !empty($metadatosB['datetime'])) {
+        
+        $totalComparaciones += 3;
+        $ponderacion += 3;
+
+        $fechaA = $metadatosA['datetime'];
+        $fechaB = $metadatosB['datetime'];
+        
+        $debugInfo['datetime'] = [
+            'A' => $fechaA,
+            'B' => $fechaB
+        ];
+
+        // Comprobar coincidencia exacta
+        if ($fechaA === $fechaB) {
+            $coincidencias += 3;
+            $debugInfo['datetime']['puntos'] = 3;
+            $debugInfo['datetime']['tipo'] = 'exactas';
+        } 
+        // Comprobar si las fechas están muy cercanas (dentro de 10 segundos)
+        else {
+            try {
+                $dateA = new \DateTime($fechaA);
+                $dateB = new \DateTime($fechaB);
+                $diff = abs($dateA->getTimestamp() - $dateB->getTimestamp());
+                
+                if ($diff <= 10) { // 10 segundos o menos
+                    $coincidencias += 2.5;
+                    $debugInfo['datetime']['puntos'] = 2.5;
+                    $debugInfo['datetime']['tipo'] = 'muy_cercanas';
+                    $debugInfo['datetime']['diff_segundos'] = $diff;
+                } elseif ($diff <= 60) { // 1 minuto o menos
+                    $coincidencias += 2;
+                    $debugInfo['datetime']['puntos'] = 2;
+                    $debugInfo['datetime']['tipo'] = 'cercanas';
+                    $debugInfo['datetime']['diff_segundos'] = $diff;
+                } elseif ($diff <= 300) { // 5 minutos o menos
+                    $coincidencias += 1;
+                    $debugInfo['datetime']['puntos'] = 1;
+                    $debugInfo['datetime']['tipo'] = 'próximas';
+                    $debugInfo['datetime']['diff_segundos'] = $diff;
+                } else {
+                    $debugInfo['datetime']['puntos'] = 0;
+                    $debugInfo['datetime']['tipo'] = 'diferentes';
+                    $debugInfo['datetime']['diff_segundos'] = $diff;
+                }
+            } catch (\Exception $e) {
+                $debugInfo['datetime']['error'] = 'No se pudieron parsear las fechas';
+                $debugInfo['datetime']['puntos'] = 0;
+            }
+        }
+    }
+
+    // Marca y modelo de cámara (peso 2)
+    if (isset($metadatosA['make']) && isset($metadatosB['make']) &&
+        isset($metadatosA['model']) && isset($metadatosB['model']) &&
+        !empty($metadatosA['make']) && !empty($metadatosB['make'])) {
+        
+        $totalComparaciones += 2;
+        $ponderacion += 2;
+
+        $makeA = strtolower(trim($metadatosA['make']));
+        $makeB = strtolower(trim($metadatosB['make']));
+        $modelA = strtolower(trim($metadatosA['model']));
+        $modelB = strtolower(trim($metadatosB['model']));
+        
+        $debugInfo['camara'] = [
+            'makeA' => $makeA,
+            'makeB' => $makeB,
+            'modelA' => $modelA,
+            'modelB' => $modelB
+        ];
+
+        // Si coinciden tanto marca como modelo
+        if ($makeA === $makeB && $modelA === $modelB) {
+            $coincidencias += 2;
+            $debugInfo['camara']['puntos'] = 2;
+            $debugInfo['camara']['tipo'] = 'marca_modelo_iguales';
+        }
+        // Si solo coincide la marca
+        elseif ($makeA === $makeB) {
+            $coincidencias += 1;
+            $debugInfo['camara']['puntos'] = 1;
+            $debugInfo['camara']['tipo'] = 'marca_igual';
+        } else {
+            $debugInfo['camara']['puntos'] = 0;
+            $debugInfo['camara']['tipo'] = 'diferentes';
+        }
+    }
+
+    // Comparar tipo MIME y extensión (peso 1)
+    if (isset($metadatosA['mime_type']) && isset($metadatosB['mime_type'])) {
+        $totalComparaciones += 1;
+        $ponderacion += 1;
+
+        $mimeA = strtolower($metadatosA['mime_type']);
+        $mimeB = strtolower($metadatosB['mime_type']);
+        
+        $mimeBaseA = explode('/', $mimeA)[0];
+        $mimeBaseB = explode('/', $mimeB)[0];
+        
+        $debugInfo['mime'] = [
+            'A' => $mimeA,
+            'B' => $mimeB
+        ];
+
+        // Si el MIME es exactamente el mismo
+        if ($mimeA === $mimeB) {
+            $coincidencias += 1;
+            $debugInfo['mime']['puntos'] = 1;
+            $debugInfo['mime']['tipo'] = 'igual';
+        }
+        // Si al menos el tipo base es el mismo (image, video, etc)
+        elseif ($mimeBaseA === $mimeBaseB) {
+            $coincidencias += 0.5;
+            $debugInfo['mime']['puntos'] = 0.5;
+            $debugInfo['mime']['tipo'] = 'base_igual';
+        } else {
+            $debugInfo['mime']['puntos'] = 0;
+            $debugInfo['mime']['tipo'] = 'diferentes';
+        }
+    }
+
+    // Comparar nombres de archivo (peso 2)
+    if (isset($metadatosA['nombre_original']) && isset($metadatosB['nombre_original']) &&
+        !empty($metadatosA['nombre_original']) && !empty($metadatosB['nombre_original'])) {
+        
+        $totalComparaciones += 2;
+        $ponderacion += 2;
+
+        $nombreA = pathinfo($metadatosA['nombre_original'], PATHINFO_FILENAME);
+        $nombreB = pathinfo($metadatosB['nombre_original'], PATHINFO_FILENAME);
+        
+        $debugInfo['nombre_archivo'] = [
+            'A' => $nombreA,
+            'B' => $nombreB
+        ];
+
+        // Si los nombres son idénticos
+        if ($nombreA === $nombreB) {
+            $coincidencias += 2;
+            $debugInfo['nombre_archivo']['puntos'] = 2;
+            $debugInfo['nombre_archivo']['tipo'] = 'identicos';
+        } else {
+            // Calcular similitud entre los nombres
+            similar_text($nombreA, $nombreB, $porcentajeSimilitud);
+            $debugInfo['nombre_archivo']['similitud'] = $porcentajeSimilitud;
+            
+            if ($porcentajeSimilitud > 90) {
+                $coincidencias += 1.5;
+                $debugInfo['nombre_archivo']['puntos'] = 1.5;
+                $debugInfo['nombre_archivo']['tipo'] = 'muy_similares';
+            } elseif ($porcentajeSimilitud > 75) {
+                $coincidencias += 1;
+                $debugInfo['nombre_archivo']['puntos'] = 1;
+                $debugInfo['nombre_archivo']['tipo'] = 'similares';
+            } elseif ($porcentajeSimilitud > 60) {
+                $coincidencias += 0.5;
+                $debugInfo['nombre_archivo']['puntos'] = 0.5;
+                $debugInfo['nombre_archivo']['tipo'] = 'algo_similares';
+            } else {
+                $debugInfo['nombre_archivo']['puntos'] = 0;
+                $debugInfo['nombre_archivo']['tipo'] = 'diferentes';
+            }
+        }
+    }
+
+    // Tamaño del archivo (peso 1)
+    if (isset($metadatosA['tamaño']) && isset($metadatosB['tamaño']) &&
+        is_numeric($metadatosA['tamaño']) && is_numeric($metadatosB['tamaño']) && 
+        $metadatosA['tamaño'] > 0 && $metadatosB['tamaño'] > 0) {
+        
+        $totalComparaciones += 1;
+        $ponderacion += 1;
+
+        $tamañoA = (float) $metadatosA['tamaño'];
+        $tamañoB = (float) $metadatosB['tamaño'];
+        
+        $debugInfo['tamaño'] = [
+            'A' => $tamañoA,
+            'B' => $tamañoB
+        ];
+
+        // Calcular diferencia de tamaño en porcentaje
+        $maxTamaño = max($tamañoA, $tamañoB);
+        $minTamaño = min($tamañoA, $tamañoB);
+        $diferenciaPorcentaje = 100 - (($minTamaño / $maxTamaño) * 100);
+        
+        $debugInfo['tamaño']['diferencia'] = $diferenciaPorcentaje . '%';
+
+        // Puntuar según la diferencia de tamaño
+        if ($diferenciaPorcentaje < 1) {
+            $coincidencias += 1;
+            $debugInfo['tamaño']['puntos'] = 1;
+            $debugInfo['tamaño']['tipo'] = 'identicos';
+        } elseif ($diferenciaPorcentaje < 5) {
+            $coincidencias += 0.8;
+            $debugInfo['tamaño']['puntos'] = 0.8;
+            $debugInfo['tamaño']['tipo'] = 'muy_similares';
+        } elseif ($diferenciaPorcentaje < 15) {
+            $coincidencias += 0.5;
+            $debugInfo['tamaño']['puntos'] = 0.5;
+            $debugInfo['tamaño']['tipo'] = 'similares';
+        } elseif ($diferenciaPorcentaje < 30) {
+            $coincidencias += 0.2;
+            $debugInfo['tamaño']['puntos'] = 0.2;
+            $debugInfo['tamaño']['tipo'] = 'algo_similares';
+        } else {
+            $debugInfo['tamaño']['puntos'] = 0;
+            $debugInfo['tamaño']['tipo'] = 'diferentes';
+        }
+    }
+
+    // Si no hay suficientes comparaciones, consideramos que no hay suficientes datos
+    if ($totalComparaciones < 3 || $ponderacion < 2) {
+        \Log::debug("No hay suficientes comparaciones: {$totalComparaciones}, ponderación: {$ponderacion}");
         return [
-            'es_duplicado' => $esDuplicado,
-            'similaridad' => round($similitud, 1)
+            'es_duplicado' => false,
+            'similaridad' => 0,
+            'debug' => [
+                'comparaciones' => $totalComparaciones,
+                'ponderacion' => $ponderacion,
+                'mensaje' => 'Datos insuficientes para comparación'
+            ]
         ];
     }
+
+    // Calcular similitud ponderada
+    $similitud = $ponderacion > 0 ? ($coincidencias / $ponderacion) * 100 : 0;
+    
+    // Ajustar umbral de detección a 60%
+    $esDuplicado = $similitud > 60;
+    
+    $resultado = [
+        'es_duplicado' => $esDuplicado,
+        'similaridad' => round($similitud, 1),
+        'debug' => $debugInfo + [
+            'coincidencias' => $coincidencias,
+            'ponderacion' => $ponderacion,
+            'umbral' => 60
+        ]
+    ];
+    
+    if ($esDuplicado) {
+        \Log::info("Duplicado detectado con similitud: {$similitud}%", [
+            'coincidencias' => $coincidencias,
+            'ponderacion' => $ponderacion,
+            'total_comparaciones' => $totalComparaciones
+        ]);
+    }
+
+    return $resultado;
+}
 
     /**
      * Marca un comprobante como verificado manualmente
