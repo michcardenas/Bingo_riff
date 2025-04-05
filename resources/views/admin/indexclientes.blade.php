@@ -477,8 +477,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para cargar contenido en el contenedor 'tableContent'
     function loadTableContent(url) {
-        console.log('loadTableContent llamado con URL:', url);
-        console.trace();
         // Guardar los valores actuales de los filtros
         const filtros = {
             nombre: document.getElementById('nombre')?.value || '',
@@ -578,84 +576,32 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTableContent("{{ route('reservas.index') }}");
     });
 
-    document.getElementById('btnComprobanteDuplicado').addEventListener('click', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
+        loadTableContent("{{ route('admin.comprobantesDuplicados') }}");
+    });
 
-    // Extraer el ID del bingo de la URL actual
-    const currentUrl = window.location.href;
-    const bingoUrlMatch = currentUrl.match(/\/bingos\/(\d+)\/reservas/);
+    document.getElementById('btnPedidoDuplicado').addEventListener('click', function() {
+        loadTableContent("{{ route('admin.pedidosDuplicados') }}");
+    });
+
+    document.getElementById('btnCartonesEliminados').addEventListener('click', function() {
+        loadTableContent("{{ route('admin.cartonesEliminados') }}");
+    });
     
-    if (bingoUrlMatch && bingoUrlMatch[1]) {
-        const bingoId = bingoUrlMatch[1];
-        console.log('Cargando comprobantes duplicados para el Bingo ID:', bingoId);
-        
-        // URL específica para comprobantes duplicados
-        const fullUrl = `/admin/bingos/${bingoId}/reservas/comprobantesDuplicados`;
-        
-        // Mostrar indicador de carga
-        document.getElementById('tableContent').innerHTML = `
-            <div class="text-center p-5">
-                <div class="spinner-border text-light" role="status"></div>
-                <p class="mt-2 text-light">Cargando comprobantes duplicados...</p>
-            </div>
-        `;
-
-        // Destruir DataTable existente si existe
-        if (dataTable !== null) {
-            dataTable.destroy();
-            dataTable = null;
-        }
-        
-        // Hacer la petición fetch
-        fetch(fullUrl, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+    // Asignar eventos a los botones de filtro
+    document.getElementById('btnFiltrar').addEventListener('click', aplicarFiltros);
+    document.getElementById('btnLimpiar').addEventListener('click', limpiarFiltros);
+    
+    // Permitir filtrar con Enter en los campos de texto
+    document.querySelectorAll('#nombre, #celular, #serie').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                aplicarFiltros();
             }
-        })
-        .then(response => {
-            console.log('Estado de respuesta:', response.status);
-            if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(html => {
-            console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
-            
-            // Actualizar el contenedor con la tabla
-            document.getElementById('tableContent').innerHTML = html;
-            
-            // Reinicializar DataTable
-            if (dataTable !== null) {
-                dataTable.destroy();
-            }
-            initializeDataTable();
-            
-            // Actualizar estado de los botones
-            document.querySelectorAll('#btnOriginal, #btnComprobanteDuplicado, #btnPedidoDuplicado, #btnCartonesEliminados').forEach(btn => {
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-secondary');
-            });
-            
-            document.getElementById('btnComprobanteDuplicado').classList.add('btn-primary');
-            document.getElementById('btnComprobanteDuplicado').classList.remove('btn-secondary');
-        })
-        .catch(error => {
-            console.error('Error cargando comprobantes duplicados:', error);
-            document.getElementById('tableContent').innerHTML = `
-                <div class="alert alert-danger text-center">
-                    Error al cargar los comprobantes duplicados: ${error.message}<br>
-                    <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
-                </div>
-            `;
         });
-    } else {
-        console.error('No se pudo encontrar el ID del bingo en la URL');
-        alert('Error: No se pudo identificar el bingo actual');
-    }
-});
-
+    });
+    
     // Configurar el botón de borrar clientes y el modal de confirmación
     const btnBorrarClientes = document.getElementById('btnBorrarClientes');
     if (btnBorrarClientes) {
