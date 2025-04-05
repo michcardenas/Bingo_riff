@@ -1066,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ocultarCargando();
             mostrarMensaje('Error al cargar comprobantes duplicados: ' + error.message, 'danger');
         });
-    });
+
 
     
     function mostrarCargando() {
