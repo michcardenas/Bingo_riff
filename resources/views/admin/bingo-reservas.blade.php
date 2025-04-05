@@ -531,23 +531,26 @@ function filtrarPorTipo(tipo) {
     // Limpiar mensajes previos
     $('#mensaje-filtro').remove();
     
+    // Quitar clases de resaltado previas
+    dataTable.rows().nodes().to$().removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
+    
     // Si es "todas", simplemente mostramos todo y salimos
     if (tipo === 'todas') {
         console.log('Mostrando todas las filas sin filtrar');
         
-        // Eliminar cualquier filtrado personalizado
+        // Restaurar tabla normal sin filtros
         dataTable.search('').columns().search('').draw();
-        
         return;
     }
 
     // Determinar qué buscar según el tipo de filtro
-    let filasEncontradas = [];
-    let mensajeVacio = '';
-    let tipoAlerta = '';
-    let claseResaltado = '';
-    
     try {
+        // Identificar filas según tipo de filtro
+        let filasEncontradas = [];
+        let mensajeVacio = '';
+        let tipoAlerta = '';
+        let claseResaltado = '';
+        
         switch (tipo) {
             case 'comprobantes-duplicados':
                 filasEncontradas = buscarComprobantesDuplicados();
@@ -576,38 +579,52 @@ function filtrarPorTipo(tipo) {
         if (filasEncontradas.length > 0) {
             console.log(`Se encontraron ${filasEncontradas.length} filas que cumplen el criterio`);
             
-            // IMPORTANTE: Usar una técnica diferente para mostrar solo filas específicas
-            // 1. Primero resetear el motor de búsqueda de DataTables
-            dataTable.search('').columns().search('').draw();
-            
-            // 2. Crear un ID único para las filas que queremos mostrar
-            const idUnico = `fila-filtrada-${Date.now()}`;
-            
-            // 3. Marcar las filas que queremos mostrar
-            dataTable.rows().every(function(rowIdx) {
-                const node = $(this.node());
-                node.removeClass('fila-filtrada'); // Quitar marca anterior
+            // MÉTODO DIRECTO: Usar fnFilter de DataTables para filtrar las filas específicas
+            // 1. Primero, crear un array con los IDs de las filas encontradas
+            const idsFilas = filasEncontradas.map(rowIdx => {
+                // Asignar un ID único a cada fila para poder filtrarla
+                const row = dataTable.row(rowIdx);
+                const $node = $(row.node());
                 
-                if (filasEncontradas.includes(rowIdx)) {
-                    node.addClass('fila-filtrada ' + claseResaltado);
-                }
+                // Agregar clase de resaltado
+                $node.addClass(claseResaltado);
+                
+                // Devolver el ID de la fila (tomamos el ID de la primera celda)
+                return rowIdx;
             });
             
-            // 4. Usar el filtrado nativo de DataTables para mostrar solo las filas marcadas
-            dataTable.column(0).search('fila-filtrada', true, false).draw();
+            // 2. Crear un filtro personalizado para DataTables
+            $.fn.dataTable.ext.search.push(
+                function(settings, data, dataIndex) {
+                    // Solo mostrar las filas que están en nuestro array de IDs
+                    return filasEncontradas.includes(dataIndex);
+                }
+            );
+            
+            // 3. Aplicar el filtro
+            dataTable.draw();
+            
+            // 4. Eliminar el filtro personalizado después de aplicarlo
+            // (importante para no afectar futuras operaciones)
+            $.fn.dataTable.ext.search.pop();
             
             // 5. Mostrar mensaje con la cantidad de elementos encontrados
             $('#tableContent').prepend(`
                 <div id="mensaje-filtro" class="alert alert-${tipoAlerta}">
                     Se encontraron ${filasEncontradas.length} resultados.
-                    <button type="button" class="btn btn-outline-secondary btn-sm ms-3" onclick="exportarResultados()">
+                    <button type="button" class="btn btn-outline-secondary btn-sm ms-3" onclick="exportarResultados('${tipo}')">
                         <i class="fas fa-download"></i> Exportar resultados
                     </button>
                 </div>
             `);
         } else {
-            // No hay resultados, mostrar mensaje
-            dataTable.search('NO_RESULTS_DUMMY_VALUE').draw();
+            // No hay resultados, mostrar mensaje y filtrar para que no muestre nada
+            $.fn.dataTable.ext.search.push(
+                function() { return false; } // No mostrar ninguna fila
+            );
+            dataTable.draw();
+            $.fn.dataTable.ext.search.pop(); // Eliminar el filtro
+            
             $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-${tipoAlerta}">${mensajeVacio}</div>`);
             console.log('No se encontraron resultados para este filtro');
         }
@@ -731,10 +748,6 @@ function agregarEstilosCSS() {
         const estilos = document.createElement('style');
         estilos.id = 'estilos-filtrado-personalizado';
         estilos.innerHTML = `
-            .fila-filtrada {
-                /* Estilo para debugear */
-            }
-            
             .duplicado-comprobante {
                 background-color: rgba(255, 193, 7, 0.2) !important;
             }
@@ -774,7 +787,13 @@ function configurarFiltros() {
     
     if (selectorFiltro) {
         console.log('Configurando eventos para selector de filtros existente');
-        selectorFiltro.addEventListener('change', function() {
+        
+        // Eliminar eventos anteriores para evitar duplicación
+        const nuevoSelector = selectorFiltro.cloneNode(true);
+        selectorFiltro.parentNode.replaceChild(nuevoSelector, selectorFiltro);
+        
+        // Agregar el nuevo evento
+        nuevoSelector.addEventListener('change', function() {
             const tipoFiltro = this.value;
             filtrarPorTipo(tipoFiltro);
         });
@@ -821,12 +840,15 @@ function configurarFiltros() {
 }
 
 // Función para exportar los resultados visibles a Excel
-function exportarResultados() {
+function exportarResultados(tipoFiltro) {
     // Crear un nuevo objeto de libro de trabajo
     const wb = XLSX.utils.book_new();
     
-    // Obtener solo las filas visibles (usando la API de DataTables)
-    const filasVisibles = dataTable.rows({search:'applied', page:'all'}).data();
+    // Obtener solo las filas visibles
+    const filasVisibles = [];
+    dataTable.rows({search:'applied', page:'all'}).every(function() {
+        filasVisibles.push(this.data());
+    });
     
     // Obtener los nombres de las columnas
     const columnas = [];
@@ -836,7 +858,7 @@ function exportarResultados() {
     
     // Preparar los datos para la exportación
     const datos = [columnas];
-    filasVisibles.each(function(fila) {
+    filasVisibles.forEach(fila => {
         // Limpiar los datos HTML si es necesario
         const filaLimpia = Array.from(fila).map(celda => {
             if (typeof celda === 'string') {
@@ -856,8 +878,23 @@ function exportarResultados() {
     // Añadir la hoja al libro
     XLSX.utils.book_append_sheet(wb, ws, "Resultados");
     
+    // Determinar nombre del archivo basado en el tipo de filtro
+    let nombreArchivo = 'resultados';
+    switch (tipoFiltro) {
+        case 'comprobantes-duplicados':
+            nombreArchivo = 'comprobantes_duplicados';
+            break;
+        case 'pedidos-duplicados':
+            nombreArchivo = 'pedidos_celular_duplicado';
+            break;
+        case 'cartones-eliminados':
+            nombreArchivo = 'cartones_rechazados';
+            break;
+    }
+    
     // Descargar el archivo
-    const nombreArchivo = `resultados_filtro_${new Date().toISOString().slice(0,10)}.xlsx`;
+    const fechaActual = new Date().toISOString().slice(0,10);
+    nombreArchivo = `${nombreArchivo}_${fechaActual}.xlsx`;
     XLSX.writeFile(wb, nombreArchivo);
     
     console.log(`Exportados ${filasVisibles.length} resultados a ${nombreArchivo}`);
