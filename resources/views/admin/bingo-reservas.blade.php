@@ -251,549 +251,403 @@
             });
         }
 
-// Función para inicializar DataTable
-function initializeDataTable() {
-    const table = document.querySelector('#tableContent table');
-    if (!table) {
-        console.error('No se encontró ninguna tabla en #tableContent');
-        return;
-    }
+// Script para mejorar la tabla de reservas existente
+$(document).ready(function() {
+  console.log('Inicializando mejoras para la tabla de reservas...');
 
-    try {
-        // Destruir tabla existente si ya existe
-        if (dataTable !== null) {
-            dataTable.destroy();
-            dataTable = null;
-        }
-
-        // Inicializar nueva DataTable
-        dataTable = $(table).DataTable({
-            language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/es-ES.json'
-            },
-            responsive: true,
-            order: [
-                [0, 'desc']
-            ],
-            columnDefs: [{
-                    orderable: true,
-                    targets: [0, 1, 2, 3, 7]
-                },
-                {
-                    orderable: false,
-                    targets: '_all'
-                },
-                {
-                    targets: 11,
-                    searchable: false
-                }
-            ],
-            pageLength: 25,
-            lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "Todos"]
-            ],
-            stateSave: true,
-            // Asegurarse de que los filtros personalizados funcionen con la paginación
-            drawCallback: function(settings) {
-                // Verificar si hay un filtro personalizado activo
-                const filtroActivo = document.querySelector('#filterType') ? 
-                                    document.querySelector('#filterType').value : 'todas';
-                
-                if (filtroActivo !== 'todas') {
-                    // Si hay un filtro personalizado activo, aplicamos visibilidad personalizada
-                    console.log('Manteniendo filtro activo:', filtroActivo);
-                    
-                    // Asegurarse de que las filas filtradas permanezcan visibles
-                    // y las no filtradas permanezcan ocultas después de cambiar de página
-                    dataTable.rows().every(function(rowIdx) {
-                        const node = this.node();
-                        const esFiltrada = $(node).hasClass('duplicado-comprobante') || 
-                                         $(node).hasClass('duplicado-pedido') || 
-                                         $(node).hasClass('carton-eliminado');
-                        
-                        if (!esFiltrada) {
-                            $(node).addClass('d-none');
-                        } else {
-                            $(node).removeClass('d-none');
-                        }
-                    });
-                }
-            }
-        });
-
-        console.log('DataTable inicializado correctamente');
-
-        // Configurar eventos después de inicializar DataTable
-        setupEventHandlers();
-        
-        // Configuración de los selectores de filtro
-        configurarFiltros();
-    } catch (error) {
-        console.error('Error al inicializar DataTable:', error);
-    }
-}
-
-// Función para configurar los filtros personalizados
-function configurarFiltros() {
-    // Si ya existe el selector de filtros, actualizamos eventos
-    const selectorFiltro = document.getElementById('filterType');
+  // Añadir el selector de filtros personalizados a la barra de botones existente
+  function agregarSelectorFiltros() {
+    // Buscar la barra de botones de DataTables
+    const botonesContainer = $('.dt-buttons');
     
-    if (selectorFiltro) {
-        console.log('Configurando eventos para selector de filtros existente');
-        selectorFiltro.addEventListener('change', function() {
-            const tipoFiltro = this.value;
-            filtrarPorTipo(tipoFiltro);
-        });
+    if (botonesContainer.length) {
+      console.log('Añadiendo selector de filtros junto a los botones existentes');
+      
+      // Crear el selector de filtros
+      const filterDiv = $('<div class="dt-button-collection btn-group ms-2"></div>');
+      filterDiv.html(`
+        <select id="filterType" class="form-select form-select-sm" style="width: auto; display: inline-block;">
+          <option value="todas" selected>Todas las reservas</option>
+          <option value="comprobantes-duplicados">Comprobantes duplicados</option>
+          <option value="pedidos-duplicados">Celulares duplicados</option>
+          <option value="cartones-eliminados">Cartones rechazados</option>
+        </select>
+      `);
+      
+      // Añadir después de los botones existentes
+      botonesContainer.after(filterDiv);
+      
+      // Añadir evento al selector
+      $('#filterType').on('change', function() {
+        const tipoFiltro = $(this).val();
+        aplicarFiltro(tipoFiltro);
+      });
+      
+      return true;
     } else {
-        // Si no existe, podemos crearlo de manera dinámica
-        console.log('Creando selector de filtros personalizado');
-        
-        // Crear el contenedor de filtros si no existe
-        let filterContainer = document.querySelector('.dataTables_filter');
-        if (!filterContainer) {
-            // Si no hay un contenedor existente, crear uno
-            const tableTools = document.createElement('div');
-            tableTools.className = 'table-tools-container mt-2 mb-3 d-flex flex-wrap justify-content-between align-items-center';
-            const tableWrapper = document.querySelector('.dataTables_wrapper');
-            if (tableWrapper) {
-                tableWrapper.prepend(tableTools);
-                filterContainer = tableTools;
-            }
-        }
-        
-        if (filterContainer) {
-            // Agregar el selector de filtros personalizados
-            const filterDiv = document.createElement('div');
-            filterDiv.className = 'custom-filter-container me-2';
-            filterDiv.innerHTML = `
-                <label class="me-2">Filtros rápidos:</label>
-                <select id="filterType" class="form-select form-select-sm d-inline-block" style="width: auto;">
-                    <option value="todas" selected>Todas las reservas</option>
-                    <option value="comprobantes-duplicados">Comprobantes duplicados</option>
-                    <option value="pedidos-duplicados">Pedidos con celular duplicado</option>
-                    <option value="cartones-eliminados">Cartones rechazados</option>
-                </select>
-            `;
-            
-            filterContainer.prepend(filterDiv);
-            
-            // Agregar evento al selector
-            document.getElementById('filterType').addEventListener('change', function() {
-                const tipoFiltro = this.value;
-                filtrarPorTipo(tipoFiltro);
-            });
-        }
+      console.warn('No se encontró la barra de botones de DataTables');
+      return false;
     }
-}
-
-// Función para cargar la tabla vía AJAX con soporte para filtros
-function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
-    // Cancelar cualquier solicitud de carga previa
-    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
-        window.currentTableLoadRequest.abort();
+  }
+  
+  // Añadir estilos CSS necesarios
+  function agregarEstilosCSS() {
+    if (!$('#estilos-filtrado-personalizado').length) {
+      const estilos = `
+        <style id="estilos-filtrado-personalizado">
+          .duplicado-comprobante {
+            background-color: rgba(255, 193, 7, 0.3) !important;
+          }
+          
+          .duplicado-pedido {
+            background-color: rgba(13, 110, 253, 0.3) !important;
+          }
+          
+          .carton-eliminado {
+            background-color: rgba(220, 53, 69, 0.3) !important;
+          }
+          
+          #mensaje-filtro {
+            margin-top: 10px;
+            margin-bottom: 10px;
+          }
+        </style>
+      `;
+      
+      $('head').append(estilos);
     }
-
-    console.log('Intentando cargar tabla desde URL:', url);
-
-    // Crear un nuevo AbortController
-    const controller = new AbortController();
-    window.currentTableLoadRequest = controller;
-
-    // Mostrar indicador de carga
-    document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
-
-    // Hacer la petición AJAX
-    fetch(url, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        signal: controller.signal // Añadir la señal de aborto
-    })
-    .then(response => {
-        console.log('Estado de respuesta:', response.status);
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-        return response.text();
-    })
-    .then(html => {
-        // Verificar si la solicitud ha sido abortada
-        if (controller.signal.aborted) {
-            console.log('Carga de tabla cancelada');
-            return;
-        }
-
-        console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
-        
-        // Si el HTML está vacío o contiene mensaje de no resultados
-        if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
-            document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
-            return;
-        }
-        
-        // Actualizar el contenedor con la tabla
-        document.getElementById('tableContent').innerHTML = html;
-        
-        // Inicializar DataTable
-        initializeDataTable();
-        
-        // Si hay que filtrar después de cargar, aplicar el filtro
-        if (filtrarDespues && dataTable) {
-            setTimeout(() => {
-                // Actualizar también el selector visual si existe
-                const selectorFiltro = document.getElementById('filterType');
-                if (selectorFiltro) {
-                    selectorFiltro.value = tipoFiltro;
-                }
-                
-                filtrarPorTipo(tipoFiltro);
-            }, 300); // Aumentamos el tiempo para asegurar que DataTable está completamente inicializado
-        }
-    })
-    .catch(error => {
-        // Ignorar errores de aborto
-        if (error.name === 'AbortError') {
-            console.log('Carga de tabla cancelada');
-            return;
-        }
-
-        console.error('Error cargando tabla:', error);
-        document.getElementById('tableContent').innerHTML =
-            `<div class="alert alert-danger text-center">
-                Error al cargar los datos: ${error.message}<br>
-                <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
-            </div>`;
-    })
-    .finally(() => {
-        // Limpiar la referencia al request actual
-        if (window.currentTableLoadRequest === controller) {
-            window.currentTableLoadRequest = null;
-        }
-    });
-}
-        // Función para inicializar DataTable
-        function initializeDataTable() {
-            const table = document.querySelector('#tableContent table');
-            if (!table) {
-                console.error('No se encontró ninguna tabla en #tableContent');
-                return;
-            }
-
-            try {
-                dataTable = $(table).DataTable({
-                    language: {
-                        url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/es-ES.json'
-                    },
-                    responsive: true,
-                    order: [
-                        [0, 'desc']
-                    ],
-                    columnDefs: [{
-                            orderable: true,
-                            targets: [0, 1, 2, 3, 7]
-                        },
-                        {
-                            orderable: false,
-                            targets: '_all'
-                        },
-                        {
-                            targets: 11,
-                            searchable: false
-                        }
-                    ],
-                    pageLength: 25,
-                    lengthMenu: [
-                        [10, 25, 50, 100, -1],
-                        [10, 25, 50, 100, "Todos"]
-                    ],
-                    stateSave: true
-                });
-
-                console.log('DataTable inicializado correctamente');
-
-                // Configurar eventos después de inicializar DataTable
-                setupEventHandlers();
-            } catch (error) {
-                console.error('Error al inicializar DataTable:', error);
-            }
-        }
-
-        / Función mejorada para filtrar según el tipo seleccionado
-function filtrarPorTipo(tipo) {
+  }
+  
+  // Aplicar filtro según el tipo seleccionado
+  function aplicarFiltro(tipo) {
     console.log(`Aplicando filtro: ${tipo}`);
     
     // Limpiar mensajes previos
     $('#mensaje-filtro').remove();
     
-    // Obtener referencia a la tabla (usando tu ID específico)
+    // Obtener referencia a la tabla
     const tabla = $('#reservas-table');
     
     // Quitar clases de resaltado previas
     tabla.find('tbody tr').removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
     
-    // Si es "todas", simplemente mostramos todo y salimos
+    // Si es "todas", simplemente mostramos todo y restauramos la tabla
     if (tipo === 'todas') {
-        console.log('Mostrando todas las filas sin filtrar');
-        
-        // Mostrar todas las filas
-        tabla.find('tbody tr').removeClass('d-none');
-        
-        // Quitar mensaje de filtro vacío si existe
-        $('#empty-results-row').remove();
-        
-        return;
+      console.log('Mostrando todas las filas sin filtrar');
+      
+      // Eliminar todas las clases d-none
+      tabla.find('tbody tr').removeClass('d-none');
+      
+      // Eliminar la fila de "no hay resultados" si existe
+      $('#empty-results-row').remove();
+      
+      return;
     }
-
+    
     // Determinar qué buscar según el tipo de filtro
     try {
-        // Identificar filas según tipo de filtro
-        let filasEncontradas = [];
-        let mensajeVacio = '';
-        let tipoAlerta = '';
-        let claseResaltado = '';
+      let filasEncontradas = [];
+      let mensajeVacio = '';
+      let tipoAlerta = '';
+      let claseResaltado = '';
+      
+      switch (tipo) {
+        case 'comprobantes-duplicados':
+          filasEncontradas = buscarComprobantesDuplicados(tabla);
+          mensajeVacio = 'No se encontraron comprobantes duplicados.';
+          tipoAlerta = 'success';
+          claseResaltado = 'duplicado-comprobante';
+          break;
+        case 'pedidos-duplicados':
+          filasEncontradas = buscarPedidosDuplicados(tabla);
+          mensajeVacio = 'No se encontraron números de teléfono duplicados.';
+          tipoAlerta = 'info';
+          claseResaltado = 'duplicado-pedido';
+          break;
+        case 'cartones-eliminados':
+          filasEncontradas = buscarCartonesEliminados(tabla);
+          mensajeVacio = 'No se encontraron reservas con estado rechazado.';
+          tipoAlerta = 'danger';
+          claseResaltado = 'carton-eliminado';
+          break;
+        default:
+          console.error('Tipo de filtro no reconocido:', tipo);
+          return;
+      }
+      
+      // Mostrar resultados o mensaje de vacío
+      if (filasEncontradas.length > 0) {
+        console.log(`Se encontraron ${filasEncontradas.length} filas que cumplen el criterio de ${tipo}`);
         
-        switch (tipo) {
-            case 'comprobantes-duplicados':
-                filasEncontradas = buscarComprobantesDuplicados(tabla);
-                mensajeVacio = 'No se encontraron comprobantes duplicados.';
-                tipoAlerta = 'success';
-                claseResaltado = 'duplicado-comprobante';
-                break;
-            case 'pedidos-duplicados':
-                filasEncontradas = buscarPedidosDuplicados(tabla);
-                mensajeVacio = 'No se encontraron números de teléfono duplicados.';
-                tipoAlerta = 'info';
-                claseResaltado = 'duplicado-pedido';
-                break;
-            case 'cartones-eliminados':
-                filasEncontradas = buscarCartonesEliminados(tabla);
-                mensajeVacio = 'No se encontraron reservas con estado rechazado.';
-                tipoAlerta = 'danger';
-                claseResaltado = 'carton-eliminado';
-                break;
-            default:
-                console.error('Tipo de filtro no reconocido:', tipo);
-                return;
-        }
+        // MÉTODO DIRECTO: Ocultar todas las filas primero
+        tabla.find('tbody tr').addClass('d-none');
         
-        // Mostrar resultados o mensaje de vacío
-        if (filasEncontradas.length > 0) {
-            console.log(`Se encontraron ${filasEncontradas.length} filas que cumplen el criterio`);
-            
-            // SOLUCIÓN DIRECTA CON JQUERY:
-            // 1. Primero ocultamos TODAS las filas
-            tabla.find('tbody tr').addClass('d-none');
-            
-            // 2. Luego mostramos solo las filas que queremos
-            filasEncontradas.forEach(function(fila) {
-                $(fila).removeClass('d-none').addClass(claseResaltado);
-            });
-            
-            // 3. Eliminar mensaje de "no hay resultados" si existe
-            $('#empty-results-row').remove();
-            
-            // 4. Mostrar mensaje con la cantidad de elementos encontrados
-            tabla.before(`
-                <div id="mensaje-filtro" class="alert alert-${tipoAlerta}">
-                    Se encontraron ${filasEncontradas.length} resultados.
-                    <button type="button" class="btn btn-outline-secondary btn-sm ms-3" onclick="exportarResultados('${tipo}')">
-                        <i class="bi bi-download"></i> Exportar resultados
-                    </button>
-                </div>
-            `);
+        // Luego mostrar solo las filas filtradas
+        $(filasEncontradas).each(function() {
+          $(this).removeClass('d-none').addClass(claseResaltado);
+        });
+        
+        // Eliminar la fila de "no hay resultados" si existe
+        $('#empty-results-row').remove();
+        
+        // Mostrar mensaje con la cantidad de elementos encontrados
+        tabla.before(`
+          <div id="mensaje-filtro" class="alert alert-${tipoAlerta}">
+            Se encontraron ${filasEncontradas.length} resultados.
+            <button type="button" class="btn btn-outline-secondary btn-sm ms-3" onclick="exportarResultadosFiltrados('${tipo}')">
+              <i class="bi bi-download"></i> Exportar resultados
+            </button>
+          </div>
+        `);
+      } else {
+        // No hay resultados, ocultar todas las filas
+        tabla.find('tbody tr').addClass('d-none');
+        
+        // Crear la fila de "no hay resultados" si no existe
+        if ($('#empty-results-row').length === 0) {
+          tabla.find('tbody').append(`
+            <tr id="empty-results-row">
+              <td colspan="12" class="text-center">No hay reservas que coincidan con el criterio.</td>
+            </tr>
+          `);
         } else {
-            // No hay resultados, ocultar todas las filas y mostrar mensaje
-            tabla.find('tbody tr').addClass('d-none');
-            
-            // Si no existe una fila de "no hay resultados", la creamos
-            if ($('#empty-results-row').length === 0) {
-                tabla.find('tbody').append(`
-                    <tr id="empty-results-row">
-                        <td colspan="12" class="text-center">No hay reservas que coincidan con el criterio.</td>
-                    </tr>
-                `);
-            } else {
-                // Si ya existe, la mostramos
-                $('#empty-results-row').removeClass('d-none');
-            }
-            
-            tabla.before(`<div id="mensaje-filtro" class="alert alert-${tipoAlerta}">${mensajeVacio}</div>`);
-            console.log('No se encontraron resultados para este filtro');
+          // Si ya existe, asegurarse de que sea visible
+          $('#empty-results-row').removeClass('d-none');
         }
         
+        // Mostrar mensaje de no resultados
+        tabla.before(`<div id="mensaje-filtro" class="alert alert-${tipoAlerta}">${mensajeVacio}</div>`);
+      }
     } catch (error) {
-        console.error(`Error al aplicar filtro ${tipo}:`, error);
-        tabla.before(`<div id="mensaje-filtro" class="alert alert-danger">Error al aplicar filtro: ${error.message}</div>`);
+      console.error(`Error al aplicar filtro ${tipo}:`, error);
+      tabla.before(`<div id="mensaje-filtro" class="alert alert-danger">Error al aplicar filtro: ${error.message}</div>`);
     }
-    
-    // Función para buscar comprobantes duplicados
-    function buscarComprobantesDuplicados(tabla) {
-        console.log('Buscando comprobantes duplicados...');
-        const comprobantes = {};
-        let filasDuplicadas = [];
+  }
+  
+  // Funciones para buscar cada tipo de elemento
+  function buscarComprobantesDuplicados(tabla) {
+    console.log('Buscando comprobantes duplicados...');
+    const comprobantes = {};
+    let filasDuplicadas = [];
 
-        // Primera pasada: recopilar todos los comprobantes
-        tabla.find('tbody tr').each(function() {
-            try {
-                const $fila = $(this);
-                const comprobante = $fila.find('input[type="text"]').val();
+    // Primera pasada: recopilar todos los comprobantes
+    tabla.find('tbody tr').each(function() {
+      try {
+        const $fila = $(this);
+        // Buscar en la columna de número de comprobante (índice 9)
+        const comprobante = $fila.find('td:eq(9) input').val();
 
-                if (comprobante && comprobante.trim() !== '') {
-                    if (!comprobantes[comprobante]) {
-                        comprobantes[comprobante] = [];
-                    }
-                    comprobantes[comprobante].push($fila);
-                }
-            } catch (e) {
-                console.warn('Error procesando fila para comprobante duplicado:', e);
-            }
-        });
-
-        // Segunda pasada: identificar duplicados
-        for (const comp in comprobantes) {
-            if (comprobantes[comp].length > 1) {
-                filasDuplicadas = filasDuplicadas.concat(comprobantes[comp]);
-            }
+        if (comprobante && comprobante.trim() !== '') {
+          if (!comprobantes[comprobante]) {
+            comprobantes[comprobante] = [];
+          }
+          comprobantes[comprobante].push($fila);
         }
+      } catch (e) {
+        console.warn('Error procesando fila para comprobante duplicado:', e);
+      }
+    });
 
-        console.log('Filas con comprobantes duplicados:', filasDuplicadas.length);
-        return filasDuplicadas;
+    // Segunda pasada: identificar duplicados
+    for (const comp in comprobantes) {
+      if (comprobantes[comp].length > 1) {
+        filasDuplicadas = filasDuplicadas.concat(comprobantes[comp]);
+      }
     }
 
-    // Función para buscar pedidos con números de teléfono duplicados
-    function buscarPedidosDuplicados(tabla) {
-        console.log('Buscando pedidos con números de teléfono duplicados...');
-        const telefonos = {};
-        let filasDuplicadas = [];
+    console.log('Filas con comprobantes duplicados:', filasDuplicadas.length);
+    return filasDuplicadas;
+  }
 
-        // Primera pasada: recopilar todos los teléfonos
-        tabla.find('tbody tr').each(function() {
-            try {
-                const $fila = $(this);
-                // Buscar en la tercera columna (celular)
-                const celular = $fila.find('td:eq(2)').text().trim();
+  function buscarPedidosDuplicados(tabla) {
+    console.log('Buscando pedidos con números de teléfono duplicados...');
+    const telefonos = {};
+    let filasDuplicadas = [];
 
-                // Solo procesamos números no vacíos
-                if (celular && celular !== '') {
-                    // Normalizar el número (eliminar espacios, guiones, etc.)
-                    const celularNormalizado = celular.replace(/[\s\-\(\)\.]/g, '');
-                    
-                    if (celularNormalizado) {
-                        if (!telefonos[celularNormalizado]) {
-                            telefonos[celularNormalizado] = [];
-                        }
-                        telefonos[celularNormalizado].push($fila);
-                    }
-                }
-            } catch (e) {
-                console.warn('Error procesando fila para pedido duplicado:', e);
+    // Primera pasada: recopilar todos los teléfonos
+    tabla.find('tbody tr').each(function() {
+      try {
+        const $fila = $(this);
+        // Buscar en la tercera columna (celular)
+        const celular = $fila.find('td:eq(2)').text().trim();
+
+        // Solo procesamos números no vacíos
+        if (celular && celular !== '') {
+          // Normalizar el número (eliminar espacios, guiones, etc.)
+          const celularNormalizado = celular.replace(/[\s\-\(\)\.]/g, '');
+          
+          if (celularNormalizado) {
+            if (!telefonos[celularNormalizado]) {
+              telefonos[celularNormalizado] = [];
             }
-        });
-
-        // Segunda pasada: identificar duplicados
-        for (const telefono in telefonos) {
-            if (telefonos[telefono].length > 1) {
-                filasDuplicadas = filasDuplicadas.concat(telefonos[telefono]);
-            }
+            telefonos[celularNormalizado].push($fila);
+          }
         }
+      } catch (e) {
+        console.warn('Error procesando fila para pedido duplicado:', e);
+      }
+    });
 
-        console.log('Filas con teléfonos duplicados:', filasDuplicadas.length);
-        return filasDuplicadas;
+    // Segunda pasada: identificar duplicados
+    for (const telefono in telefonos) {
+      if (telefonos[telefono].length > 1) {
+        filasDuplicadas = filasDuplicadas.concat(telefonos[telefono]);
+      }
     }
 
-    // Función para buscar cartones eliminados (estado rechazado)
-    function buscarCartonesEliminados(tabla) {
-        console.log('Buscando cartones eliminados (estado rechazado)...');
-        let filasRechazadas = [];
+    console.log('Filas con teléfonos duplicados:', filasDuplicadas.length);
+    return filasDuplicadas;
+  }
 
-        // Buscar filas con estado rechazado
-        tabla.find('tbody tr').each(function() {
-            try {
-                const $fila = $(this);
-                
-                // Verificar si contiene "rechazado" en la columna de estado (columna 10) o si tiene la clase bg-danger
-                const estadoCell = $fila.find('td:eq(10)');
-                
-                if (estadoCell.text().toLowerCase().includes('rechazado') || 
-                    estadoCell.find('.badge.bg-danger').length > 0) {
-                    filasRechazadas.push($fila);
-                }
-            } catch (e) {
-                console.warn('Error procesando fila para cartón eliminado:', e);
-            }
-        });
+  function buscarCartonesEliminados(tabla) {
+    console.log('Buscando cartones eliminados (estado rechazado)...');
+    let filasRechazadas = [];
 
-        console.log('Filas con cartones rechazados:', filasRechazadas.length);
-        return filasRechazadas;
-    }
-}
+    // Buscar filas con estado rechazado
+    tabla.find('tbody tr').each(function() {
+      try {
+        const $fila = $(this);
+        
+        // Verificar si contiene "rechazado" en la columna de estado (columna 10)
+        const estadoCell = $fila.find('td:eq(10)');
+        
+        if (estadoCell.text().toLowerCase().includes('rechazado') || 
+            estadoCell.find('.badge.bg-danger').length > 0) {
+          filasRechazadas.push($fila);
+        }
+      } catch (e) {
+        console.warn('Error procesando fila para cartón eliminado:', e);
+      }
+    });
 
-// Agregar CSS necesario para el filtrado
-function agregarEstilosCSS() {
-    // Comprobar si ya existe
-    if (!document.getElementById('estilos-filtrado-personalizado')) {
-        const estilos = document.createElement('style');
-        estilos.id = 'estilos-filtrado-personalizado';
-        estilos.innerHTML = `
-            .duplicado-comprobante {
-                background-color: rgba(255, 193, 7, 0.3) !important;
-            }
-            
-            .duplicado-pedido {
-                background-color: rgba(13, 110, 253, 0.3) !important;
-            }
-            
-            .carton-eliminado {
-                background-color: rgba(220, 53, 69, 0.3) !important;
-            }
-            
-            /* Estilos para mensaje de filtro */
-            #mensaje-filtro {
-                margin-bottom: 1rem;
-            }
-        `;
-        document.head.appendChild(estilos);
-    }
-}
-
-// Función para configurar los filtros personalizados
-function configurarFiltrosPersonalizados() {
-    // Si ya existe el selector de filtros, no lo recreamos
-    if (document.getElementById('filterType')) {
-        return;
-    }
+    console.log('Filas con cartones rechazados:', filasRechazadas.length);
+    return filasRechazadas;
+  }
+  
+  // Inicializar mejoras
+  function inicializarMejoras() {
+    console.log('Inicializando mejoras para la tabla de reservas...');
     
-    // Buscar donde insertar los filtros (junto a los botones de DataTables)
-    const botonesContainer = document.querySelector('.dt-buttons');
+    // Añadir estilos CSS
+    agregarEstilosCSS();
     
-    if (botonesContainer) {
-        // Crear el selector de filtros
-        const filterDiv = document.createElement('div');
-        filterDiv.className = 'btn-group ms-2';
-        filterDiv.innerHTML = `
-            <select id="filterType" class="form-select form-select-sm d-inline-block">
-                <option value="todas" selected>Todas las reservas</option>
-                <option value="comprobantes-duplicados">Comprobantes duplicados</option>
-                <option value="pedidos-duplicados">Celulares duplicados</option>
-                <option value="cartones-eliminados">Cartones rechazados</option>
+    // Esperar un poco para asegurarnos de que DataTables se haya inicializado
+    setTimeout(function() {
+      const selectorAgregado = agregarSelectorFiltros();
+      
+      if (selectorAgregado) {
+        console.log('Mejoras de tabla instaladas correctamente');
+      } else {
+        console.warn('No se pudieron instalar todas las mejoras');
+        
+        // Intento alternativo: añadir los filtros directamente antes de la tabla
+        const tabla = $('#reservas-table');
+        if (tabla.length) {
+          const filterDiv = $('<div class="mb-3"></div>');
+          filterDiv.html(`
+            <label for="filterType" class="me-2">Filtros rápidos:</label>
+            <select id="filterType" class="form-select form-select-sm d-inline-block" style="width: auto;">
+              <option value="todas" selected>Todas las reservas</option>
+              <option value="comprobantes-duplicados">Comprobantes duplicados</option>
+              <option value="pedidos-duplicados">Celulares duplicados</option>
+              <option value="cartones-eliminados">Cartones rechazados</option>
             </select>
-        `;
-        
-        // Insertar después de los botones
-        botonesContainer.after(filterDiv);
-        
-        // Agregar evento al selector
-        document.getElementById('filterType').addEventListener('change', function() {
-            const tipoFiltro = this.value;
-            filtrarPorTipo(tipoFiltro);
-        });
-    } else {
-        console.warn('No se encontró el contenedor de botones para agregar filtros personalizados');
+          `);
+          
+          tabla.before(filterDiv);
+          
+          // Añadir evento al selector
+          $('#filterType').on('change', function() {
+            const tipoFiltro = $(this).val();
+            aplicarFiltro(tipoFiltro);
+          });
+          
+          console.log('Filtros añadidos en ubicación alternativa');
+        }
+      }
+    }, 500);
+  }
+  
+  // Iniciar mejoras
+  inicializarMejoras();
+});
+
+// Función global para exportar resultados filtrados (necesita estar disponible globalmente)
+function exportarResultadosFiltrados(tipoFiltro) {
+  // Verificar si la librería XLSX está disponible
+  if (typeof XLSX === 'undefined') {
+    alert('La librería XLSX no está disponible. No se pueden exportar los resultados.');
+    return;
+  }
+  
+  console.log('Exportando resultados filtrados...');
+  
+  // Crear un nuevo libro de trabajo
+  const wb = XLSX.utils.book_new();
+  
+  // Obtener encabezados (excluyendo la columna de acciones)
+  const encabezados = [];
+  $('#reservas-table thead th').each(function(index) {
+    if (index < 11) { // Excluir la columna de acciones
+      encabezados.push($(this).text().trim());
     }
+  });
+  
+  // Obtener datos de filas visibles
+  const filas = [encabezados];
+  $('#reservas-table tbody tr:not(.d-none)').each(function() {
+    const fila = [];
+    $(this).find('td').each(function(index) {
+      if (index < 11) { // Excluir la columna de acciones
+        // Obtener el texto sin HTML
+        let texto = $(this).clone().children().remove().end().text().trim();
+        
+        // Si es la columna de comprobante, tomar el valor del input si existe
+        if (index === 9) {
+          const input = $(this).find('input');
+          if (input.length) {
+            texto = input.val().trim();
+          }
+        }
+        
+        fila.push(texto);
+      }
+    });
+    filas.push(fila);
+  });
+  
+  // Crear hoja de cálculo
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  
+  // Añadir la hoja al libro
+  XLSX.utils.book_append_sheet(wb, ws, "Resultados");
+  
+  // Determinar nombre del archivo basado en el tipo de filtro
+  let nombreArchivo = 'resultados';
+  switch (tipoFiltro) {
+    case 'comprobantes-duplicados':
+      nombreArchivo = 'comprobantes_duplicados';
+      break;
+    case 'pedidos-duplicados':
+      nombreArchivo = 'pedidos_celular_duplicado';
+      break;
+    case 'cartones-eliminados':
+      nombreArchivo = 'cartones_rechazados';
+      break;
+  }
+  
+  // Añadir fecha actual al nombre
+  const fecha = new Date();
+  const fechaStr = fecha.getFullYear() + '-' + 
+                  ('0' + (fecha.getMonth() + 1)).slice(-2) + '-' + 
+                  ('0' + fecha.getDate()).slice(-2);
+  nombreArchivo = `${nombreArchivo}_${fechaStr}.xlsx`;
+  
+  // Descargar el archivo
+  XLSX.writeFile(wb, nombreArchivo);
+  
+  console.log(`Exportando ${filas.length - 1} filas a ${nombreArchivo}`);
 }
-
-
         // Configurar manejadores de eventos
         function setupEventHandlers() {
             // Eventos para edición de series
