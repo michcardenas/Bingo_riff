@@ -154,8 +154,9 @@
                                         Archivar Bingo
                                     </button>
                                 </form>
+                                @endif
 
-                                <!-- Botón para ocultar un bingo específico -->
+                                <!-- Botón para borrar bingo (ahora disponible para TODOS los estados) -->
                                 <form action="{{ route('bingos.limpiarSolo', $bingo->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
@@ -163,9 +164,10 @@
                                         Borrar Bingo
                                     </button>
                                 </form>
-                                @else
-                                <!-- Si está archivado, mostrar un mensaje informativo -->
-                                <span class="badge bg-warning text-dark">
+                                
+                                <!-- Mensaje informativo solo para los archivados -->
+                                @if(strtolower($bingo->estado) == 'archivado')
+                                <span class="badge bg-warning text-dark ms-2">
                                     <i class="bi bi-lock-fill me-1"></i> Archivado (No permite descarga)
                                 </span>
                                 @endif

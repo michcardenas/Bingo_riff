@@ -382,27 +382,34 @@ class BingoAdminController extends Controller
     }
 
     public function limpiarSolo($id)
-    {
-        try {
-            // Buscar el bingo específico
-            $bingo = Bingo::findOrFail($id);
+{
+    try {
+        // Buscar el bingo específico
+        $bingo = Bingo::findOrFail($id);
 
-            // Guardar el nombre para el mensaje de éxito
-            $bingoNombre = $bingo->nombre;
+        // Guardar el nombre para el mensaje de éxito
+        $bingoNombre = $bingo->nombre;
 
-            // Actualizar el bingo para marcarlo como oculto y cerrado
+        // Si el bingo está archivado, solo cambiamos visible a 0
+        if (strtolower($bingo->estado) == 'archivado') {
+            $bingo->update([
+                'visible' => 0
+            ]);
+        } else {
+            // Para otros estados, marcar como oculto y cerrado
             $bingo->update([
                 'visible' => 0,
                 'estado' => 'cerrado'
             ]);
-
-            return redirect()->route('bingos.index')
-                ->with('success', "El bingo '{$bingoNombre}' ha sido ocultado correctamente.");
-        } catch (\Exception $e) {
-            return redirect()->route('bingos.index')
-                ->with('error', 'Error al ocultar el bingo: ' . $e->getMessage());
         }
+
+        return redirect()->route('bingos.index')
+            ->with('success', "El bingo '{$bingoNombre}' ha sido ocultado correctamente.");
+    } catch (\Exception $e) {
+        return redirect()->route('bingos.index')
+            ->with('error', 'Error al ocultar el bingo: ' . $e->getMessage());
     }
+}
 
     public function update(Request $request, $id)
     {
