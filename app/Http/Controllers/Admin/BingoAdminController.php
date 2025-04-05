@@ -432,7 +432,6 @@ class BingoAdminController extends Controller
     }
 
     public function comprobantesDuplicados(Request $request)
-    set_time_limit(120); // 2 minutos
 {
     try {
         // Obtener bingo_id si está presente
@@ -512,8 +511,6 @@ class BingoAdminController extends Controller
 
 private function verificarDuplicadosInterno($bingoId = null)
 {
-
-    set_time_limit(120); // 2 minutos
     // Consulta base para reservas con metadatos
     $query = Reserva::whereNotNull('comprobante_metadata')
         ->orderBy('created_at', 'desc');
