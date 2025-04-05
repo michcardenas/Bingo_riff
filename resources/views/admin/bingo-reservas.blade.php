@@ -755,8 +755,8 @@ document.getElementById('btnPedidoDuplicado').addEventListener('click', async fu
     tipoActual = 'pedidos-duplicados';
     
     // Siempre cargar la tabla completa primero, luego filtrar
-    await loadTableContent(rutaTablaTodasReservas);
-    filtrarPorTipo('pedidos-duplicados');
+    loadTableContent(rutaTablaTodasReservas, true, 'pedidos-duplicados');
+
 });
 
 document.getElementById('btnCartonesEliminados').addEventListener('click', async function() {
@@ -764,8 +764,8 @@ document.getElementById('btnCartonesEliminados').addEventListener('click', async
     tipoActual = 'cartones-eliminados';
     
     // Siempre cargar la tabla completa primero, luego filtrar
-    await loadTableContent(rutaTablaTodasReservas);
-    filtrarPorTipo('cartones-eliminados');
+    loadTableContent(rutaTablaTodasReservas, true, 'cartones-eliminados');
+
 });
 
       // Evento para el botón de Filtrar
