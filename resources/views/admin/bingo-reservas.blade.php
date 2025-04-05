@@ -1067,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', function() {
             mostrarMensaje('Error al cargar comprobantes duplicados: ' + error.message, 'danger');
         });
     });
-});
+
     
     function mostrarCargando() {
         const container = document.getElementById('tableContent');
