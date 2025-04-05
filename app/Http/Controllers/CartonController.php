@@ -26,7 +26,21 @@ class CartonController extends Controller
         return view('buscarcartones', compact('numeroContacto'));
     }
 
-   /**
+        /**
+     * Muestra la vista específica para descargar cartones.
+     */
+    public function indexDescargar()
+    {
+        // Obtener número de contacto para WhatsApp
+        $enlaces = Enlace::first();
+        // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
+        $numeroContacto = $enlaces ? ($enlaces->telefono_atencion ?: $enlaces->numero_contacto) : '3235903774';
+        
+        return view('descargarcartones', compact('numeroContacto'));
+    }
+
+
+/**
  * Busca cartones por número de teléfono y filtra los bingos archivados y no visibles.
  */
 public function buscar(Request $request)
@@ -37,6 +51,21 @@ public function buscar(Request $request)
 
     $telefono = $request->input('celular');
     Log::info('Búsqueda iniciada para teléfono: ' . $telefono);
+
+    // Determinar qué vista usar basado en el parámetro explícito o la URL referente
+    $vista = $request->input('vista', null);
+    
+    // Si no hay parámetro 'vista', intentar determinar por la URL referente
+    if (!$vista) {
+        $referer = $request->headers->get('referer', '');
+        if (str_contains($referer, 'descargarcartones')) {
+            $vista = 'descargarcartones';
+        } else {
+            $vista = 'buscarcartones'; // Valor por defecto
+        }
+    }
+    
+    Log::info('Vista seleccionada para resultados: ' . $vista);
 
     // Buscar reservas asociadas al número de teléfono
     $reservas = Reserva::where('celular', $telefono)
@@ -88,7 +117,7 @@ public function buscar(Request $request)
                         'bingo_nombre' => $bingoNombre,
                         'bingo_id' => $bingoId,
                         'bingo_estado' => $bingoEstado,
-                        'bingo_visible' => $bingoVisible, // Agregamos visible para referencia
+                        'bingo_visible' => $bingoVisible,
                         'eliminado' => $reserva->eliminado
                     ]);
                     Log::info('Cartón agregado: ' . $serie . ' para bingo: ' . $bingoNombre . ', Estado: ' . $reserva->estado);
@@ -108,7 +137,11 @@ public function buscar(Request $request)
     // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
     $numeroContacto = $enlaces ? ($enlaces->telefono_atencion ?: $enlaces->numero_contacto) : '3235903774';
 
-    return view('buscarcartones', [
+    // Guardar el número de celular en la sesión para facilitar futuras búsquedas
+    session(['celular_comprador' => $telefono]);
+
+    // Devolver la vista con los resultados
+    return view($vista, [
         'cartones' => $cartones,
         'numeroContacto' => $numeroContacto
     ]);

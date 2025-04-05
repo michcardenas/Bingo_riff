@@ -225,7 +225,7 @@ class BingoController extends Controller
     // Almacenamos el número de teléfono en la sesión para usarlo en buscarcartones
     session()->put('celular_comprador', $validated['celular']);
     
-    return redirect()->route('reservado')
+    return redirect()->route('cartones.indexDescargar')
         ->with('success', '¡Reserva realizada correctamente!')
         ->with('series', $series)
         ->with('bingo', $bingo->nombre)

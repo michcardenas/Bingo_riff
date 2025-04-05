@@ -18,9 +18,18 @@ Route::get('/bingos/all', [HomeController::class, 'getAllBingos'])->name('bingos
 Route::get('/bingo/{id}', [HomeController::class, 'show'])->name('bingo.ver');
 Route::get('/bingo/activo', [HomeController::class, 'getBingoActivo'])->name('bingo.activo');
 // Rutas para los cartones
-Route::get('/cartones/buscar', [CartonController::class, 'index'])->name('cartones.index');
-Route::post('/cartones/buscar', [CartonController::class, 'buscar'])->name('cartones.buscar');
-Route::get('/cartones/descargar/{numero}', [CartonController::class, 'descargar'])->name('cartones.descargar');
+
+// Rutas para la funcionalidad de cartones
+Route::get('/buscarcartones', [App\Http\Controllers\CartonController::class, 'index'])->name('cartones.index');
+Route::get('/descargarcartones', [App\Http\Controllers\CartonController::class, 'indexDescargar'])->name('cartones.indexDescargar');
+
+// Ruta unificada para buscar cartones
+Route::post('/cartones/buscar', [App\Http\Controllers\CartonController::class, 'buscar'])->name('cartones.buscar');
+
+// Ruta para descargar cartones
+Route::get('/cartones/descargar/{numero}', [App\Http\Controllers\CartonController::class, 'descargar'])->name('cartones.descargar');
+
+
 
 // Ruta del grupo de WhatsApp
 Route::get('/whatsapp/grupo', function () {
