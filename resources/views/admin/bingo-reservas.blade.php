@@ -535,40 +535,83 @@ function filtrarPorTipo(tipo) {
     if (tipo === 'todas') {
         console.log('Mostrando todas las filas sin filtrar');
         
-        // Quitar filtros de DataTable
-        dataTable.search('').columns().search('');
+        // Eliminar cualquier filtrado personalizado
+        dataTable.search('').columns().search('').draw();
         
-        // Quitar clase de ocultamiento de TODAS las filas
-        dataTable.$('tr').removeClass('d-none');
-        
-        // Quitar clases de resaltado
-        dataTable.$('tr').removeClass('duplicado-comprobante duplicado-pedido carton-eliminado');
-        
-        // Redibujar la tabla
-        dataTable.draw();
         return;
     }
 
-    // Si llegamos aquí, es un filtro específico
-    console.log(`Procesando filtro específico: ${tipo}`);
+    // Determinar qué buscar según el tipo de filtro
+    let filasEncontradas = [];
+    let mensajeVacio = '';
+    let tipoAlerta = '';
+    let claseResaltado = '';
     
     try {
-        // IMPORTANTE: Primero ocultamos TODAS las filas
-        dataTable.$('tr').addClass('d-none');
-        
-        // Aplicar el filtro según el tipo
-        let filasEncontradas = [];
-        
-        if (tipo === 'comprobantes-duplicados') {
-            filasEncontradas = buscarComprobantesDuplicados();
-        } else if (tipo === 'pedidos-duplicados') {
-            filasEncontradas = buscarPedidosDuplicados();
-        } else if (tipo === 'cartones-eliminados') {
-            filasEncontradas = buscarCartonesEliminados();
+        switch (tipo) {
+            case 'comprobantes-duplicados':
+                filasEncontradas = buscarComprobantesDuplicados();
+                mensajeVacio = 'No se encontraron comprobantes duplicados.';
+                tipoAlerta = 'success';
+                claseResaltado = 'duplicado-comprobante';
+                break;
+            case 'pedidos-duplicados':
+                filasEncontradas = buscarPedidosDuplicados();
+                mensajeVacio = 'No se encontraron números de teléfono duplicados.';
+                tipoAlerta = 'info';
+                claseResaltado = 'duplicado-pedido';
+                break;
+            case 'cartones-eliminados':
+                filasEncontradas = buscarCartonesEliminados();
+                mensajeVacio = 'No se encontraron reservas con estado rechazado.';
+                tipoAlerta = 'danger';
+                claseResaltado = 'carton-eliminado';
+                break;
+            default:
+                console.error('Tipo de filtro no reconocido:', tipo);
+                return;
         }
         
-        // Mostrar los resultados
-        mostrarResultadosFiltro(filasEncontradas, tipo);
+        // Mostrar resultados o mensaje de vacío
+        if (filasEncontradas.length > 0) {
+            console.log(`Se encontraron ${filasEncontradas.length} filas que cumplen el criterio`);
+            
+            // IMPORTANTE: Usar una técnica diferente para mostrar solo filas específicas
+            // 1. Primero resetear el motor de búsqueda de DataTables
+            dataTable.search('').columns().search('').draw();
+            
+            // 2. Crear un ID único para las filas que queremos mostrar
+            const idUnico = `fila-filtrada-${Date.now()}`;
+            
+            // 3. Marcar las filas que queremos mostrar
+            dataTable.rows().every(function(rowIdx) {
+                const node = $(this.node());
+                node.removeClass('fila-filtrada'); // Quitar marca anterior
+                
+                if (filasEncontradas.includes(rowIdx)) {
+                    node.addClass('fila-filtrada ' + claseResaltado);
+                }
+            });
+            
+            // 4. Usar el filtrado nativo de DataTables para mostrar solo las filas marcadas
+            dataTable.column(0).search('fila-filtrada', true, false).draw();
+            
+            // 5. Mostrar mensaje con la cantidad de elementos encontrados
+            $('#tableContent').prepend(`
+                <div id="mensaje-filtro" class="alert alert-${tipoAlerta}">
+                    Se encontraron ${filasEncontradas.length} resultados.
+                    <button type="button" class="btn btn-outline-secondary btn-sm ms-3" onclick="exportarResultados()">
+                        <i class="fas fa-download"></i> Exportar resultados
+                    </button>
+                </div>
+            `);
+        } else {
+            // No hay resultados, mostrar mensaje
+            dataTable.search('NO_RESULTS_DUMMY_VALUE').draw();
+            $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-${tipoAlerta}">${mensajeVacio}</div>`);
+            console.log('No se encontraron resultados para este filtro');
+        }
+        
     } catch (error) {
         console.error(`Error al aplicar filtro ${tipo}:`, error);
         $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-danger">Error al aplicar filtro: ${error.message}</div>`);
@@ -596,8 +639,6 @@ function filtrarPorTipo(tipo) {
                 console.warn('Error procesando fila para comprobante duplicado:', e);
             }
         });
-
-        console.log('Comprobantes encontrados:', Object.keys(comprobantes).length);
 
         // Segunda pasada: identificar duplicados
         for (const comp in comprobantes) {
@@ -638,8 +679,6 @@ function filtrarPorTipo(tipo) {
                 console.warn('Error procesando fila para pedido duplicado:', e);
             }
         });
-
-        console.log('Teléfonos únicos encontrados:', Object.keys(telefonos).length);
 
         // Segunda pasada: identificar duplicados
         for (const telefono in telefonos) {
@@ -683,69 +722,204 @@ function filtrarPorTipo(tipo) {
         console.log('Filas con cartones rechazados:', filasRechazadas.length);
         return filasRechazadas;
     }
+}
+
+// Agregar CSS necesario para el filtrado
+function agregarEstilosCSS() {
+    // Comprobar si ya existe
+    if (!document.getElementById('estilos-filtrado-personalizado')) {
+        const estilos = document.createElement('style');
+        estilos.id = 'estilos-filtrado-personalizado';
+        estilos.innerHTML = `
+            .fila-filtrada {
+                /* Estilo para debugear */
+            }
+            
+            .duplicado-comprobante {
+                background-color: rgba(255, 193, 7, 0.2) !important;
+            }
+            
+            .duplicado-pedido {
+                background-color: rgba(13, 110, 253, 0.2) !important;
+            }
+            
+            .carton-eliminado {
+                background-color: rgba(220, 53, 69, 0.2) !important;
+            }
+            
+            /* Estilos para cuando se pasa el mouse por encima */
+            .duplicado-comprobante:hover {
+                background-color: rgba(255, 193, 7, 0.3) !important;
+            }
+            
+            .duplicado-pedido:hover {
+                background-color: rgba(13, 110, 253, 0.3) !important;
+            }
+            
+            .carton-eliminado:hover {
+                background-color: rgba(220, 53, 69, 0.3) !important;
+            }
+        `;
+        document.head.appendChild(estilos);
+    }
+}
+
+// Asegurarse de que los estilos se agreguen al cargar la página
+document.addEventListener('DOMContentLoaded', agregarEstilosCSS);
+
+// Función para configurar los filtros personalizados
+function configurarFiltros() {
+    // Si ya existe el selector de filtros, actualizamos eventos
+    const selectorFiltro = document.getElementById('filterType');
     
-    // Función para mostrar los resultados del filtro
-    function mostrarResultadosFiltro(filasEncontradas, tipoFiltro) {
-        // Determinar mensaje y clase según tipo de filtro
-        let mensajeVacio, tipoAlerta, claseResaltado;
+    if (selectorFiltro) {
+        console.log('Configurando eventos para selector de filtros existente');
+        selectorFiltro.addEventListener('change', function() {
+            const tipoFiltro = this.value;
+            filtrarPorTipo(tipoFiltro);
+        });
+    } else {
+        // Si no existe, podemos crearlo de manera dinámica
+        console.log('Creando selector de filtros personalizado');
         
-        switch (tipoFiltro) {
-            case 'comprobantes-duplicados':
-                mensajeVacio = 'No se encontraron comprobantes duplicados.';
-                tipoAlerta = 'success';
-                claseResaltado = 'duplicado-comprobante';
-                break;
-            case 'pedidos-duplicados':
-                mensajeVacio = 'No se encontraron números de teléfono duplicados.';
-                tipoAlerta = 'info';
-                claseResaltado = 'duplicado-pedido';
-                break;
-            case 'cartones-eliminados':
-                mensajeVacio = 'No se encontraron reservas con estado rechazado.';
-                tipoAlerta = 'danger';
-                claseResaltado = 'carton-eliminado';
-                break;
-            default:
-                mensajeVacio = 'No se encontraron resultados.';
-                tipoAlerta = 'warning';
-                claseResaltado = '';
+        // Crear el contenedor de filtros si no existe
+        let filterContainer = document.querySelector('.dataTables_filter');
+        if (!filterContainer) {
+            // Si no hay un contenedor existente, crear uno
+            const tableTools = document.createElement('div');
+            tableTools.className = 'table-tools-container mt-2 mb-3 d-flex flex-wrap justify-content-between align-items-center';
+            const tableWrapper = document.querySelector('.dataTables_wrapper');
+            if (tableWrapper) {
+                tableWrapper.prepend(tableTools);
+                filterContainer = tableTools;
+            }
         }
         
-        if (filasEncontradas.length > 0) {
-            console.log(`Se encontraron ${filasEncontradas.length} filas que cumplen el criterio`);
+        if (filterContainer) {
+            // Agregar el selector de filtros personalizados
+            const filterDiv = document.createElement('div');
+            filterDiv.className = 'custom-filter-container me-2';
+            filterDiv.innerHTML = `
+                <label class="me-2">Filtros rápidos:</label>
+                <select id="filterType" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                    <option value="todas" selected>Todas las reservas</option>
+                    <option value="comprobantes-duplicados">Comprobantes duplicados</option>
+                    <option value="pedidos-duplicados">Pedidos con celular duplicado</option>
+                    <option value="cartones-eliminados">Cartones rechazados</option>
+                </select>
+            `;
             
-            // MOSTRAR SOLO las filas filtradas
-            filasEncontradas.forEach(rowIdx => {
-                try {
-                    const row = dataTable.row(rowIdx);
-                    if (row && row.node) {
-                        const node = row.node();
-                        $(node).removeClass('d-none').addClass(claseResaltado);
-                        console.log(`Mostrando fila ${rowIdx}`);
-                    }
-                } catch (e) {
-                    console.error(`Error al mostrar fila ${rowIdx}:`, e);
-                }
+            filterContainer.prepend(filterDiv);
+            
+            // Agregar evento al selector
+            document.getElementById('filterType').addEventListener('change', function() {
+                const tipoFiltro = this.value;
+                filtrarPorTipo(tipoFiltro);
             });
-            
-            // Redibujar la tabla
-            dataTable.draw();
-            
-            // Mostrar mensaje con la cantidad de elementos encontrados
-            $('#tableContent').prepend(`
-                <div id="mensaje-filtro" class="alert alert-${tipoAlerta}">
-                    Se encontraron ${filasEncontradas.length} resultados.
-                    <button type="button" class="btn btn-outline-secondary btn-sm ms-3" onclick="exportarResultados()">
-                        <i class="fas fa-download"></i> Exportar resultados
-                    </button>
-                </div>
-            `);
-        } else {
-            // No hay resultados, pero ya ocultamos todas las filas al inicio
-            dataTable.draw();
-            $('#tableContent').prepend(`<div id="mensaje-filtro" class="alert alert-${tipoAlerta}">${mensajeVacio}</div>`);
-            console.log('No se encontraron resultados para este filtro');
         }
+    }
+}
+
+// Función para exportar los resultados visibles a Excel
+function exportarResultados() {
+    // Crear un nuevo objeto de libro de trabajo
+    const wb = XLSX.utils.book_new();
+    
+    // Obtener solo las filas visibles (usando la API de DataTables)
+    const filasVisibles = dataTable.rows({search:'applied', page:'all'}).data();
+    
+    // Obtener los nombres de las columnas
+    const columnas = [];
+    dataTable.columns().every(function() {
+        columnas.push($(this.header()).text().trim());
+    });
+    
+    // Preparar los datos para la exportación
+    const datos = [columnas];
+    filasVisibles.each(function(fila) {
+        // Limpiar los datos HTML si es necesario
+        const filaLimpia = Array.from(fila).map(celda => {
+            if (typeof celda === 'string') {
+                // Crear un elemento temporal para extraer el texto
+                const temp = document.createElement('div');
+                temp.innerHTML = celda;
+                return temp.textContent || temp.innerText || celda;
+            }
+            return celda;
+        });
+        datos.push(filaLimpia);
+    });
+    
+    // Crear hoja de cálculo
+    const ws = XLSX.utils.aoa_to_sheet(datos);
+    
+    // Añadir la hoja al libro
+    XLSX.utils.book_append_sheet(wb, ws, "Resultados");
+    
+    // Descargar el archivo
+    const nombreArchivo = `resultados_filtro_${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, nombreArchivo);
+    
+    console.log(`Exportados ${filasVisibles.length} resultados a ${nombreArchivo}`);
+}
+
+// Función mejorada para inicializar DataTable
+function initializeDataTable() {
+    const table = document.querySelector('#tableContent table');
+    if (!table) {
+        console.error('No se encontró ninguna tabla en #tableContent');
+        return;
+    }
+
+    // Agregar los estilos CSS necesarios
+    agregarEstilosCSS();
+
+    try {
+        // Destruir tabla existente si ya existe
+        if (dataTable !== null) {
+            dataTable.destroy();
+            dataTable = null;
+        }
+
+        // Inicializar nueva DataTable
+        dataTable = $(table).DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/es-ES.json'
+            },
+            responsive: true,
+            order: [
+                [0, 'desc']
+            ],
+            columnDefs: [{
+                    orderable: true,
+                    targets: [0, 1, 2, 3, 7]
+                },
+                {
+                    orderable: false,
+                    targets: '_all'
+                },
+                {
+                    targets: 11,
+                    searchable: false
+                }
+            ],
+            pageLength: 25,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Todos"]
+            ],
+            stateSave: true
+        });
+
+        console.log('DataTable inicializado correctamente');
+
+        // Configurar eventos después de inicializar DataTable
+        setupEventHandlers();
+        
+        // Configuración de los selectores de filtro
+        configurarFiltros();
+    } catch (error) {
+        console.error('Error al inicializar DataTable:', error);
     }
 }
 
