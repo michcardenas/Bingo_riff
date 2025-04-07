@@ -549,12 +549,12 @@ body {
                             >
                     </div>
                     <div class="mb-2">
-                    <label class="form-label fw-bold">Celular</label>
+                    <label class="form-label fw-bold">Numero de Whatsapp</label>
                     <input
                         type="tel"
                         name="celular"
                         class="form-control bg-white text-dark"
-                        placeholder="Ingresa tu número de celular"
+                        placeholder="Ingresa tu número de whatsapp"
                         pattern="[0-9]+"
                         inputmode="numeric">
                 </div>

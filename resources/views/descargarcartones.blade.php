@@ -457,7 +457,7 @@
             <form id="searchForm" action="{{ route('cartones.buscar') }}" method="POST">
                 @csrf
                 <div class="mb-3">
-                    <label for="celular" class="form-label">Número de Celular</label>
+                    <label for="celular" class="form-label">Número de Whatsapp</label>
                     <input type="text" class="form-control" id="celular" name="celular"
                         value="{{ session('celular_comprador') ?? request()->old('celular') }}"
                         placeholder="Ejemplo: 3234095109" required>

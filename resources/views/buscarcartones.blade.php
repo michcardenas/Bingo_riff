@@ -491,7 +491,6 @@
                     <tr>
                         <th>Nombre</th>
                         <th>Bingo</th>
-                        <th>#Cartón</th>
                         <th>Estado</th>
                     </tr>
                 </thead>
@@ -500,7 +499,6 @@
                     <tr class="carton-row {{ $carton['estado'] }}">
                         <td>{{ $carton['nombre'] ?? 'Usuario' }}</td>
                         <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}" data-bingo-estado="{{ $carton['bingo_estado'] ?? '' }}">{{ $carton['bingo_nombre'] ?? 'Sin asignar' }}</td>
-                        <td>{{ $carton['numero'] }}</td>
                         <td class="carton-estado" data-estado="{{ $carton['estado'] }}">
                             @if($carton['estado'] == 'aprobado')
                             <span class="estado-aprobado">Aprobado</span>
