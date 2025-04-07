@@ -356,7 +356,7 @@ class BingoAdminController extends Controller
             // Actualizar todos los bingos para marcarlos como ocultos (visible = 0) y cerrados
             $actualizados = Bingo::query()->update([
                 'visible' => 0,
-                'estado' => 'cerrado'
+                'estado' => 'archivado'
             ]);
             \Log::info("Se han ocultado y cerrado {$actualizados} bingos");
 
@@ -399,7 +399,7 @@ class BingoAdminController extends Controller
             // Para otros estados, marcar como oculto y cerrado
             $bingo->update([
                 'visible' => 0,
-                'estado' => 'cerrado'
+                'estado' => 'archivado'
             ]);
         }
 
