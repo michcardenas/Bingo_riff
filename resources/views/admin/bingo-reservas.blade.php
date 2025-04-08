@@ -432,6 +432,8 @@ function filtrarPorTipo(tipo) {
                     $(this.node()).removeClass('d-none').addClass('duplicado-pedido');
                 }
             });
+                    // Reordenar DataTable para agrupar por número de teléfono
+        dataTable.order([2, 'asc']).draw(); // La columna 2 es la del celular
             // Mostrar todos los resultados en una sola página
             dataTable.page.len(-1).draw('page');
         } else {
