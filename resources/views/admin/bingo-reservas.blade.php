@@ -701,12 +701,11 @@ document.getElementById('btnTodasReservas').addEventListener('click', function()
     loadTableContent(rutaTablaTodasReservas);
 });
 
-document.getElementById('btnComprobanteDuplicado').addEventListener('click', async function() {
+document.getElementById('btnComprobanteDuplicado').addEventListener('click', function() {
     updateActiveButton(this);
     tipoActual = 'comprobantes-duplicados';
     
-    // Siempre cargar la tabla completa primero, luego filtrar
-    await loadTableContent(rutaTablaTodasReservas);
+    // Solo aplicar el filtro, sin recargar la tabla
     filtrarPorTipo('comprobantes-duplicados');
 });
 
