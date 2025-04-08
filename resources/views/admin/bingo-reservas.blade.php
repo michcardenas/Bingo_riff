@@ -714,7 +714,8 @@ document.getElementById('btnPedidoDuplicado').addEventListener('click', async fu
     tipoActual = 'pedidos-duplicados';
     
     // Siempre cargar la tabla completa primero, luego filtrar
-    filtrarPorTipo('pedidos-duplicados');
+    loadTableContent(rutaTablaTodasReservas, true, 'pedidos-duplicados');
+
 });
 
 document.getElementById('btnCartonesEliminados').addEventListener('click', async function() {
