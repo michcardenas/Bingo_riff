@@ -698,6 +698,52 @@ function updateTotal() {
     totalPagar.textContent = formatNumber(total);
 }
 
+// Function to validate all required fields
+function validateFields() {
+    // Get form elements
+    const nombre = document.querySelector('input[name="nombre"]');
+    const celular = document.querySelector('input[name="celular"]');
+    const submitButton = document.querySelector('.btn-naranja.text-white.fw-bold.w-100');
+    
+    // Check if all required fields are filled
+    const isNombreValid = nombre.value.trim() !== '';
+    const isCelularValid = celular.value.trim() !== '' && /^[0-9]+$/.test(celular.value.trim());
+    const isFileValid = selectedFiles.length > 0;
+    
+    // Enable button only if all validations pass
+    if (isNombreValid && isCelularValid && isFileValid) {
+        submitButton.disabled = false;
+        submitButton.classList.remove('disabled');
+    } else {
+        submitButton.disabled = true;
+        submitButton.classList.add('disabled');
+    }
+}
+
+// Function to initialize button state
+function initializeButtonState() {
+    // Get the submit button
+    const submitButton = document.querySelector('.btn-naranja.text-white.fw-bold.w-100');
+    
+    // Initially disable the button
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.classList.add('disabled');
+    }
+    
+    // Add event listeners to all form fields
+    const nombre = document.querySelector('input[name="nombre"]');
+    const celular = document.querySelector('input[name="celular"]');
+    
+    if (nombre) {
+        nombre.addEventListener('input', validateFields);
+    }
+    
+    if (celular) {
+        celular.addEventListener('input', validateFields);
+    }
+}
+
 // Función para mostrar notificaciones de error
 function showErrorNotification(title, message) {
     // Crear contenedor de notificaciones si no existe
@@ -891,219 +937,49 @@ function removeAllErrorHighlights() {
     });
 }
 
-// Initialize elements after DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Add styles for notifications
-    const styleElement = document.createElement('style');
-    styleElement.textContent = `
-        /* Estilos para notificaciones de error */
-        .notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            max-width: 350px;
-            z-index: 1050;
-        }
-        
-        .notification {
-            background-color: #FFEEEE;
-            border-left: 4px solid #FF0000;
-            color: #FF0000;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            font-weight: bold;
-            animation: slideIn 0.5s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        .notification-title {
-            margin-top: 0;
-            margin-bottom: 5px;
-            font-size: 18px;
-        }
-        
-        .notification-message {
-            margin: 0;
-        }
-        
-        .notification-close {
-            float: right;
-            background: none;
-            border: none;
-            color: #FF0000;
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-        }
-        
-        /* Estilo para campos con error */
-        .border-danger {
-            border: 2px solid #FF0000 !important;
-        }
-    `;
-    document.head.appendChild(styleElement);
-
-    // Get elements for quantity and total
-    inputCartones = document.getElementById('inputCartones');
-    btnMinus = document.getElementById('btnMinus');
-    btnPlus = document.getElementById('btnPlus');
-    totalPrice = document.getElementById('totalPrice');
-    totalPagar = document.getElementById('totalPagar');
-    precioCarton = document.getElementById('precioCarton');
-
-    // Manejamos la visualización basada en si el bingo está abierto o cerrado
-    const esBingoCerrado = {{ $esBingoCerrado ? 'true' : 'false' }};
-    const bingoFormContainer = document.getElementById('bingoFormContainer');
-    const bingoCerradoContainer = document.getElementById('bingoCerradoContainer');
+// Updated preview function that also validates fields
+function updatePreview() {
+    previewContainer.innerHTML = '';
     
-    if (esBingoCerrado) {
-        // Si el bingo está cerrado, mostrar el mensaje correspondiente
-        bingoFormContainer.style.display = 'none';
-        bingoCerradoContainer.style.display = 'block';
-        
-        // Actualizar la fecha del bingo cerrado
-        const bingoCerradoFecha = document.getElementById('bingoCerradoFecha');
-        if (bingoCerradoFecha) {
-            bingoCerradoFecha.textContent = "{{ $bingo->nombre ?? '' }} - {{ \Carbon\Carbon::parse($bingo->fecha ?? now())->format('d/m/Y') }}";
-        }
-    } else {
-        // Si el bingo está abierto, mostrar el formulario
-        bingoFormContainer.style.display = 'block';
-        bingoCerradoContainer.style.display = 'none';
-    }
-
-    btnMinus.addEventListener('click', () => {
-        let quantity = parseInt(inputCartones.value, 10);
-        if (quantity > 1) {
-            quantity--;
-            inputCartones.value = quantity;
-            updateTotal();
-        }
-    });
-
-    btnPlus.addEventListener('click', () => {
-        let quantity = parseInt(inputCartones.value, 10);
-        quantity++;
-        inputCartones.value = quantity;
-        updateTotal();
-    });
-
-    inputCartones.addEventListener('change', updateTotal);
-    updateTotal();
-
-    // File handling for multiple preview with deletion - CORREGIDO
-    const fileInput = document.getElementById('comprobante');
-    const previewContainer = document.getElementById('previewContainer');
-
-    fileInput.addEventListener('change', () => {
-        // Add new files to global array
-        const newFiles = Array.from(fileInput.files);
-        newFiles.forEach(file => {
-            selectedFiles.push(file);
-        });
-        updatePreview();
-        
-        // Reset el input para permitir seleccionar el mismo archivo múltiples veces
-        fileInput.value = '';
-    });
-
-    function updatePreview() {
-        previewContainer.innerHTML = '';
-        
-        // Si no hay archivos seleccionados, no hacer nada más
-        if (selectedFiles.length === 0) return;
-        
-        selectedFiles.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                // Create container for image and delete button
-                const previewItem = document.createElement('div');
-                previewItem.classList.add('preview-item');
-
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.classList.add('img-preview');
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = 'X';
-                deleteBtn.classList.add('delete-btn');
-                deleteBtn.setAttribute('data-index', index); 
-                deleteBtn.addEventListener('click', function() {
-                    const idx = parseInt(this.getAttribute('data-index'));
-                    // Eliminar el archivo del array
-                    selectedFiles.splice(idx, 1);
-                    // Actualizar la vista previa
-                    updatePreview();
-                });
-
-                previewItem.appendChild(img);
-                previewItem.appendChild(deleteBtn);
-                previewContainer.appendChild(previewItem);
-            };
-            reader.readAsDataURL(file);
-        });
+    // Si no hay archivos seleccionados, no hacer nada más
+    if (selectedFiles.length === 0) {
+        validateFields(); // Validate fields when no files are present
+        return;
     }
     
-    // Add form validation on submit
-    const bingoForm = document.querySelector('form');
-    if (bingoForm) {
-        bingoForm.addEventListener('submit', validarFormulario);
-        
-        // Add event listeners to remove validation errors when user interacts with field
-        const formInputs = bingoForm.querySelectorAll('input, select, textarea');
-        formInputs.forEach(input => {
-            input.addEventListener('input', function() {
-                // Remove error styling from this input
-                this.classList.remove('border-danger');
+    selectedFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Create container for image and delete button
+            const previewItem = document.createElement('div');
+            previewItem.classList.add('preview-item');
+
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.classList.add('img-preview');
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'X';
+            deleteBtn.classList.add('delete-btn');
+            deleteBtn.setAttribute('data-index', index); 
+            deleteBtn.addEventListener('click', function() {
+                const idx = parseInt(this.getAttribute('data-index'));
+                // Eliminar el archivo del array
+                selectedFiles.splice(idx, 1);
+                // Actualizar la vista previa
+                updatePreview();
             });
-        });
-        
-        // Special case for file upload
-        if (fileInput) {
-            const fileContainer = fileInput.closest('.border-naranja');
-            fileInput.addEventListener('change', function() {
-                if (fileContainer) {
-                    fileContainer.classList.remove('border-danger');
-                }
-            });
-        }
-    }
-    
-    // Agregar funcionalidad de un solo clic al botón de reserva
-    const reservarButton = document.querySelector('.btn-naranja.text-white.fw-bold.w-100');
-    if (reservarButton) {
-        reservarButton.addEventListener('click', function() {
-            // Si ya está en proceso de envío, no hacer nada
-            if (isSubmitting) {
-                console.log('Ya hay un envío en proceso, ignorando clic adicional');
-                return false;
-            }
+
+            previewItem.appendChild(img);
+            previewItem.appendChild(deleteBtn);
+            previewContainer.appendChild(previewItem);
             
-            // Si no está dentro de un formulario, manejar independientemente
-            const form = this.closest('form');
-            if (!form) {
-                console.log('El botón no está dentro de un formulario');
-                return;
-            }
-            
-            // El botón está dentro de un formulario, el evento submit lo manejará
-            // validarFormulario ya se encargará de deshabilitar el botón
-            // No hacemos nada más ya que el evento submit del formulario se activará
-        });
-    }
-});
+            // Validate fields after each preview is loaded
+            validateFields();
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 function copiarNumero(numero, event) {
     // Prevenir cualquier comportamiento predeterminado
@@ -1177,6 +1053,193 @@ function showSuccessNotification(title, message) {
         }
     }, 3000);
 }
+
+// Initialize elements after DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize button validation state (NEW)
+    initializeButtonState();
+    
+    // Add styles for notifications
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+        /* Estilos para notificaciones de error */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            max-width: 350px;
+            z-index: 1050;
+        }
+        
+        .notification {
+            background-color: #FFEEEE;
+            border-left: 4px solid #FF0000;
+            color: #FF0000;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .notification-title {
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        
+        .notification-message {
+            margin: 0;
+        }
+        
+        .notification-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #FF0000;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+        
+        /* Estilo para campos con error */
+        .border-danger {
+            border: 2px solid #FF0000 !important;
+        }
+        
+        /* Estilo para botón deshabilitado */
+        .btn-naranja.disabled {
+            background-color: #ccc;
+            border-color: #ccc;
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+    `;
+    document.head.appendChild(styleElement);
+
+    // Get elements for quantity and total
+    inputCartones = document.getElementById('inputCartones');
+    btnMinus = document.getElementById('btnMinus');
+    btnPlus = document.getElementById('btnPlus');
+    totalPrice = document.getElementById('totalPrice');
+    totalPagar = document.getElementById('totalPagar');
+    precioCarton = document.getElementById('precioCarton');
+
+    // Manejamos la visualización basada en si el bingo está abierto o cerrado
+    const esBingoCerrado = {{ $esBingoCerrado ? 'true' : 'false' }};
+    const bingoFormContainer = document.getElementById('bingoFormContainer');
+    const bingoCerradoContainer = document.getElementById('bingoCerradoContainer');
+    
+    if (esBingoCerrado) {
+        // Si el bingo está cerrado, mostrar el mensaje correspondiente
+        bingoFormContainer.style.display = 'none';
+        bingoCerradoContainer.style.display = 'block';
+        
+        // Actualizar la fecha del bingo cerrado
+        const bingoCerradoFecha = document.getElementById('bingoCerradoFecha');
+        if (bingoCerradoFecha) {
+            bingoCerradoFecha.textContent = "{{ $bingo->nombre ?? '' }} - {{ \Carbon\Carbon::parse($bingo->fecha ?? now())->format('d/m/Y') }}";
+        }
+    } else {
+        // Si el bingo está abierto, mostrar el formulario
+        bingoFormContainer.style.display = 'block';
+        bingoCerradoContainer.style.display = 'none';
+    }
+
+    btnMinus.addEventListener('click', () => {
+        let quantity = parseInt(inputCartones.value, 10);
+        if (quantity > 1) {
+            quantity--;
+            inputCartones.value = quantity;
+            updateTotal();
+        }
+    });
+
+    btnPlus.addEventListener('click', () => {
+        let quantity = parseInt(inputCartones.value, 10);
+        quantity++;
+        inputCartones.value = quantity;
+        updateTotal();
+    });
+
+    inputCartones.addEventListener('change', updateTotal);
+    updateTotal();
+
+    // File handling for multiple preview with deletion - CORREGIDO
+    const fileInput = document.getElementById('comprobante');
+    const previewContainer = document.getElementById('previewContainer');
+
+    fileInput.addEventListener('change', () => {
+        // Add new files to global array
+        const newFiles = Array.from(fileInput.files);
+        newFiles.forEach(file => {
+            selectedFiles.push(file);
+        });
+        updatePreview();
+        
+        // Reset el input para permitir seleccionar el mismo archivo múltiples veces
+        fileInput.value = '';
+    });
+    
+    // Add form validation on submit
+    const bingoForm = document.querySelector('form');
+    if (bingoForm) {
+        bingoForm.addEventListener('submit', validarFormulario);
+        
+        // Add event listeners to remove validation errors when user interacts with field
+        const formInputs = bingoForm.querySelectorAll('input, select, textarea');
+        formInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                // Remove error styling from this input
+                this.classList.remove('border-danger');
+            });
+        });
+        
+        // Special case for file upload
+        if (fileInput) {
+            const fileContainer = fileInput.closest('.border-naranja');
+            fileInput.addEventListener('change', function() {
+                if (fileContainer) {
+                    fileContainer.classList.remove('border-danger');
+                }
+            });
+        }
+    }
+    
+    // Agregar funcionalidad de un solo clic al botón de reserva
+    const reservarButton = document.querySelector('.btn-naranja.text-white.fw-bold.w-100');
+    if (reservarButton) {
+        reservarButton.addEventListener('click', function() {
+            // Si ya está en proceso de envío, no hacer nada
+            if (isSubmitting) {
+                console.log('Ya hay un envío en proceso, ignorando clic adicional');
+                return false;
+            }
+            
+            // Si no está dentro de un formulario, manejar independientemente
+            const form = this.closest('form');
+            if (!form) {
+                console.log('El botón no está dentro de un formulario');
+                return;
+            }
+        });
+    }
+    
+    // Perform initial validation
+    validateFields();
+});
 </script>
 
 </body>
