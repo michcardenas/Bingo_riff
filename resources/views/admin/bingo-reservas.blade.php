@@ -251,12 +251,12 @@
             });
         }
 
-// Modificar la función loadTableContent para usar un tiempo de espera más largo y reintentos
+// Modificar la función loadTableContent para usar un tiempo de espera extremadamente largo
 function loadTableContent(url, filtrarDespues = false, tipoFiltro = '', attemptCount = 0) {
     // Configuración de reintentos
     const MAX_ATTEMPTS = 3; // Número máximo de intentos
     const RETRY_DELAY = 3000; // Tiempo entre reintentos (3 segundos)
-    const TIMEOUT = 60000; // Tiempo de espera extendido (60 segundos)
+    const TIMEOUT = 900000; // Tiempo de espera extremadamente largo (15 minutos)
     
     // Cancelar cualquier solicitud de carga previa
     if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
@@ -269,7 +269,7 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '', attemptC
     const controller = new AbortController();
     window.currentTableLoadRequest = controller;
 
-    // Configurar un timeout más largo
+    // Configurar un timeout extremadamente largo
     const timeoutId = setTimeout(() => {
         controller.abort();
         console.warn(`La solicitud ha excedido el tiempo de espera (${TIMEOUT/1000}s)`);
@@ -279,8 +279,10 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '', attemptC
     let loadingMessage = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div>';
     if (attemptCount > 0) {
         loadingMessage += `<p class="mt-2 text-light">Cargando... Intento ${attemptCount + 1} de ${MAX_ATTEMPTS}</p>`;
+        loadingMessage += `<p class="small text-muted">Esta operación puede tardar hasta ${(TIMEOUT/60000).toFixed(1)} minutos con grandes conjuntos de datos</p>`;
     } else {
-        loadingMessage += '<p class="mt-2 text-light">Cargando...</p>';
+        loadingMessage += '<p class="mt-2 text-light">Cargando datos...</p>';
+        loadingMessage += `<p class="small text-muted">Por favor espere, esto puede tardar varios minutos con grandes conjuntos de datos</p>`;
     }
     loadingMessage += '</div>';
     
