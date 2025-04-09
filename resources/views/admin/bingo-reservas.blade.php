@@ -251,22 +251,40 @@
             });
         }
 
-        // Función para cargar la tabla vía AJAX
-// Modificar la función loadTableContent para usar AbortController
-function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
+// Modificar la función loadTableContent para usar un tiempo de espera más largo y reintentos
+function loadTableContent(url, filtrarDespues = false, tipoFiltro = '', attemptCount = 0) {
+    // Configuración de reintentos
+    const MAX_ATTEMPTS = 3; // Número máximo de intentos
+    const RETRY_DELAY = 3000; // Tiempo entre reintentos (3 segundos)
+    const TIMEOUT = 60000; // Tiempo de espera extendido (60 segundos)
+    
     // Cancelar cualquier solicitud de carga previa
     if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
         window.currentTableLoadRequest.abort();
     }
 
-    console.log('Intentando cargar tabla desde URL:', url);
+    console.log(`Intentando cargar tabla desde URL: ${url} (Intento ${attemptCount + 1} de ${MAX_ATTEMPTS})`);
 
     // Crear un nuevo AbortController
     const controller = new AbortController();
     window.currentTableLoadRequest = controller;
 
-    // Mostrar indicador de carga
-    document.getElementById('tableContent').innerHTML = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div><p class="mt-2 text-light">Cargando...</p></div>';
+    // Configurar un timeout más largo
+    const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.warn(`La solicitud ha excedido el tiempo de espera (${TIMEOUT/1000}s)`);
+    }, TIMEOUT);
+
+    // Mostrar indicador de carga con información sobre el intento
+    let loadingMessage = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div>';
+    if (attemptCount > 0) {
+        loadingMessage += `<p class="mt-2 text-light">Cargando... Intento ${attemptCount + 1} de ${MAX_ATTEMPTS}</p>`;
+    } else {
+        loadingMessage += '<p class="mt-2 text-light">Cargando...</p>';
+    }
+    loadingMessage += '</div>';
+    
+    document.getElementById('tableContent').innerHTML = loadingMessage;
 
     // Destruir DataTable existente si existe
     if (dataTable !== null) {
@@ -274,16 +292,22 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         dataTable = null;
     }
 
-    // Hacer la petición AJAX
+    // Hacer la petición AJAX con timeout extendido
     fetch(url, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
         },
-        signal: controller.signal // Añadir la señal de aborto
+        signal: controller.signal
     })
     .then(response => {
+        clearTimeout(timeoutId);
         console.log('Estado de respuesta:', response.status);
+        
         if (!response.ok) {
+            // Capturar específicamente el error 500
+            if (response.status === 500) {
+                throw new Error('SERVER_TIMEOUT');
+            }
             throw new Error(`Error HTTP: ${response.status}`);
         }
         return response.text();
@@ -306,7 +330,7 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         // Actualizar el contenedor con la tabla
         document.getElementById('tableContent').innerHTML = html;
         
-        // Inicializar DataTable
+        // Inicializar DataTable con opciones optimizadas para grandes conjuntos de datos
         initializeDataTable();
         
         // Si hay que filtrar después de cargar, aplicar el filtro
@@ -317,18 +341,63 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
         }
     })
     .catch(error => {
-        // Ignorar errores de aborto
+        clearTimeout(timeoutId);
+        
+        // Ignorar errores de aborto específicos de la interfaz
         if (error.name === 'AbortError') {
-            console.log('Carga de tabla cancelada');
+            console.log('Carga de tabla cancelada por el usuario');
             return;
         }
-
+        
         console.error('Error cargando tabla:', error);
-        document.getElementById('tableContent').innerHTML =
-            `<div class="alert alert-danger text-center">
-                Error al cargar los datos: ${error.message}<br>
-                <button class="btn btn-sm btn-primary mt-2" onclick="window.location.reload()">Recargar página</button>
-            </div>`;
+        
+        // Comprobar si debemos reintentar (solo para errores de timeout o 500)
+        const isServerTimeout = error.message === 'SERVER_TIMEOUT' || 
+                               error.message.includes('timeout') || 
+                               error.message.includes('Error HTTP: 500');
+                               
+        if (isServerTimeout && attemptCount < MAX_ATTEMPTS - 1) {
+            console.log(`Reintentando en ${RETRY_DELAY/1000} segundos...`);
+            
+            document.getElementById('tableContent').innerHTML = 
+                `<div class="alert alert-warning text-center">
+                    El servidor está tardando en responder. Reintentando en ${RETRY_DELAY/1000} segundos...
+                    <div class="progress mt-2">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             style="width: 100%" 
+                             aria-valuenow="100" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                    </div>
+                </div>`;
+                
+            setTimeout(() => {
+                loadTableContent(url, filtrarDespues, tipoFiltro, attemptCount + 1);
+            }, RETRY_DELAY);
+            
+            return;
+        }
+        
+        // Si ya hemos agotado los reintentos o es otro tipo de error, mostrar mensaje
+        let errorMessage = `<div class="alert alert-danger text-center">
+            Error al cargar los datos: ${error.message}
+            <div class="mt-2">
+                <button class="btn btn-sm btn-primary me-2" onclick="window.location.reload()">
+                    <i class="fas fa-sync-alt me-1"></i>Recargar página
+                </button>`;
+                
+        // Solo mostrar botón de reintentar si estamos en el último intento
+        if (attemptCount >= MAX_ATTEMPTS - 1) {
+            errorMessage += `
+                <button class="btn btn-sm btn-outline-primary" onclick="loadTableContent('${url}', ${filtrarDespues}, '${tipoFiltro}', 0)">
+                    <i class="fas fa-redo me-1"></i>Intentar de nuevo
+                </button>`;
+        }
+        
+        errorMessage += `</div></div>`;
+        
+        document.getElementById('tableContent').innerHTML = errorMessage;
     })
     .finally(() => {
         // Limpiar la referencia al request actual
@@ -338,143 +407,241 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '') {
     });
 }
 
-        // Función para inicializar DataTable
-        function initializeDataTable() {
-            const table = document.querySelector('#tableContent table');
-            if (!table) {
-                console.error('No se encontró ninguna tabla en #tableContent');
-                return;
-            }
+// Función para inicializar DataTable con configuración optimizada
+function initializeDataTable() {
+    const table = document.querySelector('#tableContent table');
+    if (!table) {
+        console.error('No se encontró ninguna tabla en #tableContent');
+        return;
+    }
 
-            try {
-                dataTable = $(table).DataTable({
-                    language: {
-                        url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/es-ES.json'
-                    },
-                    responsive: true,
-                    order: [
-                        [0, 'desc']
-                    ],
-                    columnDefs: [{
-                            orderable: true,
-                            targets: [0, 1, 2, 3, 7]
-                        },
-                        {
-                            orderable: false,
-                            targets: '_all'
-                        },
-                        {
-                            targets: 11,
-                            searchable: false
-                        }
-                    ],
-                    pageLength: 25,
-                    lengthMenu: [
-                        [10, 25, 50, 100, -1],
-                        [10, 25, 50, 100, "Todos"]
-                    ],
-                    stateSave: true
-                });
+    try {
+        // Añadir clase para identificar la tabla
+        table.classList.add('reservas-table');
+        
+        // Opciones optimizadas para DataTables con muchos datos
+        dataTable = $(table).DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/es-ES.json',
+                processing: '<div class="spinner-border text-light" role="status"></div><span>Procesando...</span>'
+            },
+            processing: true,         // Mostrar indicador de procesamiento
+            deferRender: true,        // Renderizado diferido para mejor rendimiento
+            scroller: true,           // Usar scroll virtual para mejor rendimiento
+            scrollY: '60vh',          // Altura máxima de la tabla con scroll
+            scrollCollapse: true,     // Colapsar altura cuando hay pocos datos
+            responsive: true,
+            order: [[0, 'desc']],
+            columnDefs: [
+                {
+                    orderable: true,
+                    targets: [0, 1, 2, 3, 7]
+                },
+                {
+                    orderable: false,
+                    targets: '_all'
+                },
+                {
+                    targets: 11,
+                    searchable: false
+                },
+                // Ocultar columnas menos relevantes en móviles
+                {
+                    targets: [4, 5, 6, 8],
+                    responsivePriority: 2
+                }
+            ],
+            pageLength: 25,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Todos"]
+            ],
+            stateSave: true,
+            dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            // Opciones para cargas grandes
+            searchDelay: 500,        // Retraso en búsqueda para mejor rendimiento
+            serverSide: false        // Cambiar a true si implementas server-side processing
+        });
 
-                console.log('DataTable inicializado correctamente');
+        console.log('DataTable inicializado correctamente');
 
-                // Configurar eventos después de inicializar DataTable
-                setupEventHandlers();
-            } catch (error) {
-                console.error('Error al inicializar DataTable:', error);
-            }
-        }
+        // Configurar eventos después de inicializar DataTable
+        setupEventHandlers();
+        
+        // Añadir un listener para el evento search de DataTable para quitar mensajes de filtro
+        dataTable.on('search.dt', function() {
+            $('#mensaje-filtro').fadeOut(300, function() {
+                $(this).remove();
+            });
+        });
+    } catch (error) {
+        console.error('Error al inicializar DataTable:', error);
+    }
+}
 
-// Función para filtrar según el tipo seleccionado
+// Mejora para optimizar el filtrado de grandes conjuntos
 function filtrarPorTipo(tipo) {
     if (!dataTable) return;
 
     // Limpiar mensajes previos
     $('#mensaje-filtro').remove();
+    
+    // Mostrar indicador de procesamiento
+    $('#tableContent').prepend(
+        '<div id="mensaje-filtro" class="alert alert-info text-center">' +
+        '<div class="spinner-border spinner-border-sm me-2" role="status"></div>' +
+        'Aplicando filtro... Por favor espere.' +
+        '</div>'
+    );
 
-    // Resetear DataTable para mostrar todas las filas
-    dataTable.search('').columns().search('').draw();
+    // Retrasar la ejecución para permitir la actualización de la UI
+    setTimeout(() => {
+        // Resetear DataTable para mostrar todas las filas
+        dataTable.search('').columns().search('').draw();
 
-    if (tipo === 'todas') {
-        return; // No hacer nada, mostrar todas
-    }
-
-    if (tipo === 'pedidos-duplicados') {
-        // Buscar pedidos duplicados (mismo número de teléfono)
-        const telefonos = {};
-        let filasDuplicadas = [];
-
-        dataTable.rows().every(function(rowIdx) {
-            const fila = this.node();
-            const celular = $(fila).find('td:eq(2)').text().trim();
-
-            if (celular) {
-                if (!telefonos[celular]) {
-                    telefonos[celular] = [];
-                }
-                telefonos[celular].push(rowIdx);
-            }
-        });
-
-        // Identificar filas con teléfonos duplicados
-        for (const telefono in telefonos) {
-            if (telefonos[telefono].length > 1) {
-                filasDuplicadas = filasDuplicadas.concat(telefonos[telefono]);
-            }
-        }
-
-        if (filasDuplicadas.length > 0) {
-            // Mostrar solo las filas con teléfonos duplicados
-            dataTable.rows().every(function(rowIdx) {
-                if (!filasDuplicadas.includes(rowIdx)) {
-                    $(this.node()).addClass('d-none');
-                } else {
-                    $(this.node()).removeClass('d-none').addClass('duplicado-pedido');
-                }
+        if (tipo === 'todas') {
+            $('#mensaje-filtro').fadeOut(300, function() {
+                $(this).remove();
             });
-                    // Reordenar DataTable para agrupar por número de teléfono
-        dataTable.order([2, 'asc']).draw(); // La columna 2 es la del celular
-            // Mostrar todos los resultados en una sola página
-            dataTable.page.len(-1).draw('page');
-        } else {
-            // No hay duplicados
-            dataTable.rows().nodes().to$().addClass('d-none');
-            dataTable.page.len(-1).draw('page');
-            $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-info">No se encontraron números de teléfono duplicados.</div>');
+            return; // No hacer nada, mostrar todas
         }
-    } else if (tipo === 'cartones-eliminados') {
-        // Buscar reservas con estado "rechazado"
-        let filasRechazadas = [];
 
-        dataTable.rows().every(function(rowIdx) {
-            const fila = this.node();
-            const estadoCell = $(fila).find('td:eq(10)');
-            const estadoTexto = estadoCell.text().trim().toLowerCase();
+        try {
+            if (tipo === 'pedidos-duplicados') {
+                // Mostrar mensaje de procesamiento
+                $('#mensaje-filtro').html(
+                    '<div class="spinner-border spinner-border-sm me-2" role="status"></div>' +
+                    'Buscando pedidos duplicados... Esto puede tardar unos momentos.'
+                );
+                
+                // Buscar pedidos duplicados (mismo número de teléfono) con rendimiento optimizado
+                const telefonos = {};
+                let filasDuplicadas = [];
+                let totalRows = 0;
 
-            // Verificar si el texto contiene "rechazado" o si la celda posee una etiqueta con clase bg-danger
-            if (estadoTexto.includes('rechazado') || estadoCell.find('.badge.bg-danger').length > 0) {
-                filasRechazadas.push(rowIdx);
-            }
-        });
+                // Procesar en lotes para evitar bloquear la UI
+                function processBatch(startIdx, batchSize) {
+                    const endIdx = Math.min(startIdx + batchSize, dataTable.rows()[0].length);
+                    
+                    for (let i = startIdx; i < endIdx; i++) {
+                        const rowIdx = dataTable.rows()[0][i];
+                        const fila = dataTable.row(rowIdx).node();
+                        const celular = $(fila).find('td:eq(2)').text().trim();
+                        totalRows++;
 
-        if (filasRechazadas.length > 0) {
-            // Mostrar solo las filas con estado rechazado
-            dataTable.rows().every(function(rowIdx) {
-                if (!filasRechazadas.includes(rowIdx)) {
-                    $(this.node()).addClass('d-none');
-                } else {
-                    $(this.node()).removeClass('d-none').addClass('carton-eliminado');
+                        if (celular) {
+                            if (!telefonos[celular]) {
+                                telefonos[celular] = [];
+                            }
+                            telefonos[celular].push(rowIdx);
+                        }
+                    }
+
+                    // Actualizar mensaje de progreso
+                    const progressPercent = Math.round((endIdx / dataTable.rows()[0].length) * 100);
+                    $('#mensaje-filtro').html(
+                        `<div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        Procesando datos... ${progressPercent}% completado
+                        <div class="progress mt-2">
+                            <div class="progress-bar" role="progressbar" style="width: ${progressPercent}%" 
+                                 aria-valuenow="${progressPercent}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>`
+                    );
+
+                    // Si hay más filas por procesar, continuar con el siguiente lote
+                    if (endIdx < dataTable.rows()[0].length) {
+                        setTimeout(() => {
+                            processBatch(endIdx, batchSize);
+                        }, 0);
+                    } else {
+                        // Finalizado el procesamiento, identificar duplicados
+                        for (const telefono in telefonos) {
+                            if (telefonos[telefono].length > 1) {
+                                filasDuplicadas = filasDuplicadas.concat(telefonos[telefono]);
+                            }
+                        }
+
+                        finalizarFiltroDuplicados(filasDuplicadas);
+                    }
                 }
-            });
-            // Mostrar todos los resultados en una sola página
-            dataTable.page.len(-1).draw('page');
-        } else {
-            // No hay reservas rechazadas
-            dataTable.rows().nodes().to$().addClass('d-none');
-            dataTable.page.len(-1).draw('page');
-            $('#tableContent').prepend('<div id="mensaje-filtro" class="alert alert-danger">No se encontraron reservas con estado rechazado.</div>');
+
+                // Iniciar procesamiento por lotes (procesar 100 filas a la vez)
+                processBatch(0, 100);
+                
+                function finalizarFiltroDuplicados(filasDuplicadas) {
+                    if (filasDuplicadas.length > 0) {
+                        // Mostrar solo las filas con teléfonos duplicados
+                        dataTable.rows().every(function(rowIdx) {
+                            if (!filasDuplicadas.includes(rowIdx)) {
+                                $(this.node()).addClass('d-none');
+                            } else {
+                                $(this.node()).removeClass('d-none').addClass('duplicado-pedido');
+                            }
+                        });
+                        
+                        // Reordenar DataTable para agrupar por número de teléfono
+                        dataTable.order([2, 'asc']).draw(); // La columna 2 es la del celular
+                        
+                        // Mostrar todos los resultados en una sola página
+                        dataTable.page.len(-1).draw('page');
+                        
+                        // Actualizar mensaje
+                        $('#mensaje-filtro').removeClass('alert-info').addClass('alert-success')
+                            .html(`<i class="fas fa-check-circle me-2"></i>Se encontraron ${filasDuplicadas.length} registros con números de teléfono duplicados.`);
+                    } else {
+                        // No hay duplicados
+                        dataTable.rows().nodes().to$().addClass('d-none');
+                        dataTable.page.len(-1).draw('page');
+                        $('#mensaje-filtro').removeClass('alert-info').addClass('alert-warning')
+                            .html('<i class="fas fa-exclamation-triangle me-2"></i>No se encontraron números de teléfono duplicados.');
+                    }
+                }
+            } else if (tipo === 'cartones-eliminados') {
+                // Código similar para cartones eliminados, con procesamiento optimizado
+                let filasRechazadas = [];
+                
+                dataTable.rows().every(function(rowIdx) {
+                    const fila = this.node();
+                    const estadoCell = $(fila).find('td:eq(10)');
+                    const estadoTexto = estadoCell.text().trim().toLowerCase();
+
+                    // Verificar si el texto contiene "rechazado" o si la celda posee una etiqueta con clase bg-danger
+                    if (estadoTexto.includes('rechazado') || estadoCell.find('.badge.bg-danger').length > 0) {
+                        filasRechazadas.push(rowIdx);
+                    }
+                });
+
+                if (filasRechazadas.length > 0) {
+                    // Mostrar solo las filas con estado rechazado
+                    dataTable.rows().every(function(rowIdx) {
+                        if (!filasRechazadas.includes(rowIdx)) {
+                            $(this.node()).addClass('d-none');
+                        } else {
+                            $(this.node()).removeClass('d-none').addClass('carton-eliminado');
+                        }
+                    });
+                    // Mostrar todos los resultados en una sola página
+                    dataTable.page.len(-1).draw('page');
+                    
+                    // Actualizar mensaje
+                    $('#mensaje-filtro').removeClass('alert-info').addClass('alert-success')
+                        .html(`<i class="fas fa-check-circle me-2"></i>Se encontraron ${filasRechazadas.length} reservas con estado rechazado.`);
+                } else {
+                    // No hay reservas rechazadas
+                    dataTable.rows().nodes().to$().addClass('d-none');
+                    dataTable.page.len(-1).draw('page');
+                    $('#mensaje-filtro').removeClass('alert-info').addClass('alert-danger')
+                        .html('<i class="fas fa-times-circle me-2"></i>No se encontraron reservas con estado rechazado.');
+                }
+            }
+        } catch (error) {
+            console.error('Error al aplicar filtro:', error);
+            $('#mensaje-filtro').removeClass('alert-info').addClass('alert-danger')
+                .html(`<i class="fas fa-exclamation-circle me-2"></i>Error al aplicar el filtro: ${error.message}`);
         }
-    }
+    }, 50);
 }
 
 
