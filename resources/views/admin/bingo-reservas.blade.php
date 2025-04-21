@@ -256,7 +256,7 @@ function loadTableContent(url, filtrarDespues = false, tipoFiltro = '', attemptC
     // Configuración de reintentos
     const MAX_ATTEMPTS = 3; // Número máximo de intentos
     const RETRY_DELAY = 3000; // Tiempo entre reintentos (3 segundos)
-    const TIMEOUT = 900000; // Tiempo de espera extremadamente largo (15 minutos)
+    const TIMEOUT = 1200000; // Tiempo de espera extremadamente largo (15 minutos)
     
     // Cancelar cualquier solicitud de carga previa
     if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {

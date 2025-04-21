@@ -231,6 +231,7 @@ class BingoAdminController extends Controller
 
     public function reservasPorBingo(Request $request, $id)
     {
+        set_time_limit(900);
         // Obtener el bingo
         $bingo = Bingo::findOrFail($id);
 
@@ -262,6 +263,7 @@ class BingoAdminController extends Controller
      */
     public function reservasPorBingoTabla(Request $request, $id)
     {
+        set_time_limit(900);
         $bingo = Bingo::findOrFail($id);
         $query = Reserva::where('bingo_id', $id);
 
@@ -303,7 +305,7 @@ class BingoAdminController extends Controller
         }
 
         // Cambiar el orden para usar orden_bingo en lugar de created_at
-        $reservas = $query->orderBy('orden_bingo', 'asc')->paginate(1000);
+        $reservas = $query->orderBy('orden_bingo', 'asc')->paginate(3000);
 
         // Si es una solicitud AJAX, devolver solo la tabla
         if ($request->ajax()) {
