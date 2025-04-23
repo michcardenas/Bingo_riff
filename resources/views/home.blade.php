@@ -525,7 +525,7 @@ body {
                     </div>
                     <!-- Sección de precios en HTML con formato correcto -->
                     <div class="d-flex justify-content-between align-items-center">
-                        <div><span class="text-verde fw-bold">Precio por Hoja <br>(6 cartones)</span></div>
+                        <div><span class="text-verde fw-bold">Precio por Hoja </span></div>
                         <div class="text-end fw-bold" id="precioCarton">${{ number_format((float)($bingo->precio ?? 6000), 2, '.', '.') }} Pesos</div>
                     </div>
 
