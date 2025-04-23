@@ -501,7 +501,7 @@ body {
                 <input type="hidden" name="bingo_id" id="bingo_id" value="{{ $bingo->id ?? '' }}">
                 <!-- Paso 1 -->
                 <h4 class="paso-title text-center mb-2">Paso 1</h4>
-                <p class="text-start mb-3 fw-bold">Escoge la cantidad de Hojas <br> (1 Hoja trae 6 cartones)</p>
+                <p class="text-start mb-3 fw-bold">Escoge la cantidad de Hojas <br> 1 Hoja trae 6 cartones</p>
                 <div class="bg-black p-3 rounded mb-4">
                     <div class="d-flex justify-content-center align-items-center mb-3">
                         <button
