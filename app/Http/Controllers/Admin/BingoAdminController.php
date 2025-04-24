@@ -230,33 +230,45 @@ class BingoAdminController extends Controller
     }
 
     public function reservasPorBingo(Request $request, $id)
-    {
-        set_time_limit(900);
-        // Obtener el bingo
-        $bingo = Bingo::findOrFail($id);
+{
+    set_time_limit(900);
 
-        // Obtener estadísticas
-        $reservas = Reserva::where('bingo_id', $id)->get();
-        $totalParticipantes = $reservas->count();
-        $totalCartones = $reservas->sum('cantidad');
-        $totalAprobadas = $reservas->where('estado', 'aprobado')->count();
-        $totalPendientes = $reservas->where('estado', 'revision')->count();
+    // Obtener el bingo
+    $bingo = Bingo::findOrFail($id);
 
-        // Si está utilizando la nueva vista parcial y AJAX
-        if ($request->ajax()) {
-            return view('admin.bingo-reservas', compact('reservas', 'bingo'));
-        }
+    // Cargar las reservas con eager loading
+    $reservas = Reserva::with('bingo')
+        ->where('bingo_id', $id)
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-        // De lo contrario, devolver la vista completa
-        return view('admin.bingo-reservas', compact(
-            'bingo',
-            'reservas',
-            'totalParticipantes',
-            'totalCartones',
-            'totalAprobadas',
-            'totalPendientes'
-        ));
+    // Obtener estadísticas de forma optimizada en una sola consulta SQL
+    $estadisticas = Reserva::selectRaw('
+            COUNT(*) as total_participantes,
+            SUM(cantidad) as total_cartones,
+            COUNT(CASE WHEN estado = "aprobado" THEN 1 END) as total_aprobadas,
+            COUNT(CASE WHEN estado = "revision" THEN 1 END) as total_pendientes
+        ')
+        ->where('bingo_id', $id)
+        ->first();
+
+    if ($request->ajax()) {
+        return view('admin.bingo-reservas', [
+            'bingo' => $bingo,
+            'reservas' => $reservas,
+        ]);
     }
+
+    return view('admin.bingo-reservas', [
+        'bingo' => $bingo,
+        'reservas' => $reservas,
+        'totalParticipantes' => $estadisticas->total_participantes ?? 0,
+        'totalCartones' => $estadisticas->total_cartones ?? 0,
+        'totalAprobadas' => $estadisticas->total_aprobadas ?? 0,
+        'totalPendientes' => $estadisticas->total_pendientes ?? 0,
+    ]);
+}
+
 
     /**
      * Mostrar tabla parcial de reservas filtradas
