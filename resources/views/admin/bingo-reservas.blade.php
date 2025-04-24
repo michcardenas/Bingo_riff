@@ -199,9 +199,8 @@
 </div>
 
     <!-- Contenedor para la tabla (ahora será DataTable) -->
-    <div class="container" id="tableContent">
-        <!-- La tabla se cargará aquí dinámicamente -->
-    </div>
+    @include('admin.reservas-tabla')
+
 </div>
 
 <!-- DataTables CSS y JS desde CDN -->
