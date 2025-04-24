@@ -199,8 +199,9 @@
 </div>
 
     <!-- Contenedor para la tabla (ahora será DataTable) -->
-    @include('admin.reservas-tabla')
-
+    <div class="container" id="tableContent">
+        <!-- La tabla se cargará aquí dinámicamente -->
+    </div>
 </div>
 
 <!-- DataTables CSS y JS desde CDN -->
@@ -252,117 +253,161 @@
 
 // Modificar la función loadTableContent para usar un tiempo de espera extremadamente largo
 function loadTableContent(url, filtrarDespues = false, tipoFiltro = '', attemptCount = 0) {
-    const MAX_ATTEMPTS = 3;
-    const RETRY_DELAY = 3000;
-    const TIMEOUT = 1200000;
-
-    // Cancelar solicitud anterior
-    if (window.currentTableLoadRequest?.abort) {
+    // Configuración de reintentos
+    const MAX_ATTEMPTS = 3; // Número máximo de intentos
+    const RETRY_DELAY = 3000; // Tiempo entre reintentos (3 segundos)
+    const TIMEOUT = 1200000; // Tiempo de espera extremadamente largo (15 minutos)
+    
+    // Cancelar cualquier solicitud de carga previa
+    if (window.currentTableLoadRequest && typeof window.currentTableLoadRequest.abort === 'function') {
         window.currentTableLoadRequest.abort();
     }
 
+    console.log(`Intentando cargar tabla desde URL: ${url} (Intento ${attemptCount + 1} de ${MAX_ATTEMPTS})`);
+
+    // Crear un nuevo AbortController
     const controller = new AbortController();
     window.currentTableLoadRequest = controller;
 
+    // Configurar un timeout extremadamente largo
     const timeoutId = setTimeout(() => {
         controller.abort();
-        console.warn(`Timeout de ${TIMEOUT / 1000}s excedido`);
+        console.warn(`La solicitud ha excedido el tiempo de espera (${TIMEOUT/1000}s)`);
     }, TIMEOUT);
 
-    // Mensaje de carga
-    const loadingHtml = `
-        <div class="text-center p-5">
-            <div class="spinner-border text-light" role="status"></div>
-            <p class="mt-2 text-light">Cargando${attemptCount > 0 ? `... Intento ${attemptCount + 1} de ${MAX_ATTEMPTS}` : ' datos...'}</p>
-            <p class="small text-muted">Esto puede tardar hasta ${(TIMEOUT / 60000).toFixed(1)} minutos</p>
-        </div>`;
-    document.getElementById('tableContent').innerHTML = loadingHtml;
+    // Mostrar indicador de carga con información sobre el intento
+    let loadingMessage = '<div class="text-center p-5"><div class="spinner-border text-light" role="status"></div>';
+    if (attemptCount > 0) {
+        loadingMessage += `<p class="mt-2 text-light">Cargando... Intento ${attemptCount + 1} de ${MAX_ATTEMPTS}</p>`;
+        loadingMessage += `<p class="small text-muted">Esta operación puede tardar hasta ${(TIMEOUT/60000).toFixed(1)} minutos con grandes conjuntos de datos</p>`;
+    } else {
+        loadingMessage += '<p class="mt-2 text-light">Cargando datos...</p>';
+        loadingMessage += `<p class="small text-muted">Por favor espere, esto puede tardar varios minutos con grandes conjuntos de datos</p>`;
+    }
+    loadingMessage += '</div>';
+    
+    document.getElementById('tableContent').innerHTML = loadingMessage;
 
+    // Destruir DataTable existente si existe
     if (dataTable !== null) {
         dataTable.destroy();
         dataTable = null;
     }
 
+    // Hacer la petición AJAX con timeout extendido
     fetch(url, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
         signal: controller.signal
     })
-        .then(response => {
-            clearTimeout(timeoutId);
-            if (!response.ok) {
-                if (response.status === 500) throw new Error('SERVER_TIMEOUT');
-                throw new Error(`Error HTTP: ${response.status}`);
+    .then(response => {
+        clearTimeout(timeoutId);
+        console.log('Estado de respuesta:', response.status);
+        
+        if (!response.ok) {
+            // Capturar específicamente el error 500
+            if (response.status === 500) {
+                throw new Error('SERVER_TIMEOUT');
             }
-            return response.text();
-        })
-        .then(html => {
-            if (controller.signal.aborted) return;
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Verificar si la solicitud ha sido abortada
+        if (controller.signal.aborted) {
+            console.log('Carga de tabla cancelada');
+            return;
+        }
 
-            if (!html.trim() || html.includes('No hay reservas') || html.includes('No se encontraron')) {
-                document.getElementById('tableContent').innerHTML =
-                    '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
-                return;
-            }
-
-            document.getElementById('tableContent').innerHTML = html;
-            initializeDataTable();
-
-            if (filtrarDespues && dataTable) {
-                setTimeout(() => filtrarPorTipo(tipoFiltro), 100);
-            }
-        })
-        .catch(error => {
-            clearTimeout(timeoutId);
-
-            if (error.name === 'AbortError') {
-                console.log('Solicitud cancelada');
-                return;
-            }
-
-            console.error('Error al cargar tabla:', error.message);
-
-            const shouldRetry = (
-                ['SERVER_TIMEOUT', 'Error HTTP: 500'].includes(error.message) ||
-                error.message.includes('timeout')
-            );
-
-            if (shouldRetry && attemptCount < MAX_ATTEMPTS - 1) {
-                document.getElementById('tableContent').innerHTML = `
-                    <div class="alert alert-warning text-center">
-                        El servidor está tardando en responder. Reintentando en ${RETRY_DELAY / 1000} segundos...
-                        <div class="progress mt-2">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
-                        </div>
-                    </div>`;
-                return setTimeout(() => {
-                    loadTableContent(url, filtrarDespues, tipoFiltro, attemptCount + 1);
-                }, RETRY_DELAY);
-            }
-
-            // Mostrar mensaje de error final
-            document.getElementById('tableContent').innerHTML = `
-                <div class="alert alert-danger text-center">
-                    Error al cargar los datos: ${error.message}
-                    <div class="mt-2">
-                        <button class="btn btn-sm btn-primary me-2" onclick="window.location.reload()">
-                            <i class="fas fa-sync-alt me-1"></i> Recargar página
-                        </button>
-                        ${attemptCount >= MAX_ATTEMPTS - 1
-                            ? `<button class="btn btn-sm btn-outline-primary" onclick="loadTableContent('${url}', ${filtrarDespues}, '${tipoFiltro}', 0)">
-                                <i class="fas fa-redo me-1"></i> Intentar de nuevo
-                               </button>`
-                            : ''
-                        }
+        console.log('Contenido recibido (primeros 100 caracteres):', html.substring(0, 100));
+        
+        // Si el HTML está vacío o contiene mensaje de no resultados
+        if (html.trim() === '' || html.includes('No hay reservas') || html.includes('No se encontraron')) {
+            document.getElementById('tableContent').innerHTML = '<div class="alert alert-warning text-center">No hay reservas que concuerden con tu filtro.</div>';
+            return;
+        }
+        
+        // Actualizar el contenedor con la tabla
+        document.getElementById('tableContent').innerHTML = html;
+        
+        // Inicializar DataTable con opciones optimizadas para grandes conjuntos de datos
+        initializeDataTable();
+        
+        // Si hay que filtrar después de cargar, aplicar el filtro
+        if (filtrarDespues && dataTable) {
+            setTimeout(() => {
+                filtrarPorTipo(tipoFiltro);
+            }, 100);
+        }
+    })
+    .catch(error => {
+        clearTimeout(timeoutId);
+        
+        // Ignorar errores de aborto específicos de la interfaz
+        if (error.name === 'AbortError') {
+            console.log('Carga de tabla cancelada por el usuario');
+            return;
+        }
+        
+        console.error('Error cargando tabla:', error);
+        
+        // Comprobar si debemos reintentar (solo para errores de timeout o 500)
+        const isServerTimeout = error.message === 'SERVER_TIMEOUT' || 
+                               error.message.includes('timeout') || 
+                               error.message.includes('Error HTTP: 500');
+                               
+        if (isServerTimeout && attemptCount < MAX_ATTEMPTS - 1) {
+            console.log(`Reintentando en ${RETRY_DELAY/1000} segundos...`);
+            
+            document.getElementById('tableContent').innerHTML = 
+                `<div class="alert alert-warning text-center">
+                    El servidor está tardando en responder. Reintentando en ${RETRY_DELAY/1000} segundos...
+                    <div class="progress mt-2">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             style="width: 100%" 
+                             aria-valuenow="100" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
                     </div>
                 </div>`;
-        })
-        .finally(() => {
-            if (window.currentTableLoadRequest === controller) {
-                window.currentTableLoadRequest = null;
-            }
-        });
+                
+            setTimeout(() => {
+                loadTableContent(url, filtrarDespues, tipoFiltro, attemptCount + 1);
+            }, RETRY_DELAY);
+            
+            return;
+        }
+        
+        // Si ya hemos agotado los reintentos o es otro tipo de error, mostrar mensaje
+        let errorMessage = `<div class="alert alert-danger text-center">
+            Error al cargar los datos: ${error.message}
+            <div class="mt-2">
+                <button class="btn btn-sm btn-primary me-2" onclick="window.location.reload()">
+                    <i class="fas fa-sync-alt me-1"></i>Recargar página
+                </button>`;
+                
+        // Solo mostrar botón de reintentar si estamos en el último intento
+        if (attemptCount >= MAX_ATTEMPTS - 1) {
+            errorMessage += `
+                <button class="btn btn-sm btn-outline-primary" onclick="loadTableContent('${url}', ${filtrarDespues}, '${tipoFiltro}', 0)">
+                    <i class="fas fa-redo me-1"></i>Intentar de nuevo
+                </button>`;
+        }
+        
+        errorMessage += `</div></div>`;
+        
+        document.getElementById('tableContent').innerHTML = errorMessage;
+    })
+    .finally(() => {
+        // Limpiar la referencia al request actual
+        if (window.currentTableLoadRequest === controller) {
+            window.currentTableLoadRequest = null;
+        }
+    });
 }
-
 
 // Función para inicializar DataTable con configuración optimizada
 function initializeDataTable() {
