@@ -516,7 +516,9 @@ body {
                             class="form-control mx-2 text-center bg-white text-dark fw-bold"
                             style="max-width: 900px;"
                             value="1"
-                            min="1">
+                            min="1"
+                            readonly
+                            max="10">
 
                         <button
                             type="button"
@@ -672,44 +674,7 @@ body {
 <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
 <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
 <script>
-
-document.addEventListener('DOMContentLoaded', function () {
-        const btnMinus = document.getElementById('btnMinus');
-        const btnPlus = document.getElementById('btnPlus');
-        const inputCartones = document.getElementById('inputCartones');
-
-        btnMinus.addEventListener('click', function () {
-            let currentValue = parseInt(inputCartones.value);
-            if (currentValue > parseInt(inputCartones.min)) {
-                inputCartones.value = currentValue - 1;
-            }
-        });
-
-        btnPlus.addEventListener('click', function () {
-            let currentValue = parseInt(inputCartones.value);
-            if (currentValue < 10) {
-                inputCartones.value = currentValue + 1;
-            }
-        });
-
-        inputCartones.addEventListener('input', function () {
-            let value = this.value;
-            // Permitir borrar el contenido
-            if (value === '') {
-                return;
-            }
-
-            let parsedValue = parseInt(value);
-
-            if (isNaN(parsedValue)) {
-                this.value = inputCartones.min; // Si no es un número, vuelve al mínimo
-            } else if (parsedValue < parseInt(this.min)) {
-                this.value = this.min;
-            } else if (parsedValue > 10) {
-                this.value = 10;
-            }
-        });
-    });
+    
 // Variables globales
 let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
 let inputCartones, btnMinus, btnPlus, totalPrice, totalPagar, precioCarton;
@@ -1197,20 +1162,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     btnMinus.addEventListener('click', () => {
-        let quantity = parseInt(inputCartones.value, 10);
-        if (quantity > 1) {
-            quantity--;
-            inputCartones.value = quantity;
-            updateTotal();
-        }
-    });
+    let quantity = parseInt(inputCartones.value, 10);
+    if (quantity > 1) {
+        quantity--;
+        inputCartones.value = quantity;
+        updateTotal();
+    }
+});
 
-    btnPlus.addEventListener('click', () => {
-        let quantity = parseInt(inputCartones.value, 10);
+
+btnPlus.addEventListener('click', () => {
+    let quantity = parseInt(inputCartones.value, 10);
+    if (quantity < 10) {
         quantity++;
         inputCartones.value = quantity;
         updateTotal();
-    });
+    }
+});
+
 
     inputCartones.addEventListener('change', updateTotal);
     updateTotal();
