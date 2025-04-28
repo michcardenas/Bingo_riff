@@ -509,16 +509,14 @@ body {
                             id="btnMinus"
                             class="btn btn-light fw-bold px-3 py-2">-</button>
 
-                            <input
-                                type="number"
-                                id="inputCartones"
-                                name="cartones"
-                                class="form-control mx-2 text-center bg-white text-dark fw-bold"
-                                style="max-width: 900px;"
-                                value="1"
-                                min="1"
-                                max="10"
-                                oninput="this.value = this.value > 10 ? 10 : Math.abs(this.value)">
+                        <input
+                            type="number"
+                            id="inputCartones"
+                            name="cartones"
+                            class="form-control mx-2 text-center bg-white text-dark fw-bold"
+                            style="max-width: 900px;"
+                            value="1"
+                            min="1">
 
                         <button
                             type="button"
@@ -675,88 +673,42 @@ body {
 <!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
 <script>
 
-document.addEventListener('DOMContentLoaded', function() {
-        const inputCartones = document.getElementById('inputCartones');
+document.addEventListener('DOMContentLoaded', function () {
         const btnMinus = document.getElementById('btnMinus');
         const btnPlus = document.getElementById('btnPlus');
-        const precioCarton = document.getElementById('precioCarton');
-        const totalPrice = document.getElementById('totalPrice');
-        const totalPagar = document.getElementById('totalPagar');
-        
-        // Extract the price value from the displayed text
-        function extractPrice() {
-            // Get the text content and extract the numeric part
-            const priceText = precioCarton.textContent;
-            const priceMatch = priceText.match(/\$([0-9.,]+)/);
-            if (priceMatch && priceMatch[1]) {
-                // Remove dots used as thousand separators and parse as float
-                return parseFloat(priceMatch[1].replace(/\./g, ''));
+        const inputCartones = document.getElementById('inputCartones');
+
+        btnMinus.addEventListener('click', function () {
+            let currentValue = parseInt(inputCartones.value);
+            if (currentValue > parseInt(inputCartones.min)) {
+                inputCartones.value = currentValue - 1;
             }
-            return 6000; // Default price if not found
-        }
-        
-        // Update the total price display
-        function updateTotalPrice() {
-            const cantidad = parseInt(inputCartones.value);
-            const precio = extractPrice();
-            const total = cantidad * precio;
-            
-            // Format with dots as thousand separators
-            const formattedTotal = total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-            
-            totalPrice.textContent = `$${formattedTotal} Pesos`;
-            totalPagar.textContent = `$${formattedTotal} Pesos`;
-        }
-        
-        // Validate and limit the input value
-        function validateInput() {
-            let value = parseInt(inputCartones.value);
-            
-            // Ensure value is within range
-            if (isNaN(value) || value < 1) {
-                value = 1;
-            } else if (value > 10) {
-                value = 10;
+        });
+
+        btnPlus.addEventListener('click', function () {
+            let currentValue = parseInt(inputCartones.value);
+            if (currentValue < 10) {
+                inputCartones.value = currentValue + 1;
             }
-            
-            // Force-update input value to ensure it's within limits
-            inputCartones.value = value;
-            updateTotalPrice();
-        }
-        
-        // Event listeners
-        btnMinus.addEventListener('click', function() {
-            inputCartones.value = Math.max(1, parseInt(inputCartones.value) - 1);
-            validateInput();
         });
-        
-        btnPlus.addEventListener('click', function() {
-            inputCartones.value = Math.min(10, parseInt(inputCartones.value) + 1);
-            validateInput();
+
+        inputCartones.addEventListener('input', function () {
+            let value = this.value;
+            // Permitir borrar el contenido
+            if (value === '') {
+                return;
+            }
+
+            let parsedValue = parseInt(value);
+
+            if (isNaN(parsedValue)) {
+                this.value = inputCartones.min; // Si no es un número, vuelve al mínimo
+            } else if (parsedValue < parseInt(this.min)) {
+                this.value = this.min;
+            } else if (parsedValue > 10) {
+                this.value = 10;
+            }
         });
-        
-        // Direct input validation - make more aggressive to prevent any value over 10
-        inputCartones.addEventListener('input', validateInput);
-        inputCartones.addEventListener('change', validateInput);
-        inputCartones.addEventListener('keyup', validateInput);
-        
-        // Initialize on page load
-        validateInput();
-        
-        // Add server-side validation by adding a form submit handler
-        const form = inputCartones.closest('form');
-        if (form) {
-            form.addEventListener('submit', function(event) {
-                validateInput(); // Run validation one more time
-                // If value is still over 10, prevent form submission
-                if (parseInt(inputCartones.value) > 10) {
-                    event.preventDefault();
-                    alert('No puede seleccionar más de 10 cartones.');
-                    inputCartones.value = 10;
-                    updateTotalPrice();
-                }
-            });
-        }
     });
 // Variables globales
 let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
