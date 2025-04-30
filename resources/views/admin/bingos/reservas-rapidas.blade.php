@@ -27,7 +27,7 @@
                     </div>
                 </div>
                 <div class="col-md-6 d-flex justify-content-end gap-2">
-                    <select class="form-select form-select-sm bg-dark border-secondary text-light w-auto">
+                    <select id="estado-filter" class="form-select form-select-sm bg-dark border-secondary text-light w-auto">
                         <option selected>Estado</option>
                         <option>Pendiente</option>
                         <option>Aprobado</option>
@@ -71,32 +71,32 @@
                             <td>
                                 @if($reserva->comprobante)
                                     <a href="{{ asset(json_decode($reserva->comprobante)[0]) }}" target="_blank" class="btn btn-sm btn-dark">
-                                        <i class="bi bi-eye"></i>
+                                        <i class="bi bi-download"></i> Descargar comprobante
                                     </a>
                                 @else
                                     —
                                 @endif
                             </td>
-                            <td><input type="text" value="{{ $reserva->numero_comprobante }}" class="form-control form-control-sm bg-dark border-secondary text-light"></td>
+                            <td><input type="text" value="{{ $reserva->numero_comprobante }}" class="form-control form-control-sm bg-dark border-secondary text-light" style="min-width: 120px;"></td>
                             <td>
                                 @if($reserva->estado == 'pendiente')
-                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">Pendiente</span>
                                 @elseif($reserva->estado == 'aprobado')
-                                    <span class="badge bg-success">Aprobado</span>
+                                    <span class="badge bg-success fs-6 px-3 py-2">Aprobado</span>
                                 @elseif($reserva->estado == 'rechazado')
-                                    <span class="badge bg-danger">Rechazado</span>
+                                    <span class="badge bg-danger fs-6 px-3 py-2">Rechazado</span>
                                 @endif
                             </td>
                             <td>
-                                <div class="d-flex justify-content-center gap-1">
-                                    <button class="btn btn-sm btn-dark" title="Editar">
-                                        <i class="bi bi-pencil"></i>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <button class="btn btn-sm btn-outline-info px-3" title="Editar">
+                                        <i class="bi bi-pencil"></i> Editar
                                     </button>
-                                    <button class="btn btn-sm btn-success" title="Aprobar">
-                                        <i class="bi bi-check-lg"></i>
+                                    <button class="btn btn-sm btn-outline-success px-3" title="Aprobar">
+                                        <i class="bi bi-check-lg"></i> Aprobar
                                     </button>
-                                    <button class="btn btn-sm btn-danger" title="Rechazar">
-                                        <i class="bi bi-x-lg"></i>
+                                    <button class="btn btn-sm btn-outline-danger px-3" title="Rechazar">
+                                        <i class="bi bi-x-lg"></i> Rechazar
                                     </button>
                                 </div>
                             </td>
@@ -130,6 +130,11 @@
         background-color: #00bf63;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         border-bottom: none;
+    }
+    
+    /* Aumentar el espacio para los botones de acción */
+    td:last-child {
+        min-width: 300px;
     }
     
     /* Table styles */
@@ -196,6 +201,21 @@
 
 <script>
     $(document).ready(function () {
+        // Configuración para buscar en todos los datos, no solo en los paginados
+        $.extend($.fn.dataTable.defaults, {
+            serverSide: true,
+            processing: true,
+            ajax: {
+                url: '{{ route("admin.reservas.search", $bingoId) }}', // Debes crear esta ruta
+                type: 'POST',
+                data: function(data) {
+                    data._token = '{{ csrf_token() }}';
+                    // Añadir filtros personalizados
+                    data.estado = $('#estado-filter').val() !== 'Estado' ? $('#estado-filter').val() : '';
+                }
+            }
+        });
+        
         // Initialize DataTable with improved configuration
         const table = $('#tabla-reservas').DataTable({
             pageLength: 10,
@@ -212,7 +232,8 @@
                 info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
                 infoEmpty: "Mostrando 0 a 0 de 0 registros",
                 infoFiltered: "(filtrado de _MAX_ registros totales)",
-                zeroRecords: "No se encontraron registros coincidentes"
+                zeroRecords: "No se encontraron registros coincidentes",
+                processing: '<div class="spinner-border text-light" role="status"><span class="visually-hidden">Cargando...</span></div>'
             },
             dom: '<"top"lf>rt<"bottom"ip>',
             buttons: [
@@ -227,18 +248,14 @@
             ]
         });
         
-        // Connect the custom search input
+        // Connect the custom search input (búsqueda en todos los datos)
         $('#search-input').on('keyup', function() {
             table.search(this.value).draw();
         });
         
         // Handle state filter
-        $('select').on('change', function() {
-            if (this.value !== 'Estado') {
-                table.column(9).search(this.value.toLowerCase()).draw();
-            } else {
-                table.column(9).search('').draw();
-            }
+        $('#estado-filter').on('change', function() {
+            table.ajax.reload();
         });
     });
 </script>

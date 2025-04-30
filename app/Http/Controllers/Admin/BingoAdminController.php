@@ -266,11 +266,51 @@ class BingoAdminController extends Controller
             ->where('eliminado', 0)
             ->where('bingo_id', $bingoId)
             ->orderByDesc('id')
-            ->paginate(10); // Paginación de 10 en 10
+            ->paginate(25); // Paginación de 10 en 10
 
         return view('admin.bingos.reservas-rapidas', compact('reservas', 'bingoId'));
     }
-
+    public function search(Request $request, $bingoId)
+    {
+        $query = Reserva::where('bingo_id', $bingoId);
+        
+        // Buscar en todos los campos
+        if ($request->search['value']) {
+            $searchValue = $request->search['value'];
+            $query->where(function($q) use ($searchValue) {
+                $q->where('id', 'like', "%{$searchValue}%")
+                  ->orWhere('nombre', 'like', "%{$searchValue}%")
+                  ->orWhere('celular', 'like', "%{$searchValue}%")
+                  ->orWhere('numero_comprobante', 'like', "%{$searchValue}%");
+            });
+        }
+        
+        // Filtrar por estado
+        if ($request->estado) {
+            $query->where('estado', strtolower($request->estado));
+        }
+        
+        $total = $query->count();
+        
+        // Ordenar
+        if (isset($request->order[0])) {
+            $column = $request->columns[$request->order[0]['column']]['data'];
+            $dir = $request->order[0]['dir'];
+            $query->orderBy($column, $dir);
+        }
+        
+        // Paginar
+        $result = $query->skip($request->start)
+                       ->take($request->length)
+                       ->get();
+                       
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $result
+        ]);
+    }
     /**
      * Mostrar tabla parcial de reservas filtradas
      */
