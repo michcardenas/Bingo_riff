@@ -260,7 +260,7 @@ class BingoAdminController extends Controller
 
     public function verReservasRapidas($bingoId)
     {
-        $reservas = DB::table('bingo2.reservas')
+        $reservas = DB::table('reservas')
             ->select('id', 'nombre', 'celular', 'created_at as fecha', 'cantidad as cartones', 'series', 'total',
                      'comprobante', 'numero_comprobante', 'estado')
             ->where('eliminado', 0)
