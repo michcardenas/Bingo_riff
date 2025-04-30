@@ -41,23 +41,24 @@
         </div>
         
         <div class="card-body p-0">
-            <table id="tabla-reservas" class="table table-dark table-hover table-bordered border-secondary mb-0 align-middle small">
-                <thead>
-                    <tr class="bg-black text-white">
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Celular</th>
-                        <th>Fecha</th>
-                        <th>Cartones</th>
-                        <th>Series</th>
-                        <th>Total</th>
-                        <th>Comprobante</th>
-                        <th># Comp.</th>
-                        <th>Estado</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="table-responsive">
+                <table id="tabla-reservas" class="table table-dark table-hover table-bordered border-secondary mb-0 align-middle small w-100">
+                    <thead>
+                        <tr class="bg-black text-white">
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Celular</th>
+                            <th>Fecha</th>
+                            <th>Cartones</th>
+                            <th>Series</th>
+                            <th>Total</th>
+                            <th>Comprobante</th>
+                            <th># Comp.</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     @foreach ($reservas as $reserva)
                         <tr>
                             <td>{{ $reserva->id }}</td>
@@ -137,6 +138,25 @@
         min-width: 300px;
     }
     
+    /* Asegurar que toda la tabla sea visible */
+    .table-responsive {
+        overflow-x: auto;
+        min-height: 300px;
+    }
+    
+    /* Establecer anchos de columna para mejor visualización */
+    #tabla-reservas th:nth-child(1) { min-width: 50px; }  /* ID */
+    #tabla-reservas th:nth-child(2) { min-width: 150px; } /* Nombre */
+    #tabla-reservas th:nth-child(3) { min-width: 100px; } /* Celular */
+    #tabla-reservas th:nth-child(4) { min-width: 120px; } /* Fecha */
+    #tabla-reservas th:nth-child(5) { min-width: 80px; }  /* Cartones */
+    #tabla-reservas th:nth-child(6) { min-width: 100px; } /* Series */
+    #tabla-reservas th:nth-child(7) { min-width: 80px; }  /* Total */
+    #tabla-reservas th:nth-child(8) { min-width: 200px; } /* Comprobante */
+    #tabla-reservas th:nth-child(9) { min-width: 120px; } /* # Comp. */
+    #tabla-reservas th:nth-child(10) { min-width: 120px; } /* Estado */
+    #tabla-reservas th:nth-child(11) { min-width: 350px; } /* Acciones */
+    
     /* Table styles */
     .table {
         margin-bottom: 0;
@@ -201,6 +221,13 @@
 
 <script>
     $(document).ready(function () {
+        // Ajustar ancho de la tabla cuando se redimensiona la ventana
+        $(window).resize(function() {
+            if ($.fn.dataTable.isDataTable('#tabla-reservas')) {
+                $('#tabla-reservas').DataTable().columns.adjust();
+            }
+        });
+        
         // Configuración para buscar en todos los datos, no solo en los paginados
         $.extend($.fn.dataTable.defaults, {
             serverSide: true,
@@ -221,6 +248,10 @@
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             ordering: true,
+            scrollX: true,
+            scrollCollapse: true,
+            autoWidth: true,
+            responsive: true,
             language: {
                 paginate: {
                     previous: '<i class="bi bi-chevron-left"></i>',
