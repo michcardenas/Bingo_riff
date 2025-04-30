@@ -120,7 +120,17 @@
     <script src="https://cdn.datatables.net/buttons/2.3.3/js/buttons.html5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.3/js/buttons.print.min.js"></script>
 
-    
+    <script>
+    $(document).ready(function () {
+        $('#tabla-reservas').DataTable({
+            pageLength: 10,
+            ordering: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            }
+        });
+    });
+</script> 
 </body>
 
 </html>
