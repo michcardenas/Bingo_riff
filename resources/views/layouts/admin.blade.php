@@ -22,30 +22,7 @@
             color: #ffffff;
         }
 
-        /* Ajustes para tema oscuro de DataTables */
-        .dataTables_wrapper .dataTables_length,
-        .dataTables_wrapper .dataTables_filter,
-        .dataTables_wrapper .dataTables_info,
-        .dataTables_wrapper .dataTables_processing,
-        .dataTables_wrapper .dataTables_paginate {
-            color: #fff;
-        }
-
-        .dataTables_wrapper .dataTables_paginate .paginate_button {
-            color: #fff !important;
-        }
-
-        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
-            color: #666 !important;
-        }
-
-        .dataTables_wrapper .dataTables_length select,
-        .dataTables_wrapper .dataTables_filter input {
-            background-color: #212529;
-            color: #fff;
-            border: 1px solid #495057;
-        }
-
+       
         /* Estilos para filas destacadas */
         .duplicated-comprobante {
             background-color: rgba(220, 53, 69, 0.7) !important;
@@ -64,6 +41,34 @@
         #custom-filters {
             margin-bottom: 20px;
         }
+   
+        <style>
+    /* Ajusta tamaño de la paginación */
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 2px 6px !important;
+        font-size: 0.8rem !important;
+        margin: 0 2px !important;
+        border-radius: 0.25rem;
+    }
+
+    /* Quita el "peso" de los botones activos */
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #0d6efd !important;
+        color: #fff !important;
+    }
+
+    /* Centrar la paginación */
+    .dataTables_wrapper .dataTables_paginate {
+        text-align: center !important;
+        margin-top: 15px;
+    }
+    .dataTables_wrapper .paginate_button i {
+    font-size: 0.75rem;
+    vertical-align: middle;
+}
+
+</style>
+
     </style>
 </head>
 
