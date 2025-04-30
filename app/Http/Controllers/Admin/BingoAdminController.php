@@ -258,6 +258,19 @@ class BingoAdminController extends Controller
         ));
     }
 
+    public function verReservasRapidas($bingoId)
+    {
+        $reservas = DB::table('bingo2.reservas')
+            ->select('id', 'nombre', 'celular', 'created_at as fecha', 'cantidad as cartones', 'series', 'total',
+                     'comprobante', 'numero_comprobante', 'estado')
+            ->where('eliminado', 0)
+            ->where('bingo_id', $bingoId)
+            ->orderByDesc('id')
+            ->paginate(10); // Paginación de 10 en 10
+
+        return view('admin.bingos.reservas-rapidas', compact('reservas', 'bingoId'));
+    }
+
     /**
      * Mostrar tabla parcial de reservas filtradas
      */

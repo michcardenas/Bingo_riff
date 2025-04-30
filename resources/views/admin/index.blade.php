@@ -116,7 +116,7 @@
                             <!-- Acciones según el estado del bingo -->
                             <div class="d-flex gap-2">
                                 <!-- Botón para ver reservas -->
-                                <a href="{{ route('bingos.reservas', $bingo->id) }}" class="btn btn-sm btn-info me-2">
+                                <a href="{{ route('bingos.reservas.rapidas', $bingo->id) }}" class="btn btn-sm btn-info me-2">
                                     <i class="bi bi-people-fill"></i> Ver Participantes
                                 </a>
 

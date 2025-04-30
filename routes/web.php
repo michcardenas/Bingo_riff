@@ -86,6 +86,8 @@ Route::middleware('auth')->group(function () {
 
         // Rutas para gestionar reservas de un bingo específico
         Route::get('/bingos/{id}/reservas', [BingoAdminController::class, 'reservasPorBingo'])->name('bingos.reservas');
+        Route::get('/admin/bingos/{bingo}/reservas-rapidas', [BingoAdminController::class, 'verReservasRapidas'])
+    ->name('bingos.reservas.rapidas');
 
        // NUEVAS RUTAS para la página de búsqueda de serie
     Route::get('/bingos/{bingo}/buscador-serie', [BingoGanadoresController::class, 'index'])->name('bingos.buscador.serie');
