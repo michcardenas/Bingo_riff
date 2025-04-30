@@ -7,7 +7,9 @@
     <link rel="icon" type="image/png" href="{{ asset('images/RiffyLogo.png') }}">
 
     <!-- Carga de assets (Tailwind CSS, JS, etc.) -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="{{ asset('build/assets/app-B2UfZG9A.css') }}">
+<script src="{{ asset('build/assets/app-DQNO1DuK.js') }}" defer></script>
+
     
     <!-- Estilos para eliminar el borde azul de los inputs -->
     <style>
