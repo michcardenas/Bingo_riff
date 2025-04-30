@@ -124,13 +124,20 @@
     $(document).ready(function () {
         $('#tabla-reservas').DataTable({
             pageLength: 10,
+            searching: false, // 🔹 Desactiva el filtro de búsqueda
+            lengthChange: false, // 🔹 Oculta el selector "Mostrar X entradas"
             ordering: true,
+            info: false, // 🔹 Oculta el texto "Mostrando X de Y entradas"
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                paginate: {
+                    previous: '<i class="bi bi-chevron-left"></i>',
+                    next: '<i class="bi bi-chevron-right"></i>'
+                }
             }
         });
     });
-</script> 
+</script>
+ 
 </body>
 
 </html>
