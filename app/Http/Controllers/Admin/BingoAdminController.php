@@ -270,47 +270,50 @@ class BingoAdminController extends Controller
 
         return view('admin.bingos.reservas-rapidas', compact('reservas', 'bingoId'));
     }
-    public function search(Request $request, $bingoId)
-    {
-        $query = Reserva::where('bingo_id', $bingoId);
-        
-        // Buscar en todos los campos
-        if ($request->search['value']) {
-            $searchValue = $request->search['value'];
-            $query->where(function($q) use ($searchValue) {
-                $q->where('id', 'like', "%{$searchValue}%")
-                  ->orWhere('nombre', 'like', "%{$searchValue}%")
-                  ->orWhere('celular', 'like', "%{$searchValue}%")
-                  ->orWhere('numero_comprobante', 'like', "%{$searchValue}%");
-            });
-        }
-        
-        // Filtrar por estado
-        if ($request->estado) {
-            $query->where('estado', strtolower($request->estado));
-        }
-        
-        $total = $query->count();
-        
-        // Ordenar
-        if (isset($request->order[0])) {
-            $column = $request->columns[$request->order[0]['column']]['data'];
-            $dir = $request->order[0]['dir'];
-            $query->orderBy($column, $dir);
-        }
-        
-        // Paginar
-        $result = $query->skip($request->start)
-                       ->take($request->length)
-                       ->get();
-                       
-        return response()->json([
-            'draw' => intval($request->draw),
-            'recordsTotal' => $total,
-            'recordsFiltered' => $total,
-            'data' => $result
-        ]);
+
+    public function filtrarReservasRapidas(Request $request, $bingoId)
+{
+    // Query base - similar a tu método verReservasRapidas
+    $query = DB::table('reservas')
+        ->select('id', 'nombre', 'celular', 'created_at as fecha', 'cantidad as cartones', 'series', 'total',
+                 'comprobante', 'numero_comprobante', 'estado')
+        ->where('eliminado', 0)
+        ->where('bingo_id', $bingoId);
+
+    // Aplicar filtro de búsqueda si existe
+    if ($request->has('search') && !empty($request->search)) {
+        $searchTerm = $request->search;
+        $query->where(function($q) use ($searchTerm) {
+            $q->where('nombre', 'like', "%{$searchTerm}%")
+              ->orWhere('celular', 'like', "%{$searchTerm}%")
+              ->orWhere(function($query) use ($searchTerm) {
+                  // Búsqueda en el campo series que es JSON
+                  // Esto buscará cualquier coincidencia parcial en el campo series
+                  $query->whereRaw("series LIKE ?", ["%{$searchTerm}%"]);
+              });
+        });
     }
+
+    // Aplicar filtro por estado si existe
+    if ($request->has('estado') && $request->estado != 'todos') {
+        $query->where('estado', $request->estado);
+    }
+
+    // Mantener el mismo orden que tenías
+    $reservas = $query->orderByDesc('id')->paginate(25);
+    
+    // Importante: mantener los parámetros de búsqueda en la paginación
+    $reservas->appends($request->all());
+
+    // Usar la misma vista, pero pasar los parámetros de búsqueda
+    return view('admin.bingos.reservas-rapidas', [
+        'reservas' => $reservas, 
+        'bingoId' => $bingoId,
+        'searchTerm' => $request->search ?? '',
+        'estadoFilter' => $request->estado ?? 'todos'
+    ]);
+}
+
     /**
      * Mostrar tabla parcial de reservas filtradas
      */

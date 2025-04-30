@@ -7,41 +7,50 @@
         <h4 class="mb-0 text-white">
             <i class="bi bi-grid-3x3"></i> Reservas Bingo #{{ $bingoId }}
         </h4>
-        <div>
-            <button class="btn btn-sm btn-outline-light">
-                <i class="bi bi-plus-circle"></i> Nueva Reserva
-            </button>
-        </div>
+        
     </div>
 
     <!-- Card container for the table -->
-    <div class="card bg-dark border-0 shadow">
-        <div class="card-header bg-dark border-bottom border-secondary py-3">
+    <div class="card bg-dark border-0 shadow mb-4">
+    <div class="card-header bg-dark border-bottom border-secondary py-3">
+        <form action="{{ route('bingos.reservas.filtro', $bingoId) }}" method="GET" id="filtro-form">
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <div class="input-group">
                         <span class="input-group-text bg-dark border-secondary text-light">
                             <i class="bi bi-search"></i>
                         </span>
-                        <input type="text" id="search-input" class="form-control form-control-sm bg-dark border-secondary text-light" placeholder="Buscar...">
+                        <input type="text" name="search" id="search-input" 
+                               class="form-control form-control-sm bg-dark border-secondary text-light" 
+                               placeholder="Buscar por nombre, celular o serie..." 
+                               value="{{ $searchTerm ?? '' }}">
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="bi bi-search"></i> Buscar
+                        </button>
                     </div>
                 </div>
                 <div class="col-md-6 d-flex justify-content-end gap-2">
-                    <select id="estado-filter" class="form-select form-select-sm bg-dark border-secondary text-light w-auto">
-                        <option selected>Estado</option>
-                        <option>Pendiente</option>
-                        <option>Aprobado</option>
-                        <option>Rechazado</option>
-                    </select>
-                    <button class="btn btn-sm btn-outline-light">
-                        <i class="bi bi-file-earmark-excel"></i> Exportar
+                <select name="estado" id="estado-filter" 
+            class="form-select form-select-sm bg-dark border-secondary text-light w-auto">
+        <option value="todos" {{ ($estadoFilter ?? 'todos') == 'todos' ? 'selected' : '' }}>Todos</option>
+        <option value="revision" {{ ($estadoFilter ?? '') == 'revision' ? 'selected' : '' }}>Revisión</option>
+        <option value="aprobado" {{ ($estadoFilter ?? '') == 'aprobado' ? 'selected' : '' }}>Aprobado</option>
+        <option value="rechazado" {{ ($estadoFilter ?? '') == 'rechazado' ? 'selected' : '' }}>Rechazado</option>
+    </select>
+                    <button type="submit" class="btn btn-sm btn-outline-info">
+                        <i class="bi bi-filter"></i> Aplicar
                     </button>
+                    <a href="{{ route('bingos.reservas.rapidas', $bingoId) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </a>
                 </div>
             </div>
-        </div>
+        </form>
+    </div>
+</div>
         
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="table-responsive-lg">
                 <table id="tabla-reservas" class="table table-dark table-hover table-bordered border-secondary mb-0 align-middle small w-100">
                     <thead>
                         <tr class="bg-black text-white">
@@ -49,7 +58,7 @@
                             <th>Nombre</th>
                             <th>Celular</th>
                             <th>Fecha</th>
-                            <th>Cartones</th>
+                            <th>Cart.</th>
                             <th>Series</th>
                             <th>Total</th>
                             <th>Comprobante</th>
@@ -66,8 +75,17 @@
                             <td>{{ $reserva->celular }}</td>
                             <td>{{ \Carbon\Carbon::parse($reserva->fecha)->format('d/m/Y H:i') }}</td>
                             <td>{{ $reserva->cartones }}</td>
-                            @php $series = json_decode($reserva->series, true); @endphp
-                            <td>{{ is_array($series) ? implode(', ', $series) : $reserva->series }}</td>
+                            @php 
+                                $series = json_decode($reserva->series, true); 
+                                $seriesArray = is_array($series) ? $series : [$reserva->series];
+                                // Limpia cada número (quita comillas y cualquier carácter no numérico)
+                                $seriesClean = array_map(function($s) {
+                                    return preg_replace('/[^0-9]/', '', $s);
+                                }, $seriesArray);
+                                // Une los números con comas
+                                $seriesFormatted = implode(', ', $seriesClean);
+                            @endphp
+                            <td title="{{ $seriesFormatted }}">{{ $seriesFormatted }}</td>
                             <td>${{ number_format($reserva->total, 0, ',', '.') }}</td>
                             <td>
                                 @if($reserva->comprobante)
@@ -80,8 +98,8 @@
                             </td>
                             <td><input type="text" value="{{ $reserva->numero_comprobante }}" class="form-control form-control-sm bg-dark border-secondary text-light" style="min-width: 120px;"></td>
                             <td>
-                                @if($reserva->estado == 'pendiente')
-                                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">Pendiente</span>
+                                @if($reserva->estado == 'revision')
+                                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">revision</span>
                                 @elseif($reserva->estado == 'aprobado')
                                     <span class="badge bg-success fs-6 px-3 py-2">Aprobado</span>
                                 @elseif($reserva->estado == 'rechazado')
@@ -89,14 +107,14 @@
                                 @endif
                             </td>
                             <td>
-                                <div class="d-flex justify-content-center gap-2">
-                                    <button class="btn btn-sm btn-outline-info px-3" title="Editar">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-sm btn-outline-info" title="Editar">
                                         <i class="bi bi-pencil"></i> Editar
                                     </button>
-                                    <button class="btn btn-sm btn-outline-success px-3" title="Aprobar">
+                                    <button class="btn btn-sm btn-outline-success" title="Aprobar">
                                         <i class="bi bi-check-lg"></i> Aprobar
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger px-3" title="Rechazar">
+                                    <button class="btn btn-sm btn-outline-danger" title="Rechazar">
                                         <i class="bi bi-x-lg"></i> Rechazar
                                     </button>
                                 </div>
@@ -145,17 +163,24 @@
     }
     
     /* Establecer anchos de columna para mejor visualización */
-    #tabla-reservas th:nth-child(1) { min-width: 50px; }  /* ID */
-    #tabla-reservas th:nth-child(2) { min-width: 150px; } /* Nombre */
-    #tabla-reservas th:nth-child(3) { min-width: 100px; } /* Celular */
-    #tabla-reservas th:nth-child(4) { min-width: 120px; } /* Fecha */
-    #tabla-reservas th:nth-child(5) { min-width: 80px; }  /* Cartones */
-    #tabla-reservas th:nth-child(6) { min-width: 100px; } /* Series */
-    #tabla-reservas th:nth-child(7) { min-width: 80px; }  /* Total */
-    #tabla-reservas th:nth-child(8) { min-width: 200px; } /* Comprobante */
-    #tabla-reservas th:nth-child(9) { min-width: 120px; } /* # Comp. */
-    #tabla-reservas th:nth-child(10) { min-width: 120px; } /* Estado */
-    #tabla-reservas th:nth-child(11) { min-width: 350px; } /* Acciones */
+    #tabla-reservas th:nth-child(1) { width: 50px; }  /* ID */
+    #tabla-reservas th:nth-child(2) { width: 150px; } /* Nombre */
+    #tabla-reservas th:nth-child(3) { width: 100px; } /* Celular */
+    #tabla-reservas th:nth-child(4) { width: 120px; } /* Fecha */
+    #tabla-reservas th:nth-child(5) { width: 60px; }  /* Cartones */
+    #tabla-reservas th:nth-child(6),
+    #tabla-reservas td:nth-child(6) { 
+        width: 60px; 
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.75rem;
+    } /* Series */
+    #tabla-reservas th:nth-child(7) { width: 70px; }  /* Total */
+    #tabla-reservas th:nth-child(8) { width: 150px; } /* Comprobante */
+    #tabla-reservas th:nth-child(9) { width: 120px; } /* # Comp. */
+    #tabla-reservas th:nth-child(10) { width: 100px; } /* Estado */
+    #tabla-reservas th:nth-child(11) { width: 120px; } /* Acciones */
     
     /* Table styles */
     .table {
@@ -228,30 +253,14 @@
             }
         });
         
-        // Configuración para buscar en todos los datos, no solo en los paginados
-        $.extend($.fn.dataTable.defaults, {
-            serverSide: true,
-            processing: true,
-            ajax: {
-                url: '{{ route("admin.reservas.search", $bingoId) }}', // Debes crear esta ruta
-                type: 'POST',
-                data: function(data) {
-                    data._token = '{{ csrf_token() }}';
-                    // Añadir filtros personalizados
-                    data.estado = $('#estado-filter').val() !== 'Estado' ? $('#estado-filter').val() : '';
-                }
-            }
-        });
-        
+      
         // Initialize DataTable with improved configuration
         const table = $('#tabla-reservas').DataTable({
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             ordering: true,
-            scrollX: true,
-            scrollCollapse: true,
-            autoWidth: true,
-            responsive: true,
+            autoWidth: false,
+            responsive: false,
             language: {
                 paginate: {
                     previous: '<i class="bi bi-chevron-left"></i>',
