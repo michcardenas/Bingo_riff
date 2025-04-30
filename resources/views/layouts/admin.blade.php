@@ -125,23 +125,7 @@
     <script src="https://cdn.datatables.net/buttons/2.3.3/js/buttons.html5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.3/js/buttons.print.min.js"></script>
 
-    <script>
-    $(document).ready(function () {
-        $('#tabla-reservas').DataTable({
-            pageLength: 10,
-            searching: false, // 🔹 Desactiva el filtro de búsqueda
-            lengthChange: false, // 🔹 Oculta el selector "Mostrar X entradas"
-            ordering: true,
-            info: false, // 🔹 Oculta el texto "Mostrando X de Y entradas"
-            language: {
-                paginate: {
-                    previous: '<i class="bi bi-chevron-left"></i>',
-                    next: '<i class="bi bi-chevron-right"></i>'
-                }
-            }
-        });
-    });
-</script>
+
  
 </body>
 
