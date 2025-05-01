@@ -65,8 +65,8 @@
                                 </div>
 
                                 <div class="card-body text-center" style="z-index: 2;">
-                                    <a href="{{ asset('storage/' . $ruta) }}" target="_blank">
-                                        <img src="{{ asset('storage/' . $ruta) }}" class="img-fluid rounded mb-2" style="max-height: 220px;">
+                                    <a href="{{ asset( $ruta) }}" target="_blank">
+                                        <img src="{{ asset( $ruta) }}" class="img-fluid rounded mb-2" style="max-height: 220px;">
                                     </a>
 
                                     <div class="text-white-50 small">
