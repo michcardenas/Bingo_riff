@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
+
 
 class BingoAdminController extends Controller
 {
@@ -120,7 +122,7 @@ class BingoAdminController extends Controller
         // Si no es AJAX, devolver la vista completa
         return view('admin.indexclientes', compact('reservas'));
     }
-
+ 
     /**
      * Aprueba una reserva y actualiza su estado a "aprobado".
      * 
@@ -232,88 +234,232 @@ class BingoAdminController extends Controller
     public function reservasPorBingo(Request $request, $id)
     {
         set_time_limit(900);
+    
         // Obtener el bingo
         $bingo = Bingo::findOrFail($id);
-
-        // Obtener estadísticas
+    
+        // Obtener todas las reservas del bingo
         $reservas = Reserva::where('bingo_id', $id)->get();
+    
+        // Calcular estadísticas
         $totalParticipantes = $reservas->count();
         $totalCartones = $reservas->sum('cantidad');
         $totalAprobadas = $reservas->where('estado', 'aprobado')->count();
         $totalPendientes = $reservas->where('estado', 'revision')->count();
-
-        // Si está utilizando la nueva vista parcial y AJAX
+    
+        // Vista parcial para AJAX
         if ($request->ajax()) {
-            return view('admin.bingo-reservas', compact('reservas', 'bingo'));
+            return view('admin.bingo-reservas', [
+                'bingo' => $bingo,
+                'reservas' => $reservas,
+            ]);
         }
-
-        // De lo contrario, devolver la vista completa
-        return view('admin.bingo-reservas', compact(
-            'bingo',
-            'reservas',
-            'totalParticipantes',
-            'totalCartones',
-            'totalAprobadas',
-            'totalPendientes'
-        ));
+    
+        // Vista completa
+        return view('admin.bingo-reservas', [
+            'bingo' => $bingo,
+            'reservas' => $reservas,
+            'totalParticipantes' => $totalParticipantes,
+            'totalCartones' => $totalCartones,
+            'totalAprobadas' => $totalAprobadas,
+            'totalPendientes' => $totalPendientes,
+        ]);
     }
+    
 
     public function verReservasRapidas($bingoId)
     {
-        $reservas = DB::table('reservas')
-            ->select('id', 'nombre', 'celular', 'created_at as fecha', 'cantidad as cartones', 'series', 'total',
-                     'comprobante', 'numero_comprobante', 'estado')
-            ->where('eliminado', 0)
-            ->where('bingo_id', $bingoId)
-            ->orderByDesc('id')
-            ->paginate(25); // Paginación de 10 en 10
-
-        return view('admin.bingos.reservas-rapidas', compact('reservas', 'bingoId'));
-    }
-
-    public function filtrarReservasRapidas(Request $request, $bingoId)
-{
-    // Query base - similar a tu método verReservasRapidas
-    $query = DB::table('reservas')
-        ->select('id', 'nombre', 'celular', 'created_at as fecha', 'cantidad as cartones', 'series', 'total',
-                 'comprobante', 'numero_comprobante', 'estado')
-        ->where('eliminado', 0)
-        ->where('bingo_id', $bingoId);
-
-    // Aplicar filtro de búsqueda si existe
-    if ($request->has('search') && !empty($request->search)) {
-        $searchTerm = $request->search;
-        $query->where(function($q) use ($searchTerm) {
-            $q->where('nombre', 'like', "%{$searchTerm}%")
-              ->orWhere('celular', 'like', "%{$searchTerm}%")
-              ->orWhere(function($query) use ($searchTerm) {
-                  // Búsqueda en el campo series que es JSON
-                  // Esto buscará cualquier coincidencia parcial en el campo series
-                  $query->whereRaw("series LIKE ?", ["%{$searchTerm}%"]);
-              });
-        });
-    }
-
-    // Aplicar filtro por estado si existe
-    if ($request->has('estado') && $request->estado != 'todos') {
-        $query->where('estado', $request->estado);
-    }
-
-    // Mantener el mismo orden que tenías
-    $reservas = $query->orderByDesc('id')->paginate(25);
+        $bingo = Bingo::findOrFail($bingoId);
     
-    // Importante: mantener los parámetros de búsqueda en la paginación
-    $reservas->appends($request->all());
+        // Obtenemos las reservas (sin paginar aún)
+        $reservaRaw = DB::table('reservas')
+        ->select(
+            'id',
+            'nombre',
+            'celular',
+            'created_at as fecha',
+            'cantidad as cartones',
+            'series',
+            'total',
+            'comprobante',
+            'numero_comprobante',
+            'estado',
+            DB::raw('COALESCE(orden_bingo, 0) as orden_bingo') // 👈 Ajuste clave aquí
+        )
+        ->where('eliminado', 0)
+        ->where('bingo_id', $bingoId)
+        ->orderByDesc('id')
+        ->get();
+    
+    
+        // Limpiar comprobantes sin romper stdClass
+        $reservaLimpias = $reservaRaw->map(function ($item) {
+            $comprobante = $item->comprobante;
 
-    // Usar la misma vista, pero pasar los parámetros de búsqueda
-    return view('admin.bingos.reservas-rapidas', [
-        'reservas' => $reservas, 
-        'bingoId' => $bingoId,
-        'searchTerm' => $request->search ?? '',
-        'estadoFilter' => $request->estado ?? 'todos'
-    ]);
-}
+            // Quitar caracteres indeseados
+            $comprobante = str_replace(['\\"', '"', '[', ']'], '', $comprobante);
+            
+            // Normalizar slashes
+            $comprobante = str_replace(['\\', '\\', '//'], '', $comprobante);
+            
+            // Eliminar posibles dobles al principio
+            $comprobante = preg_replace('#/+#', '/', $comprobante); // normaliza slashes intermedios
+            $comprobante = ltrim($comprobante, '/'); // elimina slash inicial si quedó            
+            $item->ruta_comprobante = $comprobante;
+            return $item;
+        });
+    
+        // Paginación manual para que no falle $reservas->links()
+        $currentPage = request()->get('page', 1);
+        $perPage = 25;
+        $currentItems = $reservaLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
+    
+        $paginator = new LengthAwarePaginator(
+            $currentItems,
+            $reservaLimpias->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+    
+        return view('admin.bingos.reservas-rapidas', [
+            'reservas' => $paginator,
+            'bingo' => $bingo,
+            'bingoId' => $bingoId,
+        ]);
+    }
+   
+    
+    public function filtrarReservasRapidas(Request $request, $bingoId)
+    {
+        // Obtener modelo bingo para mostrar su nombre
+        $bingo = \App\Models\Bingo::findOrFail($bingoId);
+    
+        // Base query sin paginar
+        $query = DB::table('reservas')
+        ->select(
+            'id',
+            'nombre',
+            'celular',
+            'created_at as fecha',
+            'cantidad as cartones',
+            'series',
+            'total',
+            'comprobante',
+            'numero_comprobante',
+            'estado',
+            DB::raw('COALESCE(orden_bingo, 0) as orden_bingo') // ✅ AÑADIR ESTO para evitar error
+        )
+   
+        ->where('bingo_id', $bingoId);
+    
+        // Filtro por campo (nombre, celular o series)
+        $campo = $request->input('campo', 'nombre');
+        $valor = $request->input('search');
+    
+        if (!empty($valor)) {
+            $query->where(function ($q) use ($campo, $valor) {
+                if ($campo === 'nombre') {
+                    $q->where('nombre', 'like', "%{$valor}%");
+                } elseif ($campo === 'celular') {
+                    $q->where('celular', 'like', "%{$valor}%");
+                } elseif ($campo === 'series') {
+                    $q->where('series', 'like', "%{$valor}%");
+                }
+            });
+        }
+        
+    
+        // Filtro por estado
+        if ($request->filled('estado') && $request->estado !== 'todos') {
+            $query->whereRaw('LOWER(estado) = ?', [strtolower($request->estado)]);
+        }
+        // Obtener resultados sin paginar aún
+        $resultados = $query->orderByDesc('id')->get();
+    
+        // Limpieza del campo comprobante y generación de ruta limpia
+        $reservasLimpias = $resultados->map(function ($item) {
+            $comprobante = $item->comprobante;
+    
+            // Si tiene comillas dobles extra
+            if (str_starts_with($comprobante, '""') && str_ends_with($comprobante, '""')) {
+                $comprobante = trim($comprobante, '"');
+            }
+    
+            // Limpiar elementos de JSON
+            $comprobante = str_replace(['\\"', '"', '[', ']'], '', $comprobante);
+            $comprobante = str_replace(['\\/', '\\'], '/', $comprobante);
+            $comprobante = preg_replace('#/+#', '/', $comprobante);
+            $comprobante = ltrim($comprobante, '/');
+    
+            $item->ruta_comprobante = $comprobante;
+            return $item;
+        });
+    
+        // Paginar manualmente
+        $currentPage = $request->get('page', 1);
+        $perPage = 25;
+        $currentItems = $reservasLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
+    
+        $reservas = new LengthAwarePaginator(
+            $currentItems,
+            $reservasLimpias->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+    
+        // Retornar vista con filtros aplicados
+        return view('admin.bingos.reservas-rapidas', [
+            'reservas' => $reservas,
+            'bingo' => $bingo,
+            'bingoId' => $bingoId,
+            'searchTerm' => $valor ?? '',
+            'estadoFilter' => $request->estado ?? 'todos',
+            'campoFiltro' => $campo,
+        ]);
+    }
+    
+    public function actualizarEstadoReserva(Request $request)
+    {
+        $request->validate([
+            'reserva_id' => 'required|integer|exists:reservas,id',
+            'estado' => 'required|string|in:aprobado,rechazado,revision',
+        ]);
 
+        $updateData = [
+            'estado' => $request->estado,
+        ];
+
+        // Si es rechazado, marcar como eliminado
+        if ($request->estado === 'rechazado') {
+            $updateData['eliminado'] = 1;
+        }
+
+        DB::table('reservas')
+            ->where('id', $request->reserva_id)
+            ->update($updateData);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function actualizarNumeroComprobante(Request $request)
+    {
+        $request->validate([
+            'reserva_id' => 'required|integer|exists:reservas,id',
+            'numero_comprobante' => 'nullable|string|max:255',
+        ]);
+
+        DB::table('reservas')
+            ->where('id', $request->reserva_id)
+            ->update(['numero_comprobante' => $request->numero_comprobante]);
+
+        return response()->json(['success' => true]);
+    }
+    
     /**
      * Mostrar tabla parcial de reservas filtradas
      */

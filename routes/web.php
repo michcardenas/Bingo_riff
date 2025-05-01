@@ -100,8 +100,34 @@ Route::middleware('auth')->group(function () {
     
     // API para marcar como ganador
     Route::patch('/api/bingos/{bingo}/participantes/{participante}/ganador', [BingoGanadoresController::class, 'marcarGanador']);
+    Route::post('/admin/reservas/cambiar-estado', [BingoAdminController::class, 'actualizarEstadoReserva'])
+    ->name('reservas.cambiar-estado');
+    Route::get('/admin/reservas/{bingoId}/comprobantes-duplicados', [BingoAdminController::class, 'comprobantesDuplicados'])
+    ->name('reservas.comprobantes.duplicados');
+
 
         
+    Route::post('/admin/reservas/guardar-comprobante', [BingoAdminController::class, 'actualizarNumeroComprobante'])
+    ->name('reservas.guardar-comprobante');
+
+    Route::get('/admin/reservas/{bingoId}/crear', [BingoController::class, 'create'])
+    ->name('bingos.reservas.create');
+
+
+    Route::put('/reservas/{id}/rechazar', [\App\Http\Controllers\BingoController::class, 'rechazarReserva'])->name('reservas.rechazar');
+
+Route::post('/admin/reservas/store', [BingoController::class, 'store'])
+    ->name('bingos.reservas.store');
+    Route::get('/admin/reservas/{bingoId}/duplicados', [BingoController::class, 'comprobantesDuplicados'])
+    ->name('bingos.reservas.duplicadas');
+    Route::get('/bingos/{bingo}/pedidos-duplicados', [\App\Http\Controllers\BingoController::class, 'pedidosDuplicados'])->name('bingos.reservas.pedidos-duplicados');
+    Route::put('/reservas/{id}/aprobar', [BingoController::class, 'aprobarReserva'])->name('reservas.aprobar');
+    Route::get('/bingos/{bingo}/reservas/buscar-ganador', [App\Http\Controllers\BingoController::class, 'buscarGanador'])->name('bingos.reservas.buscar-ganador');
+
+    Route::post('/bingos/ganador/{id}/marcar', [App\Http\Controllers\BingoController::class, 'marcarGanador'])->name('bingos.marcar-ganador');
+    
+    Route::post('/bingos/ganador/{id}/marcar', [BingoController::class, 'marcarGanador'])->name('bingos.marcar-ganador');
+    
 
         // NUEVA RUTA: Carga parcial de tabla de reservas para un bingo específico
         Route::get('/bingos/{id}/reservas-tabla', [BingoAdminController::class, 'reservasPorBingoTabla'])->name('bingos.reservas-tabla');

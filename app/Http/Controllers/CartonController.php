@@ -55,75 +55,73 @@ public function buscar(Request $request)
     // Determinar qué vista usar basado en el parámetro explícito o la URL referente
     $vista = $request->input('vista', null);
     
-    // Si no hay parámetro 'vista', intentar determinar por la URL referente
     if (!$vista) {
         $referer = $request->headers->get('referer', '');
         if (str_contains($referer, 'descargarcartones')) {
             $vista = 'descargarcartones';
         } else {
-            $vista = 'buscarcartones'; // Valor por defecto
+            $vista = 'buscarcartones';
         }
     }
-    
+
     Log::info('Vista seleccionada para resultados: ' . $vista);
 
     // Buscar reservas asociadas al número de teléfono
-    $reservas = Reserva::where('celular', $telefono)
-        ->get();
+    $reservas = Reserva::where('celular', $telefono)->get();
 
     Log::info('Reservas encontradas: ' . $reservas->count());
 
-    // Preparar los datos de cartones a partir de las reservas
+    // Preparar datos de cartones
     $cartones = collect();
 
     foreach ($reservas as $reserva) {
-        Log::info('Procesando reserva ID: ' . $reserva->id . ', Series: ' . $reserva->series . ', Estado: ' . $reserva->estado);
+        Log::info('Procesando reserva ID: ' . $reserva->id . ', Series: ' . implode(', ', $reserva->series) . ', Estado: ' . $reserva->estado);
 
-        // Obtener información del bingo asociado
+        // Información del bingo
         $bingoNombre = 'No asignado';
         $bingoId = null;
         $bingoEstado = null;
         $bingoVisible = null;
-        
+
         if ($reserva->bingo_id && $reserva->bingo) {
             $bingoNombre = $reserva->bingo->nombre;
             $bingoId = $reserva->bingo_id;
             $bingoEstado = $reserva->bingo->estado;
             $bingoVisible = $reserva->bingo->visible;
-            
-            // Saltar esta reserva si el bingo está archivado o no es visible
+
             if (strtolower($bingoEstado) === 'archivado' || $bingoVisible == 0) {
                 Log::info('Saltando reserva para bingo archivado o no visible: ' . $bingoNombre);
                 continue;
             }
         }
-        
+
         Log::info('Bingo asociado: ' . $bingoNombre . ', Estado: ' . ($bingoEstado ?? 'N/A') . ', Visible: ' . ($bingoVisible ?? 'N/A'));
 
-        // Si hay series registradas, procesarlas
+        // Series → YA es array
         if (!empty($reserva->series)) {
-            $seriesArray = json_decode($reserva->series, true);
-            Log::info('Series decodificadas: ' . json_encode($seriesArray));
+            $seriesArray = $reserva->series;
 
-            if (is_array($seriesArray)) {
-                foreach ($seriesArray as $serie) {
-                    $cartones->push([
-                        'numero' => $serie,
-                        'estado' => $reserva->estado,
-                        'nombre' => $reserva->nombre,
-                        'fecha_creacion' => $reserva->created_at->format('d/m/Y'),
-                        'tipo_sorteo' => 'Principal',
-                        'id_reserva' => $reserva->id,
-                        'bingo_nombre' => $bingoNombre,
-                        'bingo_id' => $bingoId,
-                        'bingo_estado' => $bingoEstado,
-                        'bingo_visible' => $bingoVisible,
-                        'eliminado' => $reserva->eliminado
-                    ]);
-                    Log::info('Cartón agregado: ' . $serie . ' para bingo: ' . $bingoNombre . ', Estado: ' . $reserva->estado);
-                }
-            } else {
-                Log::warning('El formato de series no es un array para la reserva ID: ' . $reserva->id);
+            foreach ($seriesArray as $serie) {
+
+                // Preparar número sin ceros iniciales para descarga
+                $numeroDescarga = intval($serie);
+
+                $cartones->push([
+                    'numero' => $serie,
+                    'numero_descarga' => $numeroDescarga, // Este se usará para la descarga directa
+                    'estado' => $reserva->estado,
+                    'nombre' => $reserva->nombre,
+                    'fecha_creacion' => $reserva->created_at->format('d/m/Y'),
+                    'tipo_sorteo' => 'Principal',
+                    'id_reserva' => $reserva->id,
+                    'bingo_nombre' => $bingoNombre,
+                    'bingo_id' => $bingoId,
+                    'bingo_estado' => $bingoEstado,
+                    'bingo_visible' => $bingoVisible,
+                    'eliminado' => $reserva->eliminado
+                ]);
+
+                Log::info('Cartón agregado: ' . $serie . ' para bingo: ' . $bingoNombre . ', Estado: ' . $reserva->estado);
             }
         } else {
             Log::info('No hay series para la reserva ID: ' . $reserva->id);
@@ -131,21 +129,21 @@ public function buscar(Request $request)
     }
 
     Log::info('Total de cartones encontrados (después de filtrar archivados y no visibles): ' . $cartones->count());
-    
+
     // Obtener número de contacto para WhatsApp
     $enlaces = Enlace::first();
-    // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
     $numeroContacto = $enlaces ? ($enlaces->telefono_atencion ?: $enlaces->numero_contacto) : '3235903774';
 
-    // Guardar el número de celular en la sesión para facilitar futuras búsquedas
+    // Guardar en sesión
     session(['celular_comprador' => $telefono]);
 
-    // Devolver la vista con los resultados
+    // Retornar la vista
     return view($vista, [
         'cartones' => $cartones,
         'numeroContacto' => $numeroContacto
     ]);
 }
+
 
     public function descargar($numero, $bingoId = null)
 {
@@ -153,10 +151,13 @@ public function buscar(Request $request)
 
     // Eliminar ceros a la izquierda para la búsqueda (en la base de datos)
     $numeroSinCeros = ltrim($numero, '0');
-    
+  
+
     // Para buscar el archivo, convertir a entero para asegurar que no haya ceros iniciales
     $numeroParaArchivo = intval($numero);
 
+
+    Log::info("Sinceros: $numero, Bingo ID: $numeroParaArchivo");
     // Preparar la consulta base para las reservas
     $query = Reserva::where(function($q) {
         $q->where('reservas.estado', 'aprobado')
@@ -179,7 +180,7 @@ public function buscar(Request $request)
     // Buscar manualmente en las series
     foreach ($reservas as $reserva) {
         if (!empty($reserva->series)) {
-            $seriesArray = json_decode($reserva->series, true);
+            $seriesArray = $reserva->series;
             if (is_array($seriesArray) && in_array($numero, $seriesArray)) {
                 $reservaEncontrada = $reserva;
                 break; // Romper el ciclo al encontrar la primera reserva (la más reciente debido al orderBy)
@@ -211,8 +212,9 @@ public function buscar(Request $request)
     $numeroSinCeros = intval($numero);
     
     // Comprobar primero si existe el archivo con extensión .jpg
-    $rutaJpg = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroParaArchivo . '.jpg');
-    $rutaPdf = storage_path('app/private/public/TablasbingoRIFFY/' . $numeroParaArchivo . '.pdf');
+$rutaJpg = storage_path('app/private/public/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg');
+$rutaPdf = storage_path('app/private/public/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.pdf');
+
     
     // Determinar qué archivo existe y su extensión
     if (file_exists($rutaJpg)) {

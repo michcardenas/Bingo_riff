@@ -8,6 +8,7 @@ use App\Models\Reserva;
 use Illuminate\Support\Facades\Log;
 use App\Models\Bingo;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Serie;
 
 class BingoController extends Controller
 {
@@ -175,7 +176,7 @@ class BingoController extends Controller
                         'comprobante'        => $comprobanteStr,
                         'comprobante_metadata' => $metadatosStr, // Nuevo campo para metadatos
                         'total'              => $totalPagar,
-                        'series'             => json_encode($series),
+                        'series'             => $series,
                         'estado'             => $estadoInicial,
                         'numero_comprobante' => $numeroComprobante,
                         'bingo_id'           => $bingo->id,
@@ -218,8 +219,8 @@ class BingoController extends Controller
             // 6. Redirigir según el origen de la solicitud
             if ($request->has('desde_admin') && $request->desde_admin == 1) {
                 // Si viene del panel de administración, redirigir de vuelta al panel
-                return redirect()->route('bingos.show', $bingo->id)
-                    ->with('success', '¡Participante añadido correctamente!');
+                return redirect()->route('bingos.reservas.rapidas', $bingo->id)
+                ->with('success', '¡Participante añadido correctamente!');
             } else {
                     // Si viene del flujo normal, redirigir a la vista "reservado"
     // Almacenamos el número de teléfono en la sesión para usarlo en buscarcartones
@@ -265,6 +266,204 @@ class BingoController extends Controller
                 ->with('error', 'Ocurrió un error al procesar tu reserva. Por favor, intenta nuevamente.');
         }
     }
+    public function rechazarReserva($id)
+    {
+        DB::table('reservas')
+            ->where('id', $id)
+            ->update([
+                'estado' => 'rechazado',
+                'eliminado' => 1,
+            ]);
+    
+        return back()->with('status', 'Reserva rechazada correctamente.');
+    }
+
+    public function buscarGanador(Request $request, $bingoId)
+    {
+        $serie = $request->input('serie');
+    
+        $datos = null;
+    
+        if ($serie) {
+    
+            // Buscar en series para obtener el cartón
+            $serieEncontrada = Serie::whereJsonContains('series', $serie)->first();
+    
+            if ($serieEncontrada) {
+    
+                $carton = $serieEncontrada->carton;
+    
+                // Buscar en reservas que tengan el cartón EN ESTE BINGO
+                $reserva = Reserva::where('bingo_id', $bingoId)
+                    ->whereJsonContains('series', $carton)
+                    ->first();
+    
+                if ($reserva) {
+                    $datos = $reserva;
+                }
+            }
+        }
+         // Obtener ganadores de este bingo para mostrar en tabla
+         $ganadores = Reserva::where('bingo_id', $bingoId)
+         ->where('ganador', 1)
+         ->orderByDesc('fecha_ganador')
+         ->get();
+    
+        return view('admin.bingos.buscar-ganador', [
+            'datos' => $datos,
+            'serieBuscada' => $serie,
+            'bingoId' => $bingoId,
+            'ganadores' => $ganadores,
+
+        ]);
+    }
+    
+    
+
+    public function buscarGanadorConBingo(Request $request, $bingoId)
+    {
+        $serie = $request->input('serie');
+        $datos = null;
+    
+        if ($serie) {
+            // Buscar en la tabla series → obtener el cartón relacionado a esa serie
+            $serieEncontrada = Serie::whereJsonContains('series', $serie)->first();
+    
+            if ($serieEncontrada) {
+    
+                $carton = $serieEncontrada->carton;
+    
+                // Buscar en reservas → en este bingo → si alguna reserva tiene ese cartón en sus series
+                $reserva = Reserva::where('bingo_id', $bingoId)
+                    ->whereJsonContains('series', $carton)
+                    ->first();
+    
+                if ($reserva) {
+                    $datos = $reserva;
+                }
+            }
+        }
+    
+        // Obtener ganadores de este bingo para mostrar en tabla
+        $ganadores = Reserva::where('bingo_id', $bingoId)
+            ->where('ganador', 1)
+            ->orderByDesc('fecha_ganador')
+            ->get();
+    
+        return view('admin.bingos.buscar-ganador', [
+            'datos' => $datos,
+            'serieBuscada' => $serie,
+            'bingoId' => $bingoId,
+            'ganadores' => $ganadores,
+        ]);
+    }
+    
+
+public function buscarGanadorGlobal(Request $request)
+{
+    // Este es para buscar en todos los bingos (sin bingoId)
+
+    $serie = $request->input('serie');
+    $datos = null;
+
+    if ($serie) {
+
+        $serieEncontrada = Serie::whereJsonContains('series', $serie)->first();
+
+        if ($serieEncontrada) {
+
+            $carton = $serieEncontrada->carton;
+
+            $reserva = Reserva::whereJsonContains('series', $carton)->first();
+
+            if ($reserva) {
+                $datos = $reserva;
+            }
+        }
+    }
+
+    return view('admin.bingos.buscar-ganador', [
+        'datos' => $datos,
+        'serieBuscada' => $serie,
+        'bingoId' => null,
+    ]);
+}
+
+
+public function marcarGanador(Request $request, $id)
+{
+    $reserva = Reserva::findOrFail($id);
+    $reserva->ganador = 1;
+    $reserva->premio = $request->input('premio');
+    $reserva->fecha_ganador = now();
+    $reserva->save();
+
+    return redirect()->back()->with('success', 'Ganador marcado exitosamente');
+}
+    public function aprobarReserva($id)
+    {
+        \DB::table('reservas')->where('id', $id)->update([
+            'estado' => 'aprobado',
+            'eliminado' => 0,
+        ]);
+        return back()->with('status', 'Reserva aprobada correctamente.');
+    }
+
+
+    public function create($bingoId)
+{
+    $bingo = \App\Models\Bingo::findOrFail($bingoId);
+
+    return view('admin.bingos.reservas-crear', [
+        'bingoId' => $bingoId,
+        'bingo' => $bingo,
+    ]);
+}
+public function comprobantesDuplicados($bingoId)
+{
+    $bingo = Bingo::findOrFail($bingoId);
+
+    $reservas = Reserva::where('bingo_id', $bingoId)
+    ->whereIn('eliminado', [0, 1]) // ✅ incluye activos y rechazados
+    ->get()
+    ->filter(function ($reserva) {
+        $metadatos = json_decode($reserva->comprobante_metadata, true);
+        return is_array($metadatos) && collect($metadatos)->contains(function ($m) {
+            return !empty($m['perceptual_hash']) && !empty($m['posible_duplicado']);
+        });
+    });
+
+
+    // Agrupar por perceptual_hash solamente
+    $agrupados = $reservas->groupBy(function ($reserva) {
+        $metadatos = json_decode($reserva->comprobante_metadata, true);
+        $info = collect($metadatos)->firstWhere('posible_duplicado', true);
+        return $info['perceptual_hash'] ?? 'nohash';
+    })->filter(function ($grupo) {
+        return $grupo->count() > 1; // solo mostrar grupos con al menos 2 comprobantes
+    });
+
+    return view('admin.bingos.reservas-duplicadas', compact('bingo', 'agrupados'));
+}
+
+public function pedidosDuplicados($bingoId)
+{
+    $bingo = \App\Models\Bingo::findOrFail($bingoId);
+
+    // Obtener reservas con número de comprobante duplicado
+    $duplicados = \App\Models\Reserva::where('bingo_id', $bingoId)
+        ->whereNotNull('numero_comprobante')
+        ->groupBy('numero_comprobante')
+        ->havingRaw('COUNT(*) > 1')
+        ->pluck('numero_comprobante');
+
+    $reservas = \App\Models\Reserva::where('bingo_id', $bingoId)
+        ->whereIn('numero_comprobante', $duplicados)
+        ->get()
+        ->groupBy('numero_comprobante');
+
+    return view('admin.bingos.pedidos-duplicados', compact('bingo', 'reservas'));
+}
 
     /**
      * Verifica si un comprobante es único basado en sus metadatos
