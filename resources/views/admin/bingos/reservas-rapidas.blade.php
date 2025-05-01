@@ -199,17 +199,22 @@
         </div>
         
         <div class="card-footer bg-dark border-top border-secondary py-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="text-muted small">
-                    Mostrando {{ $reservas->firstItem() }} - {{ $reservas->lastItem() }} de {{ $reservas->total() }} reservas
-                </div>
-                <div>
-                    {{ $reservas->links('pagination::bootstrap-5') }}
-                </div>
-            </div>
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+            @if ($reservas instanceof \Illuminate\Pagination\LengthAwarePaginator)
+                Mostrando {{ $reservas->firstItem() }} - {{ $reservas->lastItem() }} de {{ $reservas->total() }} reservas
+            @else
+                Total reservas: {{ $reservas->count() }}
+            @endif
+        </div>
+        <div>
+            @if ($reservas instanceof \Illuminate\Pagination\LengthAwarePaginator)
+                {{ $reservas->links('pagination::bootstrap-5') }}
+            @endif
         </div>
     </div>
 </div>
+
 
 <style>
     /* Main styles */
