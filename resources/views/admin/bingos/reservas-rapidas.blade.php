@@ -334,7 +334,7 @@
       
         // Initialize DataTable with improved configuration
         const table = $('#tabla-reservas').DataTable({
-            pageLength: 10,
+            pageLength: 25,
             lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             ordering: true,
             autoWidth: false,
