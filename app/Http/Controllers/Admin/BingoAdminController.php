@@ -271,63 +271,51 @@ class BingoAdminController extends Controller
     {
         $bingo = Bingo::findOrFail($bingoId);
     
-        // Obtenemos las reservas (sin paginar aún)
-        $reservaRaw = DB::table('reservas')
-        ->select(
-            'id',
-            'nombre',
-            'celular',
-            'created_at as fecha',
-            'cantidad as cartones',
-            'series',
-            'total',
-            'comprobante',
-            'numero_comprobante',
-            'estado',
-            DB::raw('COALESCE(orden_bingo, 0) as orden_bingo') // 👈 Ajuste clave aquí
-        )
-        ->where('eliminado', 0)
-        ->where('bingo_id', $bingoId)
-        ->orderByDesc('id')
-        ->get();
+        // Obtener reservas sin paginar (para que Datatables lo haga)
+        $reservas = DB::table('reservas')
+            ->select(
+                'id',
+                'nombre',
+                'celular',
+                'created_at as fecha',
+                'cantidad as cartones',
+                'series',
+                'total',
+                'comprobante',
+                'numero_comprobante',
+                'estado',
+                DB::raw('COALESCE(orden_bingo, 0) as orden_bingo')
+            )
+            ->where('eliminado', 0)
+            ->where('bingo_id', $bingoId)
+            ->orderByDesc('id')
+            ->get()
+            ->map(function ($item) {
+                // Limpiar comprobante
+                $comprobante = $item->comprobante;
     
+                if (is_string($comprobante)) {
+                    $comprobante = str_replace(['\\"', '"', '[', ']'], '', $comprobante);
+                    $comprobante = str_replace(['\\', '\\', '//'], '', $comprobante);
+                    $comprobante = preg_replace('#/+#', '/', $comprobante);
+                    $comprobante = ltrim($comprobante, '/');
+                } else {
+                    // Si no es string (array u otro), dejar vacío
+                    $comprobante = '';
+                }
     
-        // Limpiar comprobantes sin romper stdClass
-        $reservaLimpias = $reservaRaw->map(function ($item) {
-            $comprobante = $item->comprobante;
-
-            // Quitar caracteres indeseados
-            $comprobante = str_replace(['\\"', '"', '[', ']'], '', $comprobante);
-            
-            // Normalizar slashes
-            $comprobante = str_replace(['\\', '\\', '//'], '', $comprobante);
-            
-            // Eliminar posibles dobles al principio
-            $comprobante = preg_replace('#/+#', '/', $comprobante); // normaliza slashes intermedios
-            $comprobante = ltrim($comprobante, '/'); // elimina slash inicial si quedó            
-            $item->ruta_comprobante = $comprobante;
-            return $item;
-        });
+                $item->ruta_comprobante = $comprobante;
     
-        // Paginación manual para que no falle $reservas->links()
-        // $currentPage = request()->get('page', 1);
-        // $perPage = 25;
-        // $currentItems = $reservaLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
-    
-        // $paginator = new LengthAwarePaginator(
-        //     $currentItems,
-        //     $reservaLimpias->count(),
-        //     $perPage,
-        //     $currentPage,
-        //     ['path' => request()->url(), 'query' => request()->query()]
-        // );
+                return $item;
+            });
     
         return view('admin.bingos.reservas-rapidas', [
-            'reservas' => $paginator,
+            'reservas' => $reservas, // Ahora se envía directo SIN paginar
             'bingo' => $bingo,
             'bingoId' => $bingoId,
         ]);
     }
+    
    
     
     public function filtrarReservasRapidas(Request $request, $bingoId)
@@ -396,21 +384,21 @@ class BingoAdminController extends Controller
             return $item;
         });
     
-        // // Paginar manualmente
-        // $currentPage = $request->get('page', 1);
-        // $perPage = 25;
-        // $currentItems = $reservasLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        // Paginar manualmente
+        $currentPage = $request->get('page', 1);
+        $perPage = 25;
+        $currentItems = $reservasLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
     
-        // $reservas = new LengthAwarePaginator(
-        //     $currentItems,
-        //     $reservasLimpias->count(),
-        //     $perPage,
-        //     $currentPage,
-        //     [
-        //         'path' => $request->url(),
-        //         'query' => $request->query(),
-        //     ]
-        // );
+        $reservas = new LengthAwarePaginator(
+            $currentItems,
+            $reservasLimpias->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
     
         // Retornar vista con filtros aplicados
         return view('admin.bingos.reservas-rapidas', [
