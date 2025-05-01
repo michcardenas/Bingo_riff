@@ -148,7 +148,7 @@
                             <td>${{ number_format($reserva->total, 0, ',', '.') }}</td>
                             <td>
     @if (!empty($reserva->ruta_comprobante))
-        <a href="{{ asset('storage/' . $reserva->ruta_comprobante) }}" target="_blank" class="btn btn-sm btn-dark">
+        <a href="{{ asset( $reserva->ruta_comprobante) }}" target="_blank" class="btn btn-sm btn-dark">
             <i class="bi bi-download"></i> Descargar comprobante
         </a>
     @else
