@@ -310,17 +310,17 @@ class BingoAdminController extends Controller
         });
     
         // Paginación manual para que no falle $reservas->links()
-        $currentPage = request()->get('page', 1);
-        $perPage = 25;
-        $currentItems = $reservaLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        // $currentPage = request()->get('page', 1);
+        // $perPage = 25;
+        // $currentItems = $reservaLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
     
-        $paginator = new LengthAwarePaginator(
-            $currentItems,
-            $reservaLimpias->count(),
-            $perPage,
-            $currentPage,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
+        // $paginator = new LengthAwarePaginator(
+        //     $currentItems,
+        //     $reservaLimpias->count(),
+        //     $perPage,
+        //     $currentPage,
+        //     ['path' => request()->url(), 'query' => request()->query()]
+        // );
     
         return view('admin.bingos.reservas-rapidas', [
             'reservas' => $paginator,
@@ -396,21 +396,21 @@ class BingoAdminController extends Controller
             return $item;
         });
     
-        // Paginar manualmente
-        $currentPage = $request->get('page', 1);
-        $perPage = 25;
-        $currentItems = $reservasLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        // // Paginar manualmente
+        // $currentPage = $request->get('page', 1);
+        // $perPage = 25;
+        // $currentItems = $reservasLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
     
-        $reservas = new LengthAwarePaginator(
-            $currentItems,
-            $reservasLimpias->count(),
-            $perPage,
-            $currentPage,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
-        );
+        // $reservas = new LengthAwarePaginator(
+        //     $currentItems,
+        //     $reservasLimpias->count(),
+        //     $perPage,
+        //     $currentPage,
+        //     [
+        //         'path' => $request->url(),
+        //         'query' => $request->query(),
+        //     ]
+        // );
     
         // Retornar vista con filtros aplicados
         return view('admin.bingos.reservas-rapidas', [
