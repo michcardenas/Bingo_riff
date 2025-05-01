@@ -338,6 +338,7 @@
             lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             ordering: true,
             autoWidth: false,
+            stateSave: true,
             responsive: false,
             language: {
                 paginate: {
