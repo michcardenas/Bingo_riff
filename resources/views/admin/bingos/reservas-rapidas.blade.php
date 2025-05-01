@@ -231,7 +231,7 @@
     
     /* Aumentar el espacio para los botones de acción */
     td:last-child {
-        min-width: 300px;
+        min-width: 190px;
     }
     
     /* Asegurar que toda la tabla sea visible */
