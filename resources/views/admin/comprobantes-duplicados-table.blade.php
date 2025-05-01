@@ -86,11 +86,11 @@
 
                                 @if(is_array($comprobantes) && count($comprobantes) > 0)
                                     @foreach($comprobantes as $index => $comprobante)
-                                    <a href="{{ asset('storage/' . $comprobante) }}" target="_blank" class="btn btn-sm btn-light mb-1">
+                                    <a href="{{ asset( $comprobante) }}" target="_blank" class="btn btn-sm btn-light mb-1">
                                         Ver comprobante {{ $index + 1 }}
                                     </a>
-                                    <a href="{{ asset('storage/' . $comprobante) }}" target="_blank" class="d-block mb-1">
-                                        <img src="{{ asset('storage/' . $comprobante) }}" 
+                                    <a href="{{ asset( $comprobante) }}" target="_blank" class="d-block mb-1">
+                                        <img src="{{ asset( $comprobante) }}" 
                                             alt="Miniatura" 
                                             class="img-thumbnail" 
                                             style="max-height: 40px; max-width: 60px">
