@@ -320,28 +320,28 @@ class BingoAdminController extends Controller
     
     public function filtrarReservasRapidas(Request $request, $bingoId)
     {
-        // Obtener modelo bingo para mostrar su nombre
+        // Obtener modelo bingo
         $bingo = \App\Models\Bingo::findOrFail($bingoId);
     
-        // Base query sin paginar
+        // Base de consulta
         $query = DB::table('reservas')
-        ->select(
-            'id',
-            'nombre',
-            'celular',
-            'created_at as fecha',
-            'cantidad as cartones',
-            'series',
-            'total',
-            'comprobante',
-            'numero_comprobante',
-            'estado',
-            DB::raw('COALESCE(orden_bingo, 0) as orden_bingo') // ✅ AÑADIR ESTO para evitar error
-        )
-   
-        ->where('bingo_id', $bingoId);
+            ->select(
+                'id',
+                'nombre',
+                'celular',
+                'created_at as fecha',
+                'cantidad as cartones',
+                'series',
+                'total',
+                'comprobante',
+                'numero_comprobante',
+                'estado',
+                DB::raw('COALESCE(orden_bingo, 0) as orden_bingo')
+            )
+            ->where('bingo_id', $bingoId)
+            ->where('eliminado', 0); // ✅ Importante para evitar ver eliminados
     
-        // Filtro por campo (nombre, celular o series)
+        // Filtro por campo (nombre, celular, series)
         $campo = $request->input('campo', 'nombre');
         $valor = $request->input('search');
     
@@ -356,25 +356,25 @@ class BingoAdminController extends Controller
                 }
             });
         }
-        
     
         // Filtro por estado
         if ($request->filled('estado') && $request->estado !== 'todos') {
             $query->whereRaw('LOWER(estado) = ?', [strtolower($request->estado)]);
         }
-        // Obtener resultados sin paginar aún
+    
+        // Obtener resultados
         $resultados = $query->orderByDesc('id')->get();
     
-        // Limpieza del campo comprobante y generación de ruta limpia
+        // Limpiar comprobantes
         $reservasLimpias = $resultados->map(function ($item) {
             $comprobante = $item->comprobante;
     
-            // Si tiene comillas dobles extra
-            if (str_starts_with($comprobante, '""') && str_ends_with($comprobante, '""')) {
-                $comprobante = trim($comprobante, '"');
+            // Si es un array (ejemplo de comprobantes JSON en forma array)
+            if (is_array($comprobante)) {
+                $comprobante = implode(',', $comprobante);
             }
     
-            // Limpiar elementos de JSON
+            // Quitar caracteres indeseados
             $comprobante = str_replace(['\\"', '"', '[', ']'], '', $comprobante);
             $comprobante = str_replace(['\\/', '\\'], '/', $comprobante);
             $comprobante = preg_replace('#/+#', '/', $comprobante);
@@ -384,12 +384,13 @@ class BingoAdminController extends Controller
             return $item;
         });
     
-        // Paginar manualmente
+        // Paginación manual
         $currentPage = $request->get('page', 1);
         $perPage = 25;
+    
         $currentItems = $reservasLimpias->slice(($currentPage - 1) * $perPage, $perPage)->values();
     
-        $reservas = new LengthAwarePaginator(
+        $reservas = new \Illuminate\Pagination\LengthAwarePaginator(
             $currentItems,
             $reservasLimpias->count(),
             $perPage,
@@ -400,7 +401,7 @@ class BingoAdminController extends Controller
             ]
         );
     
-        // Retornar vista con filtros aplicados
+        // Retornar vista
         return view('admin.bingos.reservas-rapidas', [
             'reservas' => $reservas,
             'bingo' => $bingo,
@@ -410,6 +411,7 @@ class BingoAdminController extends Controller
             'campoFiltro' => $campo,
         ]);
     }
+    
     
     public function actualizarEstadoReserva(Request $request)
     {
