@@ -14,199 +14,106 @@ class BingoController extends Controller
 {
     public function store(Request $request)
     {
-        // Log inicial
         Log::info('Iniciando proceso de reserva', ['request' => $request->all()]);
     
         try {
-            // 1. Validar los datos, permitiendo múltiples imágenes
+            // Validar datos
             $validated = $request->validate([
                 'bingo_id'      => 'required|exists:bingos,id',
                 'cartones'      => 'required|integer|min:1',
                 'nombre'        => 'required|string|max:255',
                 'celular'       => 'required|string|max:20',
-                'comprobante'   => 'required',       // Asegura que al menos se suba 1 archivo
-                'comprobante.*' => 'image|max:5120', // Cada archivo debe ser una imagen de máx 5 MB
+                'comprobante'   => 'required',
+                'comprobante.*' => 'image|max:5120',
             ]);
     
             Log::info('Datos validados correctamente', ['validated' => $validated]);
     
-            // 2. Obtener el precio del cartón desde la base de datos como decimal
             $bingo = Bingo::findOrFail($validated['bingo_id']);
-            $precioCarton = (float)$bingo->precio;
+            $precioCarton = (float) $bingo->precio;
             $totalPagar = $validated['cartones'] * $precioCarton;
     
-            Log::info('Información del bingo y cálculo de precios', [
-                'bingo_id' => $bingo->id,
-                'bingo_nombre' => $bingo->nombre,
-                'precio_carton' => $precioCarton,
-                'cantidad_cartones' => $validated['cartones'],
-                'total_pagar' => $totalPagar
-            ]);
-    
-            // 3. Guardar las imágenes en storage y recolectar sus rutas usando el disco "public"
             $rutasArchivos = [];
-            $metadatosArchivos = []; // Array para guardar los metadatos de cada archivo
-            $hayDuplicados = false;  // Flag para detectar duplicados
-            
+            $metadatosArchivos = [];
+            $hayDuplicados = false;
+    
+            // Subir comprobantes
             if ($request->hasFile('comprobante')) {
-                Log::info('Procesando archivos adjuntos', [
-                    'cantidad_archivos' => count($request->file('comprobante'))
-                ]);
-    
                 foreach ($request->file('comprobante') as $index => $file) {
-                    try {
-                        // Verificar si el comprobante es único utilizando la función de verificación
-                        $verificacion = $this->verificarComprobanteUnico($file);
-                        $metadatosArchivos[] = $verificacion['metadatos']; // Guardar los metadatos extraídos
-                        
-                        // Registrar si hay duplicados, pero no bloquear la subida
-                        if (!$verificacion['es_unico']) {
-                            $hayDuplicados = true;
-                            
-                            Log::warning('Comprobante duplicado detectado', [
-                                'index' => $index,
-                                'filename' => $file->getClientOriginalName(),
-                                'similaridad' => $verificacion['similaridad'] . '%',
-                                'reserva_coincidente' => $verificacion['reserva_coincidente'] ? $verificacion['reserva_coincidente']->id : null
-                            ]);
-                            
-                            // Marcamos los metadatos con una bandera de posible duplicado
-                            $metadatosArchivos[count($metadatosArchivos) - 1]['posible_duplicado'] = true;
-                            $metadatosArchivos[count($metadatosArchivos) - 1]['reserva_coincidente_id'] = $verificacion['reserva_coincidente'] ? $verificacion['reserva_coincidente']->id : null;
-                            $metadatosArchivos[count($metadatosArchivos) - 1]['similaridad'] = $verificacion['similaridad'];
-                        }
-                        
-                        // Guardar con un nombre único para evitar colisiones
-                        $filename = time() . '_' . $file->getClientOriginalName();
-                        // Guarda en "storage/app/public/comprobantes" y retorna "comprobantes/archivo.png"
-                        $ruta = $file->storeAs('comprobantes', $filename, 'public');
-                        $rutasArchivos[] = $ruta;
     
-                        Log::info('Archivo guardado correctamente', [
-                            'index' => $index,
-                            'filename' => $filename,
-                            'ruta' => $ruta,
-                            'es_unico' => $verificacion['es_unico'],
-                            'desde_admin' => $request->has('desde_admin') ? 'Sí' : 'No'
-                        ]);
-                    } catch (\Exception $e) {
-                        Log::error('Error al guardar archivo', [
-                            'index' => $index,
-                            'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString()
-                        ]);
-                        throw $e;
+                    $verificacion = $this->verificarComprobanteUnico($file);
+                    $metadatosArchivos[] = $verificacion['metadatos'];
+    
+                    if (!$verificacion['es_unico']) {
+                        $hayDuplicados = true;
+                        $metadatosArchivos[count($metadatosArchivos) - 1]['posible_duplicado'] = true;
+                        $metadatosArchivos[count($metadatosArchivos) - 1]['reserva_coincidente_id'] = $verificacion['reserva_coincidente'] ? $verificacion['reserva_coincidente']->id : null;
+                        $metadatosArchivos[count($metadatosArchivos) - 1]['similaridad'] = $verificacion['similaridad'];
                     }
+    
+                    // Subir a /public/comprobantes
+                    $filename = time() . '_' . $file->getClientOriginalName();
+                    $file->move(public_path('comprobantes'), $filename);
+                    $rutaRelativa = 'comprobantes/' . $filename;
+                    $rutasArchivos[] = $rutaRelativa;
+    
+                    Log::info('Archivo guardado', ['archivo' => $rutaRelativa]);
                 }
-            } else {
-                Log::warning('No se encontraron archivos adjuntos en la solicitud');
             }
     
-            // Después del ciclo forEach, si hay duplicados:
+            // Avisar por duplicados
             if ($hayDuplicados) {
                 if ($request->has('desde_admin') && $request->desde_admin == 1) {
-                    // Mensaje para el administrador
-                    session()->flash('warning', 'Se detectaron comprobantes posiblemente duplicados. Se ha registrado esta información para revisión posterior.');
+                    session()->flash('warning', 'Se detectaron comprobantes posiblemente duplicados. Se ha registrado esta información para revisión.');
                 } else {
-                    // Dejar un mensaje en el log pero no mostrar advertencia al usuario normal
-                    Log::warning('Usuario normal ha subido un comprobante potencialmente duplicado', [
-                        'reserva_data' => [
-                            'nombre' => $validated['nombre'],
-                            'celular' => $validated['celular'],
-                            'bingo_id' => $validated['bingo_id']
-                        ]
+                    Log::warning('Usuario normal subió un posible duplicado', [
+                        'nombre' => $validated['nombre'],
+                        'celular' => $validated['celular'],
+                        'bingo_id' => $validated['bingo_id']
                     ]);
-                    
-                    // Opcionalmente, puedes enviar una notificación a los administradores
-                    // Notification::send($admins, new PosibleComprobanteDuplicado($metadatosArchivos));
                 }
             }
     
-            // Convertir los arrays a JSON para almacenarlos en la BD
+            // Guardar reserva en transacción
             $comprobanteStr = json_encode($rutasArchivos);
             $metadatosStr = json_encode($metadatosArchivos);
-            
-            Log::info('Datos de comprobantes procesados', [
-                'rutas' => $rutasArchivos,
-                'json_rutas' => $comprobanteStr,
-                'metadatos' => $metadatosArchivos,
-                'json_metadatos' => $metadatosStr
-            ]);
     
-            // 4. Asignar series automáticamente y orden_bingo
-            $series = [];
-            $reservaCreada = null;
+            DB::transaction(function () use ($validated, &$series, $totalPagar, $comprobanteStr, $metadatosStr, $bingo, &$reservaCreada, $request) {
     
-            try {
-                DB::transaction(function () use ($validated, &$series, $totalPagar, $comprobanteStr, $metadatosStr, $bingo, &$reservaCreada, $request) {
-                    Log::info('Iniciando transacción DB');
+                $cantidad = $validated['cartones'];
+                $series = $this->asignarSeries($bingo->id, $cantidad);
     
-                    $cantidad = $validated['cartones'];
-                    // Usamos nuestro método mejorado que garantiza series únicas
-                    $series = $this->asignarSeries($bingo->id, $cantidad);
+                $maxOrdenBingo = Reserva::where('bingo_id', $bingo->id)->max('orden_bingo') ?? 0;
+                $nuevoOrdenBingo = $maxOrdenBingo + 1;
     
-                    Log::info('Series asignadas para los cartones', ['series' => $series]);
+                $estadoInicial = 'revision';
+                $numeroComprobante = null;
     
-                    // Calculamos el próximo valor de orden_bingo para este bingo específico
-                    $maxOrdenBingo = Reserva::where('bingo_id', $bingo->id)->max('orden_bingo') ?? 0;
-                    $nuevoOrdenBingo = $maxOrdenBingo + 1;
+                if ($request->has('desde_admin') && $request->desde_admin == 1 && $request->has('auto_approve')) {
+                    $estadoInicial = 'aprobado';
+                    $numeroComprobante = 'AUTO-' . time();
+                }
     
-                    Log::info('Calculado nuevo orden_bingo', [
-                        'bingo_id' => $bingo->id,
-                        'max_orden_actual' => $maxOrdenBingo,
-                        'nuevo_orden' => $nuevoOrdenBingo
-                    ]);
+                $reservaData = [
+                    'nombre'             => $validated['nombre'],
+                    'celular'            => $validated['celular'],
+                    'cantidad'           => $cantidad,
+                    'comprobante'        => $comprobanteStr,
+                    'comprobante_metadata' => $metadatosStr,
+                    'total'              => $totalPagar,
+                    'series'             => $series,
+                    'estado'             => $estadoInicial,
+                    'numero_comprobante' => $numeroComprobante,
+                    'bingo_id'           => $bingo->id,
+                    'orden_bingo'        => $nuevoOrdenBingo,
+                ];
     
-                    // Determinar el estado inicial (si hay auto-aprobación desde admin)
-                    $estadoInicial = 'revision';
-                    $numeroComprobante = null;
-                    
-                    // Si es desde el panel de administración y se marcó auto-aprobación
-                    if ($request->has('desde_admin') && $request->desde_admin == 1 && $request->has('auto_approve')) {
-                        $estadoInicial = 'aprobado';
-                        $numeroComprobante = 'AUTO-' . time();
-                        Log::info('Reserva auto-aprobada desde panel admin', ['numero_comprobante' => $numeroComprobante]);
-                    }
+                $reservaCreada = Reserva::create($reservaData);
     
-                    // 5. Crear la reserva, guardando también las series (como JSON), orden_bingo y metadatos
-                    $reservaData = [
-                        'nombre'             => $validated['nombre'],
-                        'celular'            => $validated['celular'],
-                        'cantidad'           => $cantidad,
-                        'comprobante'        => $comprobanteStr,
-                        'comprobante_metadata' => $metadatosStr, // Nuevo campo para metadatos
-                        'total'              => $totalPagar,
-                        'series'             => $series,
-                        'estado'             => $estadoInicial,
-                        'numero_comprobante' => $numeroComprobante,
-                        'bingo_id'           => $bingo->id,
-                        'orden_bingo'        => $nuevoOrdenBingo, // Nuevo campo
-                    ];
+                Log::info('Reserva creada', ['id' => $reservaCreada->id, 'orden_bingo' => $reservaCreada->orden_bingo]);
+            });
     
-                    Log::info('Datos para crear la reserva', $reservaData);
-    
-                    $reservaCreada = Reserva::create($reservaData);
-    
-                    Log::info('Reserva creada correctamente', [
-                        'reserva_id' => $reservaCreada->id,
-                        'orden_bingo' => $reservaCreada->orden_bingo
-                    ]);
-                });
-            } catch (\Exception $e) {
-                Log::error('Error en la transacción DB', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                throw $e;
-            }
-    
-            Log::info('Proceso de reserva completado exitosamente', [
-                'reserva_id' => $reservaCreada ? $reservaCreada->id : null,
-                'orden_bingo' => $reservaCreada ? $reservaCreada->orden_bingo : null,
-                'series' => $series
-            ]);
-    
-            // Comprobar si la petición es AJAX (para respuesta JSON)
+            // Respuesta AJAX
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
@@ -216,28 +123,25 @@ class BingoController extends Controller
                 ]);
             }
     
-            // 6. Redirigir según el origen de la solicitud
+            // Redirección según origen
             if ($request->has('desde_admin') && $request->desde_admin == 1) {
-                // Si viene del panel de administración, redirigir de vuelta al panel
                 return redirect()->route('bingos.reservas.rapidas', $bingo->id)
-                ->with('success', '¡Participante añadido correctamente!');
-            } else {
-                    // Si viene del flujo normal, redirigir a la vista "reservado"
-    // Almacenamos el número de teléfono en la sesión para usarlo en buscarcartones
-    session()->put('celular_comprador', $validated['celular']);
-    
-    return redirect()->route('cartones.indexDescargar')
-        ->with('success', '¡Reserva realizada correctamente!')
-        ->with('series', $series)
-        ->with('bingo', $bingo->nombre)
-        ->with('celular', $validated['celular']) // Pasamos también el celular
-        ->with('orden', $reservaCreada->orden_bingo);
+                    ->with('success', '¡Participante añadido correctamente!');
             }
+    
+            session()->put('celular_comprador', $validated['celular']);
+    
+            return redirect()->route('cartones.indexDescargar')
+                ->with('success', '¡Reserva realizada correctamente!')
+                ->with('series', $series)
+                ->with('bingo', $bingo->nombre)
+                ->with('celular', $validated['celular'])
+                ->with('orden', $reservaCreada->orden_bingo);
+    
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Error de validación', [
-                'errors' => $e->errors(),
-            ]);
-            
+    
+            Log::error('Error de validación', ['errors' => $e->errors()]);
+    
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -245,27 +149,26 @@ class BingoController extends Controller
                     'errors' => $e->errors()
                 ], 422);
             }
-            
-            throw $e; // Re-lanzar para que Laravel maneje la respuesta
+    
+            throw $e;
+    
         } catch (\Exception $e) {
-            Log::error('Error general en el proceso de reserva', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
+    
+            Log::error('Error general en reserva', ['error' => $e->getMessage()]);
+    
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ocurrió un error al procesar tu reserva. Por favor, intenta nuevamente.'
+                    'message' => 'Ocurrió un error. Intenta nuevamente.'
                 ], 500);
             }
     
-            // Puedes redirigir con un mensaje de error o relanzar la excepción
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Ocurrió un error al procesar tu reserva. Por favor, intenta nuevamente.');
+                ->with('error', 'Ocurrió un error al procesar tu reserva.');
         }
     }
+    
     public function rechazarReserva($id)
     {
         DB::table('reservas')
