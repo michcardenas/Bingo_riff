@@ -151,39 +151,34 @@
         $comprobantes = [];
 
         if (!empty($reserva->ruta_comprobante)) {
+            // Caso especial si hay ruta comprobante directa
             $comprobantes[] = $reserva->ruta_comprobante;
         } elseif (!empty($reserva->comprobante)) {
-            // LOG → VER COMPROBANTE CRUDITO
-            Log::info('Comprobante RAW:', [$reserva->comprobante]);
+            // Limpiar posibles comillas
+            $comprobanteRaw = trim($reserva->comprobante, "\"");
 
-            $comprobanteRaw = trim($reserva->comprobante, "\""); // quitar comillas si hay
-
-            // LOG → VER COMPROBANTE LIMPIO
-            Log::info('Comprobante limpiado:', [$comprobanteRaw]);
-
+            // Intentar decodificar como JSON
             $decoded = json_decode($comprobanteRaw, true);
 
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                Log::info('Comprobante es JSON:', $decoded);
                 $comprobantes = $decoded;
             } else {
                 // Si no es JSON, puede estar separado por comas
                 $partes = explode(',', $comprobanteRaw);
-                Log::info('Comprobante explotado por comas:', $partes);
-
                 foreach ($partes as $parte) {
-                    $comprobantes[] = trim($parte);
+                    $parte = trim($parte);
+                    if (!empty($parte)) {
+                        $comprobantes[] = $parte;
+                    }
                 }
             }
         }
-
-        // LOG FINAL - ¿CUÁNTOS COMPROBANTES?
-        Log::info('Comprobantes finales a mostrar:', $comprobantes);
     @endphp
 
     @if (count($comprobantes))
         @foreach ($comprobantes as $index => $comprobante)
             @php
+                // Limpiar cualquier caracter no deseado en la ruta
                 $rutaComprobante = str_replace(['\\', '//'], '/', $comprobante);
             @endphp
             <a href="{{ asset($rutaComprobante) }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
@@ -194,6 +189,7 @@
         <span class="text-danger">Sin comprobante</span>
     @endif
 </td>
+
 
 
 
