@@ -52,10 +52,16 @@ class BingoController extends Controller
                     }
     
                     // Subir a /public/comprobantes
-                    $filename = time() . '_' . $file->getClientOriginalName();
-                    $file->move(public_path('comprobantes'), $filename);
-                    $rutaRelativa = 'comprobantes/' . $filename;
-                    $rutasArchivos[] = $rutaRelativa;
+                    // $filename = time() . '_' . $file->getClientOriginalName();
+                    // $file->move(public_path('comprobantes'), $filename);
+                    // $rutaRelativa = 'comprobantes/' . $filename;
+                    // $rutasArchivos[] = $rutaRelativa;
+                    $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+
+$file->move($pathProduccion, $filename);
+$rutaRelativa = 'comprobantes/' . $filename;
+$rutasArchivos[] = $rutaRelativa;
+
     
                     Log::info('Archivo guardado', ['archivo' => $rutaRelativa]);
                 }
