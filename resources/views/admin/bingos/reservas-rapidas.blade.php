@@ -324,7 +324,6 @@
 
 <script>
     $(document).ready(function () {
-        console.log('Total de registros en DataTable:', table.rows().count());
 
         // Ajustar ancho de la tabla cuando se redimensiona la ventana
         $(window).resize(function() {
@@ -370,7 +369,8 @@
             ]
         });
         
-   
+        console.log('Total de registros en DataTable:', table.rows().count());
+
     });
 
     document.querySelectorAll('.numero-comprobante').forEach(input => {
