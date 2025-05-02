@@ -148,21 +148,23 @@
                             <td>${{ number_format($reserva->total, 0, ',', '.') }}</td>
                             <td>
     @php
-        // Preparar comprobantes seguros
         $comprobantes = [];
 
         if (!empty($reserva->ruta_comprobante)) {
-            // Si ya tiene ruta_comprobante, usarlo (caso normal)
+            // Usar directamente la ruta
             $comprobantes[] = $reserva->ruta_comprobante;
         } elseif (!empty($reserva->comprobante)) {
-            // Si es json
+            // Intentar decodificar JSON
             $decoded = json_decode($reserva->comprobante, true);
 
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $comprobantes = $decoded;
             } else {
-                // Es un string simple (ej: comprobantes/archivo.jpg)
-                $comprobantes[] = $reserva->comprobante;
+                // Si no es JSON, puede estar separado por comas
+                $partes = explode(',', $reserva->comprobante);
+                foreach ($partes as $parte) {
+                    $comprobantes[] = trim($parte);
+                }
             }
         }
     @endphp
@@ -170,7 +172,7 @@
     @if (count($comprobantes))
         @foreach ($comprobantes as $index => $comprobante)
             @php
-                // Limpiar ruta (por si vienen doble / o \ )
+                // Limpiar ruta
                 $rutaComprobante = str_replace(['\\', '//'], '/', $comprobante);
             @endphp
             <a href="{{ asset($rutaComprobante) }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
