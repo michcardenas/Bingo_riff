@@ -63,33 +63,28 @@ class BingoController extends Controller
                         ]);
                     }
     
-                    // Generar filename
-                    $filename = time() . '_' . $file->getClientOriginalName();
-    
-                    // Determinar ruta según entorno
-                    $pathDestino = app()->environment('production')
-                        ? '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes'
-                        : public_path('comprobantes');
-    
-                    Log::info("Guardando archivo", [
-                        'destino' => $pathDestino,
-                        'filename' => $filename
-                    ]);
-    
-                    // Subir archivo
-                    $file->move($pathDestino, $filename);
-    
-                    // Verificar si se subió correctamente
-                    $fullPath = $pathDestino . '/' . $filename;
-                    if (file_exists($fullPath)) {
-                        Log::info("Archivo subido con éxito", ['path' => $fullPath]);
-                    } else {
-                        Log::error("ERROR: El archivo no se encuentra después de mover", ['path' => $fullPath]);
-                        throw new \Exception("Error subiendo el archivo $filename");
-                    }
-    
-                    $rutaRelativa = 'comprobantes/' . $filename;
-                    $rutasArchivos[] = $rutaRelativa;
+                  // Ruta de destino para comprobantes en producción
+$pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+
+// Verificar si estamos en producción o local con base en el path base real
+$isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
+
+$destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+
+Log::info("Destino para guardar imagen", [
+    'isProduccion' => $isProduccion,
+    'destino' => $destino
+]);
+
+$filename = time() . '_' . $file->getClientOriginalName();
+$file->move($destino, $filename);
+$rutaRelativa = 'comprobantes/' . $filename;
+$rutasArchivos[] = $rutaRelativa;
+
+Log::info('Archivo subido correctamente', [
+    'archivo' => $rutaRelativa
+]);
+
                 }
             } else {
                 Log::warning('No se encontraron archivos adjuntos en la solicitud');
