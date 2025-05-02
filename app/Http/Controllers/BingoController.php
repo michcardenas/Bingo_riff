@@ -41,6 +41,13 @@ class BingoController extends Controller
             if ($request->hasFile('comprobante')) {
                 foreach ($request->file('comprobante') as $index => $file) {
     
+                    Log::info("Procesando archivo adjunto", [
+                        'index' => $index,
+                        'original_name' => $file->getClientOriginalName(),
+                        'size' => $file->getSize()
+                    ]);
+    
+                    // Verificación de duplicado
                     $verificacion = $this->verificarComprobanteUnico($file);
                     $metadatosArchivos[] = $verificacion['metadatos'];
     
@@ -49,38 +56,55 @@ class BingoController extends Controller
                         $metadatosArchivos[count($metadatosArchivos) - 1]['posible_duplicado'] = true;
                         $metadatosArchivos[count($metadatosArchivos) - 1]['reserva_coincidente_id'] = $verificacion['reserva_coincidente'] ? $verificacion['reserva_coincidente']->id : null;
                         $metadatosArchivos[count($metadatosArchivos) - 1]['similaridad'] = $verificacion['similaridad'];
+    
+                        Log::warning("Posible comprobante duplicado detectado", [
+                            'archivo' => $file->getClientOriginalName(),
+                            'similaridad' => $verificacion['similaridad'] . '%'
+                        ]);
                     }
     
-                    // Subir a /public/comprobantes
-                    // $filename = time() . '_' . $file->getClientOriginalName();
-                    // $file->move(public_path('comprobantes'), $filename);
-                    // $rutaRelativa = 'comprobantes/' . $filename;
-                    // $rutasArchivos[] = $rutaRelativa;
-                    $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
-
-$file->move($pathProduccion, $filename);
-$rutaRelativa = 'comprobantes/' . $filename;
-$rutasArchivos[] = $rutaRelativa;
-
+                    // Generar filename
+                    $filename = time() . '_' . $file->getClientOriginalName();
     
-                    Log::info('Archivo guardado', ['archivo' => $rutaRelativa]);
+                    // Determinar ruta según entorno
+                    $pathDestino = app()->environment('production')
+                        ? '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes'
+                        : public_path('comprobantes');
+    
+                    Log::info("Guardando archivo", [
+                        'destino' => $pathDestino,
+                        'filename' => $filename
+                    ]);
+    
+                    // Subir archivo
+                    $file->move($pathDestino, $filename);
+    
+                    // Verificar si se subió correctamente
+                    $fullPath = $pathDestino . '/' . $filename;
+                    if (file_exists($fullPath)) {
+                        Log::info("Archivo subido con éxito", ['path' => $fullPath]);
+                    } else {
+                        Log::error("ERROR: El archivo no se encuentra después de mover", ['path' => $fullPath]);
+                        throw new \Exception("Error subiendo el archivo $filename");
+                    }
+    
+                    $rutaRelativa = 'comprobantes/' . $filename;
+                    $rutasArchivos[] = $rutaRelativa;
                 }
+            } else {
+                Log::warning('No se encontraron archivos adjuntos en la solicitud');
             }
     
             // Avisar por duplicados
             if ($hayDuplicados) {
                 if ($request->has('desde_admin') && $request->desde_admin == 1) {
-                    session()->flash('warning', 'Se detectaron comprobantes posiblemente duplicados. Se ha registrado esta información para revisión.');
+                    session()->flash('warning', 'Se detectaron comprobantes posiblemente duplicados.');
                 } else {
-                    Log::warning('Usuario normal subió un posible duplicado', [
-                        'nombre' => $validated['nombre'],
-                        'celular' => $validated['celular'],
-                        'bingo_id' => $validated['bingo_id']
-                    ]);
+                    Log::warning('Usuario normal subió un comprobante posiblemente duplicado');
                 }
             }
     
-            // Guardar reserva en transacción
+            // Guardar reserva en la base de datos
             $comprobanteStr = json_encode($rutasArchivos);
             $metadatosStr = json_encode($metadatosArchivos);
     
@@ -116,7 +140,10 @@ $rutasArchivos[] = $rutaRelativa;
     
                 $reservaCreada = Reserva::create($reservaData);
     
-                Log::info('Reserva creada', ['id' => $reservaCreada->id, 'orden_bingo' => $reservaCreada->orden_bingo]);
+                Log::info('Reserva creada', [
+                    'id' => $reservaCreada->id,
+                    'orden_bingo' => $reservaCreada->orden_bingo
+                ]);
             });
     
             // Respuesta AJAX
@@ -129,7 +156,7 @@ $rutasArchivos[] = $rutaRelativa;
                 ]);
             }
     
-            // Redirección según origen
+            // Redirección
             if ($request->has('desde_admin') && $request->desde_admin == 1) {
                 return redirect()->route('bingos.reservas.rapidas', $bingo->id)
                     ->with('success', '¡Participante añadido correctamente!');
@@ -145,33 +172,15 @@ $rutasArchivos[] = $rutaRelativa;
                 ->with('orden', $reservaCreada->orden_bingo);
     
         } catch (\Illuminate\Validation\ValidationException $e) {
-    
             Log::error('Error de validación', ['errors' => $e->errors()]);
-    
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-    
             throw $e;
     
         } catch (\Exception $e) {
-    
             Log::error('Error general en reserva', ['error' => $e->getMessage()]);
-    
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ocurrió un error. Intenta nuevamente.'
-                ], 500);
-            }
     
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Ocurrió un error al procesar tu reserva.');
+                ->with('error', 'Ocurrió un error al procesar tu reserva. ' . $e->getMessage());
         }
     }
     
