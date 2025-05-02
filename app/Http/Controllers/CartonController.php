@@ -215,9 +215,6 @@ public function descargar($numero, $bingoId = null) {
                 Log::warning("Intento de descarga de cartón {$numero} para bingo archivado");
                 return redirect()->back()->with('error', 'Este cartón pertenece a un bingo archivado y no puede ser descargado.');
             }
-            
-            // Ya no verificamos si el bingo está cerrado, permitiendo descargas sin importar el estado
-            // Se eliminó la condición que impedía descargar cartones de bingos cerrados
         }
         
         // Definir rutas de archivos con directorio absoluto
@@ -241,8 +238,9 @@ public function descargar($numero, $bingoId = null) {
             Log::info("Permisos del archivo PDF: " . $permisos);
         }
         
-        // Verificar usuario del servidor web
-        Log::info("Usuario del servidor web: " . exec('whoami'));
+        // ELIMINADA LA LÍNEA QUE USA exec()
+        // En su lugar, simplemente registramos información del servidor
+        Log::info("Verificando archivos en entorno de servidor compartido");
         
         // Determinar qué archivo existe y su extensión
         if (file_exists($rutaJpg)) {
@@ -278,7 +276,11 @@ public function descargar($numero, $bingoId = null) {
                 
                 if (!$archivoCoincidente) {
                     Log::warning("No se encontró ningún archivo que coincida con el patrón: " . $patronBusqueda);
-                    return redirect()->back()->with('error', 'No se encontró el archivo del cartón.');
+                    
+                    // Plan B: Usar URL directa en caso de que no se encuentre
+                    $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
+                    Log::info("Redirigiendo a URL directa: " . $urlDirecta);
+                    return redirect($urlDirecta);
                 }
             } else {
                 Log::error("El directorio no existe o no es accesible: " . $directorioBingo);
@@ -292,7 +294,11 @@ public function descargar($numero, $bingoId = null) {
         // Verificar si el archivo es legible
         if (!is_readable($rutaCompleta)) {
             Log::error("El archivo existe pero no es legible: " . $rutaCompleta);
-            return redirect()->back()->with('error', 'El archivo existe pero no puede ser leído. Contacte al administrador.');
+            
+            // Plan B: Usar URL directa en caso de que el archivo no sea legible
+            $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
+            Log::info("Redirigiendo a URL directa: " . $urlDirecta);
+            return redirect($urlDirecta);
         }
         
         // Planb: usar URL directa si la descarga falla
@@ -322,7 +328,14 @@ public function descargar($numero, $bingoId = null) {
         Log::error("Trace: " . $e->getTraceAsString());
         Log::info("=== FIN PROCESO DESCARGA CON ERROR ===");
         
-        return redirect()->back()->with('error', 'Ocurrió un error al procesar la descarga: ' . $e->getMessage());
+        // Plan B final: intentar redireccionar directamente como último recurso
+        try {
+            $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
+            Log::info("Error en descarga normal. Último intento: redirección a " . $urlDirecta);
+            return redirect($urlDirecta);
+        } catch (\Exception $e2) {
+            return redirect()->back()->with('error', 'Ocurrió un error al procesar la descarga. Por favor contacte al administrador.');
+        }
     }
 }
     public function getBingoByName(Request $request)
