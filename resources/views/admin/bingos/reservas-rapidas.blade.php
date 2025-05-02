@@ -324,6 +324,8 @@
 
 <script>
     $(document).ready(function () {
+        console.log('Total de registros en DataTable:', table.rows().count());
+
         // Ajustar ancho de la tabla cuando se redimensiona la ventana
         $(window).resize(function() {
             if ($.fn.dataTable.isDataTable('#tabla-reservas')) {
