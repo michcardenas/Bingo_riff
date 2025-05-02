@@ -147,19 +147,41 @@
 
                             <td>${{ number_format($reserva->total, 0, ',', '.') }}</td>
                             <td>
-    @if (!empty($reserva->ruta_comprobante))
-        <a href="{{ asset( $reserva->ruta_comprobante) }}" target="_blank" class="btn btn-sm btn-dark">
-            <i class="bi bi-download"></i> Descargar comprobante
-        </a>
-    @else
-    @php 
-    var_dump($reserva->comprobante );
-    
+    @php
+        // Preparar comprobantes seguros
+        $comprobantes = [];
+
+        if (!empty($reserva->ruta_comprobante)) {
+            // Si ya tiene ruta_comprobante, usarlo (caso normal)
+            $comprobantes[] = $reserva->ruta_comprobante;
+        } elseif (!empty($reserva->comprobante)) {
+            // Si es json
+            $decoded = json_decode($reserva->comprobante, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $comprobantes = $decoded;
+            } else {
+                // Es un string simple (ej: comprobantes/archivo.jpg)
+                $comprobantes[] = $reserva->comprobante;
+            }
+        }
     @endphp
+
+    @if (count($comprobantes))
+        @foreach ($comprobantes as $index => $comprobante)
+            @php
+                // Limpiar ruta (por si vienen doble / o \ )
+                $rutaComprobante = str_replace(['\\', '//'], '/', $comprobante);
+            @endphp
+            <a href="{{ asset($rutaComprobante) }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
+                <i class="bi bi-download"></i> Descargar comprobante {{ count($comprobantes) > 1 ? ($index + 1) : '' }}
+            </a>
+        @endforeach
+    @else
         <span class="text-danger">Sin comprobante</span>
-  
     @endif
 </td>
+
 
                             <td><input type="text"
                                                 value="{{ $reserva->numero_comprobante }}"
