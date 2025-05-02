@@ -212,8 +212,8 @@ public function buscar(Request $request)
     $numeroSinCeros = intval($numero);
     
     // Comprobar primero si existe el archivo con extensión .jpg
-$rutaJpg = storage_path('app/private/public/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg');
-$rutaPdf = storage_path('app/private/public/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.pdf');
+$rutaJpg = storage_path('/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg');
+$rutaPdf = storage_path('/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.pdf');
 
     
     // Determinar qué archivo existe y su extensión
