@@ -147,19 +147,17 @@
 
                             <td>${{ number_format($reserva->total, 0, ',', '.') }}</td>
                             <td>
-    @if (!empty($reserva->ruta_comprobante))
-        <a href="{{ asset( $reserva->ruta_comprobante) }}" target="_blank" class="btn btn-sm btn-dark">
-            <i class="bi bi-download"></i> Descargar comprobante
-        </a>
+    @if (!empty($reserva->comprobante))
+        @foreach(json_decode($reserva->comprobante, true) as $comprobante)
+            <a href="{{ asset($comprobante) }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
+                <i class="bi bi-download"></i> Descargar comprobante
+            </a>
+        @endforeach
     @else
-    @php 
-    var_dump($reserva->comprobante );
-    
-    @endphp
         <span class="text-danger">Sin comprobante</span>
-  
     @endif
 </td>
+
 
                             <td><input type="text"
                                                 value="{{ $reserva->numero_comprobante }}"
