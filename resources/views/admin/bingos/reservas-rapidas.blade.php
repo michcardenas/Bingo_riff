@@ -214,6 +214,7 @@
 
 
 
+
                             <td><input type="text"
                                                 value="{{ $reserva->numero_comprobante }}"
                                                 class="form-control form-control-sm bg-dark border-secondary text-light numero-comprobante"
