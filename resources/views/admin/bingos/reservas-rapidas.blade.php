@@ -147,9 +147,27 @@
 
                             <td>${{ number_format($reserva->total, 0, ',', '.') }}</td>
                             <td>
-    @if (!empty($reserva->comprobante))
-        @foreach(json_decode($reserva->comprobante, true) as $comprobante)
-            <a href="{{ asset($comprobante) }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
+    @php
+        // Verificamos si es un array o hay que convertirlo
+        $comprobantes = [];
+
+        if (!empty($reserva->comprobante)) {
+            // Intentar decodificar
+            $decoded = json_decode($reserva->comprobante, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                // Es un JSON válido con array
+                $comprobantes = $decoded;
+            } else {
+                // Es un string plano
+                $comprobantes = [$reserva->comprobante];
+            }
+        }
+    @endphp
+
+    @if (count($comprobantes))
+        @foreach ($comprobantes as $comprobante)
+            <a href="{{ asset(str_replace(['\\', '//'], '/', $comprobante)) }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
                 <i class="bi bi-download"></i> Descargar comprobante
             </a>
         @endforeach
