@@ -154,16 +154,29 @@
             // Caso especial si hay ruta comprobante directa
             $comprobantes[] = $reserva->ruta_comprobante;
         } elseif (!empty($reserva->comprobante)) {
-            // Limpiar posibles comillas
-            $comprobanteRaw = trim($reserva->comprobante, "\"");
 
-            // Intentar decodificar como JSON
+            $comprobanteRaw = trim($reserva->comprobante, "\"");
             $decoded = json_decode($comprobanteRaw, true);
 
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $comprobantes = $decoded;
+
+                // Validar si el primer elemento es un string largo con comas
+                if (count($decoded) === 1 && str_contains($decoded[0], ',')) {
+                    // Separar también por comas
+                    $partes = explode(',', $decoded[0]);
+                    foreach ($partes as $parte) {
+                        $parte = trim($parte);
+                        if (!empty($parte)) {
+                            $comprobantes[] = $parte;
+                        }
+                    }
+                } else {
+                    // Si no, es un array normal
+                    $comprobantes = $decoded;
+                }
+
             } else {
-                // Si no es JSON, puede estar separado por comas
+                // Si no es JSON, puede estar separado por comas directamente
                 $partes = explode(',', $comprobanteRaw);
                 foreach ($partes as $parte) {
                     $parte = trim($parte);
@@ -178,7 +191,6 @@
     @if (count($comprobantes))
         @foreach ($comprobantes as $index => $comprobante)
             @php
-                // Limpiar cualquier caracter no deseado en la ruta
                 $rutaComprobante = str_replace(['\\', '//'], '/', $comprobante);
             @endphp
             <a href="{{ asset($rutaComprobante) }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
