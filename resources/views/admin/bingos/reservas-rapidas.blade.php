@@ -151,19 +151,19 @@
         $comprobantes = [];
 
         if (!empty($reserva->ruta_comprobante)) {
+            // Caso especial si hay ruta comprobante directa
             $comprobantes[] = $reserva->ruta_comprobante;
         } elseif (!empty($reserva->comprobante)) {
 
             $comprobanteRaw = trim($reserva->comprobante, "\"");
-
             $decoded = json_decode($comprobanteRaw, true);
 
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
 
-                // ✅ Si es un array y SOLO TIENE 1 ELEMENTO y adentro tiene COMA → Explota también
-                if (count($decoded) == 1 && str_contains($decoded[0], ',')) {
+                // Validar si el primer elemento es un string largo con comas
+                if (count($decoded) === 1 && str_contains($decoded[0], ',')) {
+                    // Separar también por comas
                     $partes = explode(',', $decoded[0]);
-
                     foreach ($partes as $parte) {
                         $parte = trim($parte);
                         if (!empty($parte)) {
@@ -171,13 +171,13 @@
                         }
                     }
                 } else {
-                    // Si no tiene comas, es un array normal
+                    // Si no, es un array normal
                     $comprobantes = $decoded;
                 }
-            } else {
-                // Si no es JSON válido → Explota por coma directo
-                $partes = explode(',', $comprobanteRaw);
 
+            } else {
+                // Si no es JSON, puede estar separado por comas directamente
+                $partes = explode(',', $comprobanteRaw);
                 foreach ($partes as $parte) {
                     $parte = trim($parte);
                     if (!empty($parte)) {
@@ -201,7 +201,6 @@
         <span class="text-danger">Sin comprobante</span>
     @endif
 </td>
-
 
 
 
