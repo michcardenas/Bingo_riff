@@ -154,15 +154,18 @@
             // Caso especial si hay ruta comprobante directa
             $comprobantes[] = $reserva->ruta_comprobante;
         } elseif (!empty($reserva->comprobante)) {
-
+            // Eliminar comillas extras al inicio y final si existen
             $comprobanteRaw = trim($reserva->comprobante, "\"");
+            
+            // Intentar decodificar como JSON
             $decoded = json_decode($comprobanteRaw, true);
 
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-
+                // Si es un JSON válido y es un array
+                
                 // Validar si el primer elemento es un string largo con comas
                 if (count($decoded) === 1 && str_contains($decoded[0], ',')) {
-                    // Separar también por comas
+                    // Separar por comas
                     $partes = explode(',', $decoded[0]);
                     foreach ($partes as $parte) {
                         $parte = trim($parte);
@@ -174,7 +177,6 @@
                     // Si no, es un array normal
                     $comprobantes = $decoded;
                 }
-
             } else {
                 // Si no es JSON, puede estar separado por comas directamente
                 $partes = explode(',', $comprobanteRaw);
@@ -191,9 +193,16 @@
     @if (count($comprobantes))
         @foreach ($comprobantes as $index => $comprobante)
             @php
+                // Limpiar la ruta eliminando barras duplicadas o invertidas
                 $rutaComprobante = str_replace(['\\', '//'], '/', $comprobante);
+                
+                // Asegurarse que la URL esté completa (por si acaso viene con o sin el prefijo de dominio)
+                $fullUrl = $rutaComprobante;
+                if (!str_starts_with($rutaComprobante, 'http')) {
+                    $fullUrl = asset($rutaComprobante);
+                }
             @endphp
-            <a href="{{ asset($rutaComprobante) }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
+            <a href="{{ $fullUrl }}" target="_blank" class="btn btn-sm btn-dark mb-1 d-block">
                 <i class="bi bi-download"></i> Descargar comprobante {{ count($comprobantes) > 1 ? ($index + 1) : '' }}
             </a>
         @endforeach
