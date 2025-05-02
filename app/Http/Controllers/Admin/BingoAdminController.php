@@ -286,7 +286,6 @@ class BingoAdminController extends Controller
             'estado',
             DB::raw('COALESCE(orden_bingo, 0) as orden_bingo') // 👈 Ajuste clave aquí
         )
-        ->where('eliminado', 0)
         ->where('bingo_id', $bingoId)
         ->orderByDesc('id')
         ->get();
