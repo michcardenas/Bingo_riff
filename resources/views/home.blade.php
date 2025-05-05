@@ -585,12 +585,12 @@ body {
                 </button>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="text-verde fw-bold">
+                <!-- <div class="text-verde fw-bold">
                     Transfiya: <span class="text-white">{{ $numeroTransfiya }}</span>
                 </div>
                 <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroTransfiya }}', event)">
                     Copiar
-                </button>
+                </button> -->
             </div>
             <div class="d-flex justify-content-between align-items-center">
                 <div><span class="text-amarillo fw-bold">Total a pagar:</span></div>
