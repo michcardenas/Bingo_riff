@@ -438,7 +438,7 @@ class BingoAdminController extends Controller
             $updateData['eliminado'] = 1;
         }
     
-        // Si es aprobado, marcar como no eliminado
+        // Si es aprobado, eliminar debe volver a 0
         if ($request->estado === 'aprobado') {
             $updateData['eliminado'] = 0;
         }
