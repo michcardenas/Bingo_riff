@@ -367,7 +367,7 @@ public function comprobantesDuplicados($bingoId)
                 // Calcular distancia entre histogramas
                 $distance = $this->histogramDistance($metaA['histograma'], $metaB['histograma']);
                 
-                if ($distance < 5) { // <= Puedes ajustar este umbral
+                if ($distance < 2) { // <= Puedes ajustar este umbral
                     return true;
                 }
             }
