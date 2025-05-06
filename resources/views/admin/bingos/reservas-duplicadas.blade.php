@@ -8,8 +8,8 @@
 
     @php $grupoIndex = 1; @endphp
 
-    @forelse ($agrupados as $hash => $reservas)
-        @php
+    @forelse ($paginador as $hash => $reservas)
+    @php
             $rechazados = collect($reservas)->filter(fn($r) => $r->estado === 'rechazado' && $r->eliminado == 1)->count();
             $total = count($reservas);
             $restantes = $total - $rechazados;
@@ -97,6 +97,7 @@
     @empty
         <div class="alert alert-secondary">No se encontraron comprobantes potencialmente repetidos.</div>
     @endforelse
+    {{ $paginador->links() }}
 
     <div class="text-end mt-4">
         <a href="{{ route('bingos.reservas.rapidas', $bingo->id) }}" class="btn btn-sm btn-secondary">

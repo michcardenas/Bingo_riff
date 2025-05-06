@@ -336,6 +336,7 @@ public function comprobantesDuplicados($bingoId)
 {
     $bingo = Bingo::findOrFail($bingoId);
 
+    // Obtener las reservas con perceptual_hash
     $reservas = Reserva::where('bingo_id', $bingoId)
         ->whereIn('eliminado', [0, 1])
         ->get()
@@ -352,7 +353,7 @@ public function comprobantesDuplicados($bingoId)
         return $grupo->count() > 1;
     });
 
-    // Opcional: Puedes filtrar aún más los duplicados calculando similitud entre histogramas
+    // Afinar duplicados usando histogramas
     $agrupados = $agrupados->map(function ($grupo) {
         return $grupo->filter(function ($reservaA) use ($grupo) {
             $metaA = json_decode($reservaA->comprobante_metadata, true)[0] ?? null;
@@ -378,7 +379,20 @@ public function comprobantesDuplicados($bingoId)
         return $grupo->count() > 0;
     });
 
-    return view('admin.bingos.reservas-duplicadas', compact('bingo', 'agrupados'));
+    // ---- 📌 PAGINACIÓN DE GRUPOS ----
+    $page = request()->get('page', 1);  // Página actual
+    $perPage = 3; // Grupos por página
+
+    // Crear paginator manual
+    $paginador = new \Illuminate\Pagination\LengthAwarePaginator(
+        $agrupados->slice(($page - 1) * $perPage, $perPage),
+        $agrupados->count(),
+        $perPage,
+        $page,
+        ['path' => request()->url(), 'query' => request()->query()]
+    );
+
+    return view('admin.bingos.reservas-duplicadas', compact('bingo', 'paginador'));
 }
 
 protected function histogramDistance($histA, $histB)
@@ -392,6 +406,7 @@ protected function histogramDistance($histA, $histB)
 
     return sqrt($distance);
 }
+
 
 public function pedidosDuplicados($bingoId)
 {
