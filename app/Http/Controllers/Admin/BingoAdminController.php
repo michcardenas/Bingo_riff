@@ -428,23 +428,28 @@ class BingoAdminController extends Controller
             'reserva_id' => 'required|integer|exists:reservas,id',
             'estado' => 'required|string|in:aprobado,rechazado,revision',
         ]);
-
+    
         $updateData = [
             'estado' => $request->estado,
         ];
-
+    
         // Si es rechazado, marcar como eliminado
         if ($request->estado === 'rechazado') {
             $updateData['eliminado'] = 1;
         }
-
+    
+        // Si es aprobado, marcar como no eliminado
+        if ($request->estado === 'aprobado') {
+            $updateData['eliminado'] = 0;
+        }
+    
         DB::table('reservas')
             ->where('id', $request->reserva_id)
             ->update($updateData);
-
+    
         return response()->json(['success' => true]);
     }
-
+    
     public function actualizarNumeroComprobante(Request $request)
     {
         $request->validate([
