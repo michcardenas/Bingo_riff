@@ -353,7 +353,7 @@ public function comprobantesDuplicados($bingoId)
         return $grupo->count() > 1;
     });
 
-    // Afinar duplicados usando histogramas
+    // Afinar duplicados SOLO SI histogramas son IGUALES (idénticos)
     $agrupados = $agrupados->map(function ($grupo) {
         return $grupo->filter(function ($reservaA) use ($grupo) {
             $metaA = json_decode($reservaA->comprobante_metadata, true)[0] ?? null;
@@ -365,11 +365,9 @@ public function comprobantesDuplicados($bingoId)
                 $metaB = json_decode($reservaB->comprobante_metadata, true)[0] ?? null;
                 if (!$metaB) continue;
 
-                // Calcular distancia entre histogramas
-                $distance = $this->histogramDistance($metaA['histograma'], $metaB['histograma']);
-                
-                if ($distance < 2) { // <= Puedes ajustar este umbral
-                    return true;
+                // Validar que los histogramas sean IGUALES
+                if ($this->histogramEquals($metaA['histograma'], $metaB['histograma'])) {
+                    return true; // Duplicado exacto
                 }
             }
 
@@ -395,16 +393,20 @@ public function comprobantesDuplicados($bingoId)
     return view('admin.bingos.reservas-duplicadas', compact('bingo', 'paginador'));
 }
 
-protected function histogramDistance($histA, $histB)
+// 📌 Este método compara que dos histogramas sean IGUALES valor a valor
+protected function histogramEquals($histA, $histB)
 {
-    $distance = 0;
-
-    foreach ($histA as $i => $valA) {
-        $valB = $histB[$i] ?? 0;
-        $distance += pow($valA - $valB, 2);
+    if (count($histA) !== count($histB)) {
+        return false;
     }
 
-    return sqrt($distance);
+    foreach ($histA as $i => $valA) {
+        if ($valA != $histB[$i]) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 
