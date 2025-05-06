@@ -97,7 +97,11 @@
     @empty
         <div class="alert alert-secondary">No se encontraron comprobantes potencialmente repetidos.</div>
     @endforelse
-    {{ $paginador->links() }}
+    <div class="mt-4 d-flex justify-content-center">
+    <div class="pagination-sm">
+        {{ $paginador->links() }}
+    </div>
+</div>
 
     <div class="text-end mt-4">
         <a href="{{ route('bingos.reservas.rapidas', $bingo->id) }}" class="btn btn-sm btn-secondary">
