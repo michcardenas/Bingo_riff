@@ -337,26 +337,60 @@ public function comprobantesDuplicados($bingoId)
     $bingo = Bingo::findOrFail($bingoId);
 
     $reservas = Reserva::where('bingo_id', $bingoId)
-    ->whereIn('eliminado', [0, 1]) // ✅ incluye activos y rechazados
-    ->get()
-    ->filter(function ($reserva) {
-        $metadatos = json_decode($reserva->comprobante_metadata, true);
-        return is_array($metadatos) && collect($metadatos)->contains(function ($m) {
-            return !empty($m['perceptual_hash']) && !empty($m['posible_duplicado']);
+        ->whereIn('eliminado', [0, 1])
+        ->get()
+        ->filter(function ($reserva) {
+            $metadatos = json_decode($reserva->comprobante_metadata, true);
+            return is_array($metadatos) && !empty($metadatos[0]['perceptual_hash']);
         });
-    });
 
-
-    // Agrupar por perceptual_hash solamente
+    // Agrupar por perceptual_hash
     $agrupados = $reservas->groupBy(function ($reserva) {
         $metadatos = json_decode($reserva->comprobante_metadata, true);
-        $info = collect($metadatos)->firstWhere('posible_duplicado', true);
-        return $info['perceptual_hash'] ?? 'nohash';
+        return $metadatos[0]['perceptual_hash'] ?? 'nohash';
     })->filter(function ($grupo) {
-        return $grupo->count() > 1; // solo mostrar grupos con al menos 2 comprobantes
+        return $grupo->count() > 1;
+    });
+
+    // Opcional: Puedes filtrar aún más los duplicados calculando similitud entre histogramas
+    $agrupados = $agrupados->map(function ($grupo) {
+        return $grupo->filter(function ($reservaA) use ($grupo) {
+            $metaA = json_decode($reservaA->comprobante_metadata, true)[0] ?? null;
+            if (!$metaA) return false;
+
+            foreach ($grupo as $reservaB) {
+                if ($reservaA->id === $reservaB->id) continue;
+
+                $metaB = json_decode($reservaB->comprobante_metadata, true)[0] ?? null;
+                if (!$metaB) continue;
+
+                // Calcular distancia entre histogramas
+                $distance = $this->histogramDistance($metaA['histograma'], $metaB['histograma']);
+                
+                if ($distance < 5) { // <= Puedes ajustar este umbral
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    })->filter(function ($grupo) {
+        return $grupo->count() > 0;
     });
 
     return view('admin.bingos.reservas-duplicadas', compact('bingo', 'agrupados'));
+}
+
+protected function histogramDistance($histA, $histB)
+{
+    $distance = 0;
+
+    foreach ($histA as $i => $valA) {
+        $valB = $histB[$i] ?? 0;
+        $distance += pow($valA - $valB, 2);
+    }
+
+    return sqrt($distance);
 }
 
 public function pedidosDuplicados($bingoId)
