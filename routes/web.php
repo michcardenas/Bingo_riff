@@ -188,7 +188,6 @@ Route::prefix('api')->group(function () {
         return response()->json($bingo);
     });
 });
-// Añade esta línea en tu archivo web.php
-Route::post('/actualizar-reserva/{id}', [Admin\BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar.nueva');
+
 // Importar rutas de autenticación (sin registro)
 require __DIR__ . '/auth.php';
