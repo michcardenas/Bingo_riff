@@ -111,7 +111,7 @@ Route::middleware('auth')->group(function () {
     ->name('bingos.reservas.rechazados.excel');
 
 
-    Route::post('/admin/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');
+    Route::post('/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');
 
     Route::post('/admin/admin/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante'])->name('reservas.update-comprobante');
 
