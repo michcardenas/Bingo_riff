@@ -109,13 +109,14 @@ Route::middleware('auth')->group(function () {
 
     Route::get('admin/bingos/{bingo}/reservas-rechazados-excel', [BingoController::class, 'exportarRechazadosExcel'])
     ->name('bingos.reservas.rechazados.excel');
+    Route::post('/admin/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante']);
 
 
     Route::post('/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');
 
-    Route::prefix('admin')->group(function () {
-        Route::post('/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante']);
-    });
+    // Route::prefix('admin')->group(function () {
+    //     Route::post('/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante']);
+    // });
     Route::post('/admin/reservas/guardar-comprobante', [BingoAdminController::class, 'actualizarNumeroComprobante'])
     ->name('reservas.guardar-comprobante');
 
