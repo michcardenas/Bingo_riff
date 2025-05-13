@@ -613,46 +613,52 @@
     });
     
     document.addEventListener('DOMContentLoaded', function () {
-
     document.querySelectorAll('.actualizar-reserva').forEach(button => {
-    button.addEventListener('click', () => {
-        const id = button.dataset.id;
-        const nombre = document.querySelector(`.campo-nombre[data-id="${id}"]`).value;
-        const celular = document.querySelector(`.campo-celular[data-id="${id}"]`).value;
-        const total = document.querySelector(`.campo-total[data-id="${id}"]`).value;
-        fetch(`/admin/admin/reservas/${id}/actualizar`, {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-    },
-    body: JSON.stringify({ nombre, celular, total })
-})
-
-        .then(response => response.json())
-        .then(data => {
-            Swal.fire({
-                icon: 'success',
-                title: 'Reserva actualizada',
-                toast: true,
-                position: 'top-end',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        })
-        .catch(error => {
-            console.error(error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error al actualizar',
-                toast: true,
-                position: 'top-end',
-                timer: 2000,
-                showConfirmButton: false
+        button.addEventListener('click', () => {
+            const id = button.dataset.id;
+            const nombre = document.querySelector(`.campo-nombre[data-id="${id}"]`).value;
+            const celular = document.querySelector(`.campo-celular[data-id="${id}"]`).value;
+            const total = document.querySelector(`.campo-total[data-id="${id}"]`).value;
+            
+            // URL completa y absoluta
+            fetch(`https://bh8962.banahosting.com/admin/admin/reservas/${id}/actualizar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ nombre, celular, total })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Reserva actualizada',
+                    toast: true,
+                    position: 'top-end',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            })
+            .catch(error => {
+                console.error("Error completo:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar',
+                    text: `Error: ${error.message}`,
+                    toast: true,
+                    position: 'top-end',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
             });
         });
     });
-});
 });
 // Mostrar el modal y cargar el ID
 document.addEventListener('click', function (e) {
