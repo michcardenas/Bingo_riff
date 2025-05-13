@@ -620,8 +620,8 @@
         const nombre = document.querySelector(`.campo-nombre[data-id="${id}"]`).value;
         const celular = document.querySelector(`.campo-celular[data-id="${id}"]`).value;
         const total = document.querySelector(`.campo-total[data-id="${id}"]`).value;
-        fetch(`/admin/reservas/${id}/actualizar`, {
-            method: 'POST',
+        fetch(`/admin/admin/reservas/${id}/actualizar`, {
+    method: 'POST',
     headers: {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
