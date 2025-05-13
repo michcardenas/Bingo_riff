@@ -83,6 +83,10 @@
     <a href="{{ route('bingos.reservas.buscar-ganador', $bingoId) }}" class="btn btn-sm btn-outline-primary">
     <i class="bi bi-search"></i> Buscar Ganador
 </a>
+<a href="{{ route('bingos.reservas.rechazados.excel', $bingoId) }}" class="btn btn-sm btn-outline-dark">
+    <i class="bi bi-download"></i> Excel Rechazados
+</a>
+
 
 
 </div>

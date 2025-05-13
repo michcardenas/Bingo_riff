@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Bingo;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Serie;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\RechazadosExport;
 
 class BingoController extends Controller
 {
@@ -179,6 +181,12 @@ Log::info('Archivo subido correctamente', [
         }
     }
     
+    public function exportarRechazadosExcel($bingoId)
+{
+    return Excel::download(new RechazadosExport($bingoId), 'reservas_rechazadas.xlsx');
+}
+
+
     public function rechazarReserva($id)
     {
         DB::table('reservas')

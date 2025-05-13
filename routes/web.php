@@ -107,6 +107,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/reservas/{bingoId}/comprobantes-duplicados', [BingoAdminController::class, 'comprobantesDuplicados'])
     ->name('reservas.comprobantes.duplicados');
 
+    Route::get('admin/bingos/{bingo}/reservas-rechazados-excel', [BingoController::class, 'exportarRechazadosExcel'])
+    ->name('bingos.reservas.rechazados.excel');
+
+
     Route::post('/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');
 
     Route::post('/admin/admin/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante'])->name('reservas.update-comprobante');
