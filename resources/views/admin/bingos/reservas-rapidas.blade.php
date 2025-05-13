@@ -673,34 +673,62 @@ document.getElementById('formComprobante').addEventListener('submit', function (
     const form = document.getElementById('formComprobante');
     const formData = new FormData(form);
 
-fetch('/admin/reservas/' + formData.get('reserva_id') + '/update-comprobante', {
+    fetch('/admin/reservas/' + formData.get('reserva_id') + '/update-comprobante', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         },
-        body: formData
+        body: formData,
+        credentials: 'same-origin' // Asegura que se mantenga la sesión
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
+    .then(async res => {
+        if (res.redirected) {
+            // Redirección detectada, probablemente a /login
+            console.warn("⚠️ Redirigido a:", res.url);
             Swal.fire({
-                icon: 'success',
-                title: 'Comprobante actualizado',
-                toast: true,
-                position: 'top-end',
-                timer: 2000,
-                showConfirmButton: false
+                icon: 'warning',
+                title: 'Sesión expirada',
+                text: 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.',
+            }).then(() => {
+                window.location.href = res.url;
             });
-            bootstrap.Modal.getInstance(document.getElementById('modalComprobante')).hide();
-        } else {
-            throw new Error('Fallo al actualizar');
+            return;
+        }
+
+        const text = await res.text();
+
+        try {
+            const data = JSON.parse(text);
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Comprobante actualizado',
+                    toast: true,
+                    position: 'top-end',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                bootstrap.Modal.getInstance(document.getElementById('modalComprobante')).hide();
+            } else {
+                throw new Error('Fallo al actualizar');
+            }
+        } catch (e) {
+            console.error("❌ La respuesta no es JSON válido. HTML recibido:");
+            console.error(text); // Muestra el HTML (seguramente el login)
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de sesión',
+                text: 'Parece que tu sesión expiró. Por favor inicia sesión de nuevo.',
+            });
         }
     })
     .catch(error => {
-        console.error(error);
+        console.error("❌ Error general:", error);
         Swal.fire({
             icon: 'error',
-            title: 'Error al subir comprobante',
+            title: 'Error inesperado',
+            text: error.message,
             toast: true,
             position: 'top-end',
             timer: 2000,
@@ -708,6 +736,7 @@ fetch('/admin/reservas/' + formData.get('reserva_id') + '/update-comprobante', {
         });
     });
 });
+
 document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
     btn.addEventListener('click', function () {
         const reservaId = this.dataset.id;
