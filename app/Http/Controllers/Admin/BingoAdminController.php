@@ -528,12 +528,13 @@ class BingoAdminController extends Controller
             $reserva->comprobante_metadata = json_encode([$metadatos]);
             $reserva->save();
     
-            // ✅ Devolver JSON sin redirección
-            return response()->json([
-                'success' => true,
-                'ruta' => $rutaRelativa,
-                'posible_duplicado' => $metadatos['posible_duplicado'] ?? false,
-            ]);
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Comprobante actualizado por fallback',
+                ]);
+            }
+            
     
         } catch (\Exception $e) {
             Log::error('Error al actualizar comprobante', ['error' => $e->getMessage()]);

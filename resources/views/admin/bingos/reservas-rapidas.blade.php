@@ -290,7 +290,7 @@
 <!-- Modal de subida de comprobante -->
 <div class="modal fade" id="modalComprobante" tabindex="-1" aria-labelledby="modalComprobanteLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <form id="formComprobante" enctype="multipart/form-data">
+    <form id="formComprobante" enctype="multipart/form-data" action="javascript:void(0);">
       @csrf
       <input type="hidden" name="reserva_id" id="comprobanteReservaId">
       <div class="modal-content bg-dark text-light">
@@ -669,6 +669,7 @@ document.addEventListener('click', function (e) {
 // Manejar envío del formulario
 document.getElementById('formComprobante').addEventListener('submit', function (e) {
     e.preventDefault();
+    console.log("🔁 Enviando comprobante vía fetch...");
 
     const form = document.getElementById('formComprobante');
     const formData = new FormData(form);
