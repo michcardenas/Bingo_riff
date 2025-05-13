@@ -487,7 +487,6 @@ class BingoAdminController extends Controller
     
         try {
             $reserva = Reserva::findOrFail($id);
-    
             $file = $request->file('comprobante');
     
             Log::info("Procesando comprobante actualizado", [
@@ -529,13 +528,22 @@ class BingoAdminController extends Controller
             $reserva->comprobante_metadata = json_encode([$metadatos]);
             $reserva->save();
     
-            return response()->json(['success' => true]);
+            // ✅ Devolver JSON sin redirección
+            return response()->json([
+                'success' => true,
+                'ruta' => $rutaRelativa,
+                'posible_duplicado' => $metadatos['posible_duplicado'] ?? false,
+            ]);
     
         } catch (\Exception $e) {
             Log::error('Error al actualizar comprobante', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Error al actualizar comprobante']);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar comprobante',
+            ]);
         }
     }
+    
     public function eliminarSerie(Request $request)
     {
         $request->validate([
