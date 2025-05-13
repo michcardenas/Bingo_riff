@@ -113,8 +113,9 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');
 
-     Route::post('/admin/admin/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante'])->name('reservas.update-comprobante');
-
+    Route::prefix('admin')->group(function () {
+        Route::post('/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante']);
+    });
     Route::post('/admin/reservas/guardar-comprobante', [BingoAdminController::class, 'actualizarNumeroComprobante'])
     ->name('reservas.guardar-comprobante');
 
