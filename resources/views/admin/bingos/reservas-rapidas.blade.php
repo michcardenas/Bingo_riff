@@ -673,15 +673,13 @@ document.getElementById('formComprobante').addEventListener('submit', function (
     const form = document.getElementById('formComprobante');
     const formData = new FormData(form);
 
-    fetch('/admin/reservas/' + formData.get('reserva_id') + '/update-comprobante', {
-    method: 'POST',
-    headers: {
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-    },
-    body: formData,
-    credentials: 'same-origin' // 🔐 mantiene la sesión
-})
-
+fetch('/admin/reservas/' + formData.get('reserva_id') + '/update-comprobante', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: formData
+    })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
