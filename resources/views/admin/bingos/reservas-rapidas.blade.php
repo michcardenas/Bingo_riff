@@ -620,8 +620,8 @@
             const celular = document.querySelector(`.campo-celular[data-id="${id}"]`).value;
             const total = document.querySelector(`.campo-total[data-id="${id}"]`).value;
             
-            // URL completa y absoluta
-            fetch(`https://bh8962.banahosting.com/admin/admin/reservas/${id}/actualizar`, {
+            // Usar la nueva ruta simplificada
+            fetch(`/actualizar-reserva/${id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
