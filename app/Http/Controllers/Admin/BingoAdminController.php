@@ -528,10 +528,11 @@ class BingoAdminController extends Controller
             $reserva->comprobante_metadata = json_encode([$metadatos]);
             $reserva->save();
     
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Comprobante actualizado por fallback',
+            if ($request->ajax() && $request->has('reserva_id')) {
+                \Log::info('⚡ Redireccionando a updateComprobante desde store()');
+                return app()->call([$this, 'updateComprobante'], [
+                    'request' => $request,
+                    'id' => $request->input('reserva_id')
                 ]);
             }
             
