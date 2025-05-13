@@ -15,6 +15,7 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
 
     <style>
@@ -111,7 +112,7 @@
     </nav>
 
     <!-- Contenedor principal -->
-    <div class="container my-4">
+    <div class="container my-4 container-xl-custom">
         @yield('content')
     </div>
 

@@ -91,6 +91,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/bingos/{bingo}/reservas-filtro', [BingoAdminController::class, 'filtrarReservasRapidas'])
     ->name('bingos.reservas.filtro');
  
+    Route::post('admin/admin/reservas/eliminar-serie', [BingoAdminController::class, 'eliminarSerie'])->name('reservas.eliminar-serie');
+
 
        // NUEVAS RUTAS para la página de búsqueda de serie
     Route::get('/bingos/{bingo}/buscador-serie', [BingoGanadoresController::class, 'index'])->name('bingos.buscador.serie');
@@ -105,8 +107,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/reservas/{bingoId}/comprobantes-duplicados', [BingoAdminController::class, 'comprobantesDuplicados'])
     ->name('reservas.comprobantes.duplicados');
 
+    Route::post('/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');
 
-        
+    Route::post('/admin/admin/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante'])->name('reservas.update-comprobante');
+
     Route::post('/admin/reservas/guardar-comprobante', [BingoAdminController::class, 'actualizarNumeroComprobante'])
     ->name('reservas.guardar-comprobante');
 

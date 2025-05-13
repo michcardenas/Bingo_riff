@@ -449,7 +449,21 @@ class BingoAdminController extends Controller
     
         return response()->json(['success' => true]);
     }
-    
+    public function actualizarDatos(Request $request, $id)
+{
+    $reserva = \App\Models\Reserva::findOrFail($id);
+
+    $validated = $request->validate([
+        'nombre' => 'required|string|max:255',
+        'celular' => 'required|string|max:20',
+        'total' => 'required|numeric|min:0',
+    ]);
+
+    $reserva->update($validated);
+
+    return response()->json(['message' => 'Datos actualizados correctamente.']);
+}
+
     public function actualizarNumeroComprobante(Request $request)
     {
         $request->validate([
@@ -463,7 +477,112 @@ class BingoAdminController extends Controller
 
         return response()->json(['success' => true]);
     }
+    public function updateComprobante(Request $request, $id)
+    {
+        Log::info('Inicio actualización de comprobante', ['reserva_id' => $id]);
     
+        $request->validate([
+            'comprobante' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+    
+        try {
+            $reserva = Reserva::findOrFail($id);
+    
+            $file = $request->file('comprobante');
+    
+            Log::info("Procesando comprobante actualizado", [
+                'original_name' => $file->getClientOriginalName(),
+                'size' => $file->getSize()
+            ]);
+    
+            // Verificación de duplicado
+            $verificacion = $this->verificarComprobanteUnico($file);
+            $metadatos = $verificacion['metadatos'];
+    
+            if (!$verificacion['es_unico']) {
+                $metadatos['posible_duplicado'] = true;
+                $metadatos['reserva_coincidente_id'] = optional($verificacion['reserva_coincidente'])->id;
+                $metadatos['similaridad'] = $verificacion['similaridad'];
+    
+                Log::warning("Comprobante actualizado posiblemente duplicado", [
+                    'archivo' => $file->getClientOriginalName(),
+                    'similaridad' => $verificacion['similaridad'] . '%'
+                ]);
+            }
+    
+            // Guardar archivo
+            $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+            $isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
+            $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+    
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move($destino, $filename);
+    
+            $rutaRelativa = 'comprobantes/' . $filename;
+    
+            Log::info('Nuevo comprobante guardado', [
+                'archivo' => $rutaRelativa
+            ]);
+    
+            // Actualizar en base de datos
+            $reserva->ruta_comprobante = $rutaRelativa;
+            $reserva->comprobante_metadata = json_encode([$metadatos]);
+            $reserva->save();
+    
+            return response()->json(['success' => true]);
+    
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar comprobante', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error al actualizar comprobante']);
+        }
+    }
+    public function eliminarSerie(Request $request)
+    {
+        $request->validate([
+            'reserva_id' => 'required|exists:reservas,id',
+            'serie' => 'required|string'
+        ]);
+    
+        $reserva = Reserva::findOrFail($request->reserva_id);
+    
+        $series = $reserva->series;
+
+        // Si es JSON, decodifica
+        if (is_string($series)) {
+            $decoded = json_decode($series, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $series = $decoded;
+            } else {
+                // Si viene mal formado, intenta dividirlo manualmente
+                $series = preg_split('/[",\s]+/', $series);
+            }
+        }
+        
+        // Asegurar que sea array limpio
+        $series = array_filter(array_map('trim', $series));
+        
+    
+        $serieAEliminar = preg_replace('/[^0-9]/', '', $request->serie);
+        $nuevasSeries = array_filter($series, fn($s) => trim($s) !== $serieAEliminar);
+    
+        if (count($nuevasSeries) < 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se puede dejar la reserva sin cartones'
+            ]);
+        }
+    
+        $reserva->series = json_encode(array_values($nuevasSeries));
+        $reserva->cantidad = count($nuevasSeries);
+        $reserva->total = $reserva->bingo->precio * count($nuevasSeries);
+        $reserva->save();
+    
+        return response()->json(['success' => true]);
+    }
+    
+    
+
+
     /**
      * Mostrar tabla parcial de reservas filtradas
      */

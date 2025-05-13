@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="container py-4">
+<div class="container container-xl-custom my-4">
     <!-- Header with improved styling -->
     <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0 text-white">
@@ -119,33 +119,40 @@
                             @endif
                         </td> <!-- Este es el Id Bingo (orden de compra) -->
 
-                            <td>{{ $reserva->nombre }}</td>
-                            <td>{{ $reserva->celular }}</td>
-                            <td>{{ \Carbon\Carbon::parse($reserva->fecha)->format('d/m/Y H:i') }}</td>
+                        <td><input type="text" class="form-control form-control-sm bg-dark text-light campo-nombre" value="{{ $reserva->nombre }}" data-id="{{ $reserva->id }}"></td>
+                        <td><input type="text" class="form-control form-control-sm bg-dark text-light campo-celular" value="{{ $reserva->celular }}" data-id="{{ $reserva->id }}"></td>
+                        <td>{{ \Carbon\Carbon::parse($reserva->fecha)->format('d/m/Y H:i') }}</td>
                             <td>{{ $reserva->cartones }}</td>
-                                                        @php 
-                                // Intenta decodificar el JSON
-                                $series = json_decode($reserva->series, true);
+                            @php 
+    $series = json_decode($reserva->series, true);
 
-                                // Si no es un arreglo, forzamos a tratarlo como texto
-                                if (!is_array($series)) {
-                                    // Por si viniera como string malformado, lo separamos por comillas o espacios
-                                    $series = preg_split('/[",\s]+/', $reserva->series);
-                                }
+    if (!is_array($series)) {
+        // Por si viniera como string malformado
+        $series = preg_split('/[",\s]+/', $reserva->series);
+    }
 
-                                // Limpiar cada entrada y quitar vacíos
-                                $seriesClean = array_filter(array_map(function($s) {
-                                    return trim(preg_replace('/[^0-9]/', '', $s));
-                                }, $series));
-                            @endphp
+    $seriesClean = array_filter(array_map(function($s) {
+        return trim(preg_replace('/[^0-9]/', '', $s));
+    }, $series));
+@endphp
 
-                            <td title="{{ implode(', ', $seriesClean) }}">
-                                @foreach ($seriesClean as $serie)
-                                    <div>{{ $serie }}</div>
-                                @endforeach
-                            </td>
+<td title="{{ implode(', ', $seriesClean) }}">
+    @foreach ($seriesClean as $serie)
+        <div class="d-flex justify-content-between align-items-center mb-1 bg-secondary rounded px-2 py-1">
+            <span>{{ $serie }}</span>
+            <button 
+                class="btn btn-sm btn-danger btn-eliminar-serie ms-2 py-0 px-2"
+                data-id="{{ $reserva->id }}"
+                data-serie="{{ $serie }}"
+                title="Eliminar serie"
+            >
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    @endforeach
+</td>
 
-                            <td>${{ number_format($reserva->total, 0, ',', '.') }}</td>
+                            <td><input type="number" class="form-control form-control-sm bg-dark text-light campo-total" value="{{ $reserva->total }}" data-id="{{ $reserva->id }}"></td>
                             <td>
     @php
         $comprobantes = [];
@@ -234,6 +241,14 @@
 
                             <td>
                             <div class="d-grid gap-2">
+                            <button class="btn btn-sm btn-primary actualizar-reserva" data-id="{{ $reserva->id }}">
+                            <i class="bi bi-save"></i> Actualizar
+                        </button>
+                        <button class="btn btn-sm btn-outline-info subir-comprobante" data-id="{{ $reserva->id }}">
+    <i class="bi bi-upload"></i>   Comprobante
+</button>
+
+
                                     <button class="btn btn-sm btn-outline-warning cambiar-estado" data-id="{{ $reserva->id }}" data-estado="revision">
                                         <i class="bi bi-pencil"></i> Revision
                                     </button>
@@ -268,6 +283,31 @@
         </div>
     </div>
 </div>
+<!-- Modal de subida de comprobante -->
+<div class="modal fade" id="modalComprobante" tabindex="-1" aria-labelledby="modalComprobanteLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="formComprobante" enctype="multipart/form-data">
+      @csrf
+      <input type="hidden" name="reserva_id" id="comprobanteReservaId">
+      <div class="modal-content bg-dark text-light">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalComprobanteLabel">Actualizar Comprobante</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="archivoComprobante" class="form-label">Seleccionar archivo</label>
+            <input class="form-control" type="file" name="comprobante" id="archivoComprobante" accept="image/*,.pdf" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Guardar</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 
 
 <style>
@@ -291,19 +331,23 @@
     /* Asegurar que toda la tabla sea visible */
     .table-responsive {
         overflow-x: auto;
-        min-height: 300px;
     }
-    
+    @media (min-width: 1200px) {
+    .container-xl-custom {
+        max-width: 1357px; /* o lo que necesites */
+    }
+}
+
     /* Establecer anchos de columna para mejor visualización */
     #tabla-reservas th:nth-child(1) { width: 50px; }  /* ID */
-    #tabla-reservas th:nth-child(2) { width: 150px; } /* Nombre */
+    #tabla-reservas th:nth-child(2) { width: 300px; } /* Nombre */
     #tabla-reservas th:nth-child(3) { width: 100px; } /* Celular */
     #tabla-reservas th:nth-child(4) { width: 120px; } /* Fecha */
     #tabla-reservas th:nth-child(5) { width: 60px; }  /* Cartones */
     #tabla-reservas th:nth-child(6),
     #tabla-reservas td:nth-child(6) { 
-        width: 60px; 
-        max-width: 65px;
+        width: 90px; 
+        max-width: 90px;
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 0.75rem;
@@ -374,6 +418,36 @@
         border-radius: 0.5rem;
         overflow: hidden;
     }
+
+    #tabla-reservas th:nth-child(2),
+#tabla-reservas td:nth-child(2) {
+    width: 220px;
+    max-width: 220px;
+}
+
+#tabla-reservas th:nth-child(3),
+#tabla-reservas td:nth-child(3) {
+    width: 140px;
+    max-width: 140px;
+}
+
+#tabla-reservas th:nth-child(7),
+#tabla-reservas td:nth-child(7) {
+    width: 100px;
+    max-width: 100px;
+}
+
+/* Ajustar inputs dentro de la tabla */
+.table input.form-control-sm {
+    width: 100%;
+    min-width: 100px;
+    max-width: 100%;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border: 1px solid #343a40;
+}
 </style>
 
 <script>
@@ -533,5 +607,165 @@
               });
         });
     });
+    
+    document.addEventListener('DOMContentLoaded', function () {
+
+    document.querySelectorAll('.actualizar-reserva').forEach(button => {
+    button.addEventListener('click', () => {
+        const id = button.dataset.id;
+        const nombre = document.querySelector(`.campo-nombre[data-id="${id}"]`).value;
+        const celular = document.querySelector(`.campo-celular[data-id="${id}"]`).value;
+        const total = document.querySelector(`.campo-total[data-id="${id}"]`).value;
+        fetch(`/admin/admin/reservas/${id}/actualizar`, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    },
+    body: JSON.stringify({ nombre, celular, total })
+})
+
+        .then(response => response.json())
+        .then(data => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Reserva actualizada',
+                toast: true,
+                position: 'top-end',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        })
+        .catch(error => {
+            console.error(error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al actualizar',
+                toast: true,
+                position: 'top-end',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        });
+    });
+});
+});
+// Mostrar el modal y cargar el ID
+document.addEventListener('click', function (e) {
+    if (e.target.closest('.subir-comprobante')) {
+        const btn = e.target.closest('.subir-comprobante');
+        const id = btn.dataset.id;
+        document.getElementById('comprobanteReservaId').value = id;
+        document.getElementById('archivoComprobante').value = '';
+        const modal = new bootstrap.Modal(document.getElementById('modalComprobante'));
+        modal.show();
+    }
+});
+
+// Manejar envío del formulario
+document.getElementById('formComprobante').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const form = document.getElementById('formComprobante');
+    const formData = new FormData(form);
+
+    fetch('/admin/admin/reservas/' + formData.get('reserva_id') + '/update-comprobante', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Comprobante actualizado',
+                toast: true,
+                position: 'top-end',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            bootstrap.Modal.getInstance(document.getElementById('modalComprobante')).hide();
+        } else {
+            throw new Error('Fallo al actualizar');
+        }
+    })
+    .catch(error => {
+        console.error(error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error al subir comprobante',
+            toast: true,
+            position: 'top-end',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    });
+});
+document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const reservaId = this.dataset.id;
+        const serie = this.dataset.serie;
+
+        Swal.fire({
+            title: '¿Eliminar serie?',
+            text: `Serie: ${serie}`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch("{{ route('reservas.eliminar-serie') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        reserva_id: reservaId,
+                        serie: serie
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Serie eliminada',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                        location.reload();
+                    } else {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: data.message || 'No se pudo eliminar',
+                            toast: true,
+                            position: 'top-end',
+                            timer: 2500,
+                            showConfirmButton: false
+                        });
+                    }
+                })
+                .catch(() => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al eliminar serie',
+                        toast: true,
+                        position: 'top-end',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                });
+            }
+        });
+    });
+});
+
 </script>
 @endsection
