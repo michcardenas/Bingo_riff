@@ -318,20 +318,66 @@ public function descargar($numero, $bingoId = null) {
                 Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
         
                 // Obtener información relevante para la marca de agua
-                // Usar el número de cartón y celular del propietario que son datos más útiles
                 $numeroCarton = "Cartón #" . $numeroParaArchivo;
                 
-                // Si hay celular registrado, mostrarlo, si no, mostrar solo el número de reserva
-                $infoContacto = !empty($reservaEncontrada->celular) ? 
-                    "Tel: " . $reservaEncontrada->celular : 
-                    "Reserva #" . $reservaEncontrada->id;
+                // Intentamos obtener el nombre del propietario
+                $nombrePropietario = "";
+                
+                // Si la reserva tiene un número de celular, intentamos buscar en la BD
+                if (!empty($reservaEncontrada->celular)) {
+                    try {
+                        // Buscar todas las reservas con el mismo número de celular
+                        $reservasPorCelular = Reserva::where('celular', $reservaEncontrada->celular)
+                                                    ->where('eliminado', 0)
+                                                    ->whereNotNull('nombre')
+                                                    ->where('nombre', '!=', '')
+                                                    ->where('nombre', '!=', $reservaEncontrada->bingo->nombre) // Evitar que sea igual al nombre del bingo
+                                                    ->get();
+                        
+                        Log::info("Buscando nombre por celular: " . $reservaEncontrada->celular);
+                        Log::info("Reservas encontradas con mismo celular: " . count($reservasPorCelular));
+                        
+                        // Si encontramos reservas con ese celular, usamos el nombre de la primera que tenga un nombre válido
+                        foreach ($reservasPorCelular as $reservaPorCelular) {
+                            if (!empty($reservaPorCelular->nombre) && 
+                                $reservaPorCelular->nombre != $reservaEncontrada->bingo->nombre) {
+                                $nombrePropietario = $reservaPorCelular->nombre;
+                                Log::info("Nombre encontrado por celular: " . $nombrePropietario);
+                                break;
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning("Error al buscar nombre por celular: " . $e->getMessage());
+                    }
+                }
+                
+                // Si no encontramos un nombre válido, usamos el número de celular
+                if (empty($nombrePropietario)) {
+                    $nombrePropietario = !empty($reservaEncontrada->celular) ? 
+                        "Tel: " . $reservaEncontrada->celular : 
+                        "Reserva #" . $reservaEncontrada->id;
+                } else {
+                    // Si encontramos un nombre válido, lo formateamos
+                    $nombrePropietario = "Propietario: " . $nombrePropietario;
+                }
                 
                 // Nombre del evento/bingo
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? "Bingo RIFFY";
+                $fechaBingo = "";
+                
+                // Si el bingo tiene una fecha, la mostramos
+                if (isset($reservaEncontrada->bingo->fecha) && !empty($reservaEncontrada->bingo->fecha)) {
+                    $fechaBingo = "Fecha: " . $reservaEncontrada->bingo->fecha;
+                } elseif (isset($reservaEncontrada->fecha) && !empty($reservaEncontrada->fecha)) {
+                    $fechaBingo = "Fecha: " . $reservaEncontrada->fecha;
+                }
                 
                 Log::info("Línea 1 (Número de cartón): " . $numeroCarton);
-                Log::info("Línea 2 (Información de contacto): " . $infoContacto);
+                Log::info("Línea 2 (Propietario): " . $nombrePropietario);
                 Log::info("Línea 3 (Nombre del evento): " . $nombreBingo);
+                if (!empty($fechaBingo)) {
+                    Log::info("Línea 4 (Fecha): " . $fechaBingo);
+                }
                 
                 // Cargar la imagen con GD
                 $sourceImage = @imagecreatefromjpeg($rutaCompleta);
@@ -343,18 +389,22 @@ public function descargar($numero, $bingoId = null) {
                 $width = imagesx($sourceImage);
                 $height = imagesy($sourceImage);
                 
+                // Altura del rectángulo de fondo (ajustable si hay fecha)
+                $rectHeight = !empty($fechaBingo) ? 150 : 130;
+                
                 // Crear un rectángulo para el fondo del texto
                 $backgroundColor = imagecolorallocatealpha($sourceImage, 255, 255, 255, 30);
-                imagefilledrectangle($sourceImage, 0, 0, $width, 130, $backgroundColor);
+                imagefilledrectangle($sourceImage, 0, 0, $width, $rectHeight, $backgroundColor);
                 
                 // Agregar un borde inferior
                 $borderColor = imagecolorallocate($sourceImage, 0, 0, 0);
-                imageline($sourceImage, 0, 130, $width, 130, $borderColor);
+                imageline($sourceImage, 0, $rectHeight, $width, $rectHeight, $borderColor);
                 
                 // Colores para el texto
                 $textColor1 = imagecolorallocate($sourceImage, 0, 0, 0); // Negro
                 $textColor2 = imagecolorallocate($sourceImage, 0, 0, 128); // Azul oscuro
                 $textColor3 = imagecolorallocate($sourceImage, 128, 0, 0); // Rojo oscuro
+                $textColor4 = imagecolorallocate($sourceImage, 0, 128, 0); // Verde oscuro
                 
                 // Verificar si la fuente existe
                 $fuente = base_path('public/fonts/arial.ttf');
@@ -367,7 +417,7 @@ public function descargar($numero, $bingoId = null) {
                 $textWidth1 = $bbox1[2] - $bbox1[0];
                 $textX1 = ($width / 2) - ($textWidth1 / 2);
                 
-                $bbox2 = imagettfbbox(24, 0, $fuente, $infoContacto);
+                $bbox2 = imagettfbbox(24, 0, $fuente, $nombrePropietario);
                 $textWidth2 = $bbox2[2] - $bbox2[0];
                 $textX2 = ($width / 2) - ($textWidth2 / 2);
                 
@@ -381,9 +431,19 @@ public function descargar($numero, $bingoId = null) {
                 $textX3 = max(10, $textX3);
                 
                 // Añadir tres líneas de texto
-                imagettftext($sourceImage, 28, 0, $textX1, 40, $textColor1, $fuente, $numeroCarton);
-                imagettftext($sourceImage, 24, 0, $textX2, 75, $textColor2, $fuente, $infoContacto);
-                imagettftext($sourceImage, 26, 0, $textX3, 115, $textColor3, $fuente, $nombreBingo);
+                imagettftext($sourceImage, 28, 0, $textX1, 35, $textColor1, $fuente, $numeroCarton);
+                imagettftext($sourceImage, 24, 0, $textX2, 70, $textColor2, $fuente, $nombrePropietario);
+                imagettftext($sourceImage, 26, 0, $textX3, 110, $textColor3, $fuente, $nombreBingo);
+                
+                // Si hay fecha, añadirla como cuarta línea
+                if (!empty($fechaBingo)) {
+                    $bbox4 = imagettfbbox(22, 0, $fuente, $fechaBingo);
+                    $textWidth4 = $bbox4[2] - $bbox4[0];
+                    $textX4 = ($width / 2) - ($textWidth4 / 2);
+                    $textX4 = max(10, $textX4);
+                    
+                    imagettftext($sourceImage, 22, 0, $textX4, 140, $textColor4, $fuente, $fechaBingo);
+                }
                 
                 // Guardar la imagen con marca de agua
                 $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
