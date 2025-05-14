@@ -361,9 +361,9 @@ public function descargar($numero, $bingoId = null) {
         return response()->json($bingo);
     }
 
-    public function buscarPorSerie()
+    public function buscarPorSerieCarton()
 {
-    return view('buscar_cartones');
+    return view('buscar_cartones_series');
 }
 
 public function buscarSeriesPorCelular(Request $request)
@@ -377,7 +377,7 @@ public function buscarSeriesPorCelular(Request $request)
     $bingoAbierto = Bingo::where('estado', 'abierto')->first();
 
     if (!$bingoAbierto) {
-        return view('buscar_cartones', [
+        return view('buscar_cartones_series', [
             'reservas' => [],
             'celular' => $celular,
             'mensaje' => 'No hay un bingo abierto actualmente.',
@@ -398,7 +398,7 @@ public function buscarSeriesPorCelular(Request $request)
     // Buscar series asociadas a esos cartones
     $seriesDetalladas = Serie::whereIn('carton', $cartonesComprados)->get();
 
-    return view('buscar_cartones', compact('reservas', 'celular', 'bingoAbierto', 'seriesDetalladas'));
+    return view('buscar_cartones_series', compact('reservas', 'celular', 'bingoAbierto', 'seriesDetalladas'));
 }
 
 

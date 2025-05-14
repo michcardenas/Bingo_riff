@@ -203,7 +203,7 @@
     <div class="container mt-4">
     <h2 class="text-center mb-4">Buscar Cartones por Celular</h2>
 
-    <form action="{{ route('cartones.buscar') }}" method="POST" class="mb-4">
+    <form action="{{ route('cartones.buscarserie') }}" method="POST" class="mb-4">
         @csrf
         <div class="row justify-content-center">
             <div class="col-md-6">
