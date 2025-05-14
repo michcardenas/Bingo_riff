@@ -320,20 +320,11 @@ public function descargar($numero, $bingoId = null) {
         
                 $manager = new ImageManager(new Driver());
         
-                // Validaciones previas
-                Log::info("📄 Intentando abrir imagen en modo binario: $rutaCompleta");
+                Log::info("📄 Intentando leer imagen directamente: $rutaCompleta");
                 Log::info("📦 Tamaño archivo: " . filesize($rutaCompleta));
-                $mime = mime_content_type($rutaCompleta);
-                Log::info("📎 MIME TYPE detectado: $mime");
+                Log::info("📎 MIME TYPE detectado: " . mime_content_type($rutaCompleta));
         
-                // Abrir stream
-                $stream = fopen($rutaCompleta, 'rb');
-                if (!$stream) {
-                    throw new \Exception("No se pudo abrir el archivo en modo binario.");
-                }
-                Log::info("🔓 Archivo abierto correctamente como stream.");
-        
-                $img = $manager->read($stream);
+                $img = $manager->read($rutaCompleta); // ✅ usar directamente el path, no fopen()
         
                 $fuente = base_path('public/fonts/arial.ttf');
                 if (!file_exists($fuente)) {
@@ -343,7 +334,7 @@ public function descargar($numero, $bingoId = null) {
                 $img->text($nombrePersona, $img->width() / 2, 40, function ($font) use ($fuente) {
                     $font->filename($fuente);
                     $font->size(32);
-                    $font->color([0, 0, 0, 0.8]); // negro con opacidad
+                    $font->color([0, 0, 0, 0.8]);
                     $font->align('center');
                 });
         
@@ -362,9 +353,8 @@ public function descargar($numero, $bingoId = null) {
                 }
         
                 $img->save($rutaTemporal);
-                fclose($stream); // ✅ Cerramos el recurso
+                $rutaCompleta = $rutaTemporal;
         
-                $rutaCompleta = $rutaTemporal; // Se usará esta ruta para descargar
             } catch (\Exception $e) {
                 Log::error("❌ Error al aplicar marca de agua: " . $e->getMessage());
             }
