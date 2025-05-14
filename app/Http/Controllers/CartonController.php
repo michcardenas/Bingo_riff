@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use App\Models\Serie;
 use Intervention\Image\ImageManager;
 
+
 class CartonController extends Controller
 {
 /**
@@ -316,12 +317,12 @@ public function descargar($numero, $bingoId = null) {
                 $nombrePersona = $reservaEncontrada->nombre;
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
         
-                $manager = new ImageManager();
+                $manager = new ImageManager(); // Intervention 3.x requiere instancia
                 $img = $manager->make($rutaCompleta);
         
                 // Línea 1: Nombre
                 $img->text($nombrePersona, $img->width() / 2, 40, function ($font) {
-                    $font->filename(public_path('fonts/arial.ttf'));
+                    $font->filename(public_path('fonts/arial.ttf')); // usa filename en v3
                     $font->size(32);
                     $font->color('#ff0000');
                     $font->align('center');
@@ -335,6 +336,7 @@ public function descargar($numero, $bingoId = null) {
                     $font->align('center');
                 });
         
+                // Guardar temporalmente
                 $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
                 $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
         
@@ -346,9 +348,11 @@ public function descargar($numero, $bingoId = null) {
                 $rutaCompleta = $rutaTemporal;
         
             } catch (\Exception $e) {
-                Log::error("Error aplicando marca de agua: " . $e->getMessage());
+                Log::error("❌ Error al aplicar marca de agua: " . $e->getMessage());
             }
         }
+        
+
         // Intentar descarga directa
         Log::info("Iniciando descarga del archivo: " . $rutaCompleta);
         Log::info("=== FIN PROCESO DESCARGA ===");
