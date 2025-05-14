@@ -319,6 +319,9 @@ public function descargar($numero, $bingoId = null) {
         
                 $nombrePersona = $reservaEncontrada->nombre;
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
+                log::info("Nombre de la persona: $nombrePersona");
+                log::info("Nombre del bingo: $nombreBingo");
+                log::info("reserva Encontrada: $reservaEncontrada");
         
                 // Verificamos si el archivo existe y es legible
                 if (!file_exists($rutaCompleta) || !is_readable($rutaCompleta)) {
@@ -402,11 +405,7 @@ public function descargar($numero, $bingoId = null) {
                         $width = $imagick->getImageWidth();
                         $height = $imagick->getImageHeight();
                         
-                        // Crear un rectángulo blanco semitransparente en la parte superior
-                        $rect = new \ImagickDraw();
-                        $rect->setFillColor(new \ImagickPixel('rgba(255,255,255,0.7)'));
-                        $rect->rectangle(0, 0, $width, 120);
-                        $imagick->drawImage($rect);
+                   
                         
                         // Agregar línea divisoria
                         $line = new \ImagickDraw();
