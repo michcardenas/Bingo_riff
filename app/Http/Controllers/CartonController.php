@@ -413,8 +413,8 @@ public function descargar($numero, $bingoId = null) {
                 $textX2 = $width - $textWidth2 - $margenDerecho;
                 
                 // Posición Y para cada línea
-                $textY1 = 70; // Primera línea
-                $textY2 = 105; // Segunda línea
+                $textY1 = 35; // Primera línea
+                $textY2 = 70; // Segunda línea
                 
                 // Añadir las dos líneas de texto (alineadas a la derecha)
         
