@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use Carbon\Carbon;
 use App\Models\Serie;
-use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Imagick\Driver;
+
 
 
 class CartonController extends Controller
@@ -318,7 +319,7 @@ public function descargar($numero, $bingoId = null) {
                 $nombrePersona = $reservaEncontrada->nombre;
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
         
-                $manager = new ImageManager(new Driver());
+                $manager = new ImageManager(new Driver()); // ahora Driver es Imagick
         
                 Log::info("📄 Intentando leer imagen directamente: $rutaCompleta");
                 Log::info("📦 Tamaño archivo: " . filesize($rutaCompleta));
