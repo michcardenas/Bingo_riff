@@ -401,8 +401,8 @@ public function descargar($numero, $bingoId = null) {
                 $textX2 = $width - $textWidth2 - $margenDerecho;
                 
                 // Posición Y para cada línea - posicionadas más abajo
-                $textY1 = 80; // Primera línea más abajo
-                $textY2 = 110; // Segunda línea
+                $textY1 = 200; // Primera línea más abajo
+                $textY2 = 230; // Segunda línea
                 
                 // Añadir sombreado para mejor visibilidad (1px offset)
                 imagettftext($sourceImage, $fontSize, 0, $textX1+1, $textY1+1, $shadowColor, $fuente, $textoBingo);
