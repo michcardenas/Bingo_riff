@@ -513,7 +513,7 @@ class BingoAdminController extends Controller
             ]);
         }
 
-        // Guardar archivo
+        // Ruta de almacenamiento
         $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
         $isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
         $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
@@ -522,14 +522,15 @@ class BingoAdminController extends Controller
             mkdir($destino, 0775, true);
         }
 
+        // Guardar archivo
         $filename = time() . '_' . $file->getClientOriginalName();
         $file->move($destino, $filename);
         $rutaRelativa = 'comprobantes/' . $filename;
 
         Log::info('✅ Comprobante guardado', ['ruta' => $rutaRelativa]);
 
-        // Actualizar en base de datos
-        $reserva->ruta_comprobante = $rutaRelativa;
+        // Guardar en base de datos como JSON (array de 1 ruta)
+        $reserva->comprobante = json_encode([$rutaRelativa]);
         $reserva->comprobante_metadata = json_encode([$metadatos]);
         $reserva->save();
 
@@ -538,6 +539,7 @@ class BingoAdminController extends Controller
             'ruta' => $rutaRelativa,
             'posible_duplicado' => $metadatos['posible_duplicado'] ?? false,
         ]);
+
     } catch (\Exception $e) {
         Log::error('❌ Error al actualizar comprobante', [
             'error' => $e->getMessage(),
@@ -548,7 +550,7 @@ class BingoAdminController extends Controller
         return response()->json([
             'success' => false,
             'message' => 'Error al actualizar comprobante',
-            'error' => $e->getMessage(), // solo durante depuración
+            'error' => $e->getMessage(),
         ]);
     }
 }
