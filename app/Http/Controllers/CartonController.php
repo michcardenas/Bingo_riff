@@ -331,45 +331,40 @@ public function descargar($numero, $bingoId = null) {
                 Log::info("MIME detectado: " . $mime);
                 finfo_close($finfo);
         
-                // Convertir la imagen con Imagick nativo primero
+                // Solución: usar directamente Imagick nativo sin Intervention Image
                 try {
+                    // Crear una nueva instancia de Imagick con la imagen original
                     $imagick = new \Imagick($rutaCompleta);
-                    $imagick->setImageFormat('png'); // Convertir a PNG para mayor compatibilidad
-                    $tempFile = storage_path('app/public/tmp/temp-' . uniqid() . '.png');
                     
-                    // Crear directorio si no existe
-                    if (!file_exists(dirname($tempFile))) {
-                        mkdir(dirname($tempFile), 0775, true);
-                    }
+                    // Configurar el objeto de dibujo
+                    $draw = new \ImagickDraw();
                     
-                    $imagick->writeImage($tempFile);
-                    Log::info("✅ Imagen convertida temporalmente a PNG: $tempFile");
-                    $imagick->clear();
-                    
-                    // Ahora procesamos con Intervention Image
-                    $manager = new ImageManager(new Driver());
-                    $img = $manager->read($tempFile);
-                    
+                    // Verificar si la fuente existe
                     $fuente = base_path('public/fonts/arial.ttf');
                     if (!file_exists($fuente)) {
                         throw new \Exception("No se encontró la fuente en $fuente");
                     }
                     
+                    // Configurar la fuente
+                    $draw->setFont($fuente);
+                    $draw->setTextAlignment(\Imagick::ALIGN_CENTER);
+                    
+                    // Obtener las dimensiones de la imagen
+                    $width = $imagick->getImageWidth();
+                    $height = $imagick->getImageHeight();
+                    
+                    // Configurar el primer texto (nombre de la persona)
+                    $draw->setFontSize(32);
+                    $draw->setFillColor(new \ImagickPixel('rgba(0,0,0,0.8)'));
+                    
                     // Añadir el nombre de la persona
-                    $img->text($nombrePersona, $img->width() / 2, 40, function ($font) use ($fuente) {
-                        $font->filename($fuente);
-                        $font->size(32);
-                        $font->color([0, 0, 0, 0.8]);
-                        $font->align('center');
-                    });
+                    $imagick->annotateImage($draw, $width / 2, 40, 0, $nombrePersona);
+                    
+                    // Configurar el segundo texto (nombre del bingo)
+                    $draw->setFontSize(24);
                     
                     // Añadir el nombre del bingo
-                    $img->text($nombreBingo, $img->width() / 2, 80, function ($font) use ($fuente) {
-                        $font->filename($fuente);
-                        $font->size(24);
-                        $font->color([0, 0, 0, 0.8]);
-                        $font->align('center');
-                    });
+                    $imagick->annotateImage($draw, $width / 2, 80, 0, $nombreBingo);
                     
                     // Guardar la imagen con marca de agua
                     $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
@@ -377,66 +372,56 @@ public function descargar($numero, $bingoId = null) {
                         mkdir(dirname($rutaTemporal), 0775, true);
                     }
                     
-                    $img->save($rutaTemporal);
-                    Log::info("✅ Imagen con marca de agua guardada: $rutaTemporal");
+                    // Guardar la imagen
+                    $imagick->writeImage($rutaTemporal);
+                    Log::info("✅ Imagen con marca de agua guardada con Imagick nativo: $rutaTemporal");
                     $rutaCompleta = $rutaTemporal;
                     
-                    // Eliminar archivo temporal
-                    @unlink($tempFile);
+                    // Liberar recursos
+                    $imagick->clear();
                     
                 } catch (\ImagickException $ie) {
-                    // Si Imagick falla, intentamos con GD como alternativa
+                    // Si Imagick falla, intentamos con GD directamente
                     Log::warning("⚠️ Imagick falló, intentando con GD: " . $ie->getMessage());
                     
-                    $sourceImage = imagecreatefromjpeg($rutaCompleta);
+                    // Cargar la imagen con GD
+                    $sourceImage = @imagecreatefromjpeg($rutaCompleta);
                     if (!$sourceImage) {
-                        throw new \Exception("No se pudo cargar la imagen con GD.");
+                        throw new \Exception("No se pudo cargar la imagen con GD");
                     }
                     
-                    // Crear una imagen temporal con GD
-                    $tempFile = storage_path('app/public/tmp/temp-' . uniqid() . '.jpg');
-                    if (!file_exists(dirname($tempFile))) {
-                        mkdir(dirname($tempFile), 0775, true);
-                    }
+                    // Obtener dimensiones
+                    $width = imagesx($sourceImage);
+                    $height = imagesy($sourceImage);
                     
-                    imagejpeg($sourceImage, $tempFile, 100);
-                    imagedestroy($sourceImage);
+                    // Configurar el color del texto (negro semi-transparente)
+                    $textColor = imagecolorallocatealpha($sourceImage, 0, 0, 0, 20); // 20/127 de opacidad
                     
-                    // Procesar con Intervention Image usando GD como driver
-                    $manager = new ImageManager(new Driver('gd'));
-                    $img = $manager->read($tempFile);
-                    
-                    // El mismo código para añadir texto...
+                    // Verificar si la fuente existe
                     $fuente = base_path('public/fonts/arial.ttf');
                     if (!file_exists($fuente)) {
                         throw new \Exception("No se encontró la fuente en $fuente");
                     }
                     
-                    $img->text($nombrePersona, $img->width() / 2, 40, function ($font) use ($fuente) {
-                        $font->filename($fuente);
-                        $font->size(32);
-                        $font->color([0, 0, 0, 0.8]);
-                        $font->align('center');
-                    });
+                    // Añadir el nombre de la persona
+                    imagettftext($sourceImage, 32, 0, $width / 2, 40, $textColor, $fuente, $nombrePersona);
                     
-                    $img->text($nombreBingo, $img->width() / 2, 80, function ($font) use ($fuente) {
-                        $font->filename($fuente);
-                        $font->size(24);
-                        $font->color([0, 0, 0, 0.8]);
-                        $font->align('center');
-                    });
+                    // Añadir el nombre del bingo
+                    imagettftext($sourceImage, 24, 0, $width / 2, 80, $textColor, $fuente, $nombreBingo);
                     
+                    // Guardar la imagen con marca de agua
                     $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
                     if (!file_exists(dirname($rutaTemporal))) {
                         mkdir(dirname($rutaTemporal), 0775, true);
                     }
                     
-                    $img->save($rutaTemporal);
-                    Log::info("✅ Imagen procesada con GD y guardada: $rutaTemporal");
+                    // Guardar la imagen
+                    imagejpeg($sourceImage, $rutaTemporal, 90);
+                    Log::info("✅ Imagen con marca de agua guardada con GD: $rutaTemporal");
                     $rutaCompleta = $rutaTemporal;
                     
-                    // Eliminar archivo temporal
-                    @unlink($tempFile);
+                    // Liberar recursos
+                    imagedestroy($sourceImage);
                 }
                 
             } catch (\Exception $e) {
