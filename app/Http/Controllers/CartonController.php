@@ -386,7 +386,7 @@ public function descargar($numero, $bingoId = null) {
                 }
                 
                 // Tamaño de la fuente
-                $fontSize = 22;
+                $fontSize = 16;
                 
                 // Calcular posiciones para alinear a la derecha (con un margen de 20px)
                 $margenDerecho = 40;
