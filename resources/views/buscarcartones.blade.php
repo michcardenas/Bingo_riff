@@ -421,6 +421,8 @@
             <div>
                 <a href="{{ route('home') }}" class="text-white text-decoration-none me-3 nav-link-custom">Comprar</a>
                 <a href="{{ route('cartones.index') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar mi cartón</a>
+                <a href="{{ route('cartones.serie') }}" class="text-white text-decoration-none me-3 nav-link-custom">Buscar numero de serie</a>
+
                 @if($enlaces->grupo_whatsapp)
                 <a href="{{ $enlaces->grupo_whatsapp }}" target="_blank" class="text-white text-decoration-none nav-link-custom d-none d-md-inline">Grupo Whatsapp</a>
                 <a href="{{ $enlaces->grupo_whatsapp }}" target="_blank" class="text-white text-decoration-none nav-link-custom d-inline d-md-none">Grupo WA</a>

@@ -64,6 +64,9 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/admin/borrar-clientes', [BingoAdminController::class, 'truncateClientes'])->name('admin.borrarClientes');
 
+    Route::get('/cartones/serie', [CartonController::class, 'buscarPorSerie'])->name('cartones.serie');
+    Route::post('/cartones/serie/buscar', [CartonController::class, 'buscarSeriesPorCelular'])->name('cartones.buscar');
+
 
     // Rutas de administrador (ahora dentro del middleware auth para protegerlas)
     Route::prefix('admin')->group(function () {

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use Carbon\Carbon;
+use App\Models\Serie;
 
 class CartonController extends Controller
 {
@@ -359,4 +360,46 @@ public function descargar($numero, $bingoId = null) {
         }
         return response()->json($bingo);
     }
+
+    public function buscarPorSerie()
+{
+    return view('buscar_cartones');
+}
+
+public function buscarSeriesPorCelular(Request $request)
+{
+    $request->validate([
+        'celular' => 'required|string',
+    ]);
+
+    $celular = $request->input('celular');
+
+    $bingoAbierto = Bingo::where('estado', 'abierto')->first();
+
+    if (!$bingoAbierto) {
+        return view('buscar_cartones', [
+            'reservas' => [],
+            'celular' => $celular,
+            'mensaje' => 'No hay un bingo abierto actualmente.',
+        ]);
+    }
+
+    $reservas = Reserva::where('celular', $celular)
+        ->where('bingo_id', $bingoAbierto->id)
+        ->get();
+
+    // Recolectar todos los números de cartón de las reservas
+    $cartonesComprados = [];
+    foreach ($reservas as $reserva) {
+        $seriesCartones = is_array($reserva->series) ? $reserva->series : json_decode($reserva->series, true);
+        $cartonesComprados = array_merge($cartonesComprados, $seriesCartones);
+    }
+
+    // Buscar series asociadas a esos cartones
+    $seriesDetalladas = Serie::whereIn('carton', $cartonesComprados)->get();
+
+    return view('buscar_cartones', compact('reservas', 'celular', 'bingoAbierto', 'seriesDetalladas'));
+}
+
+
 }

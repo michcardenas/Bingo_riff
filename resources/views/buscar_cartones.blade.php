@@ -200,39 +200,52 @@
         </div>
     </header>
 
-    <!-- Contenido principal -->
-    <div class="container py-4">
-        <div class="bingo-container p-4 text-center">
-            <h4 class="paso-title text-center mb-3">
-                Tus cartones han sido reservados exitosamente
-            </h4>
-            <p class="mb-1">
-                y están actualmente en proceso de <strong style="color: #fa9044;">REVISIÓN</strong>.
-            </p>
+    <div class="container mt-4">
+    <h2 class="text-center mb-4">Buscar Cartones por Celular</h2>
 
-            <!-- Botón: Buscar mis cartones -->
-            <p class="mt-4 mb-2 fw-bold">Puedes buscar el estado de tus cartones aquí</p>
-            <a href="{{ route('cartones.index') }}"
-                class="btn btn-naranja text-white fw-bold w-100 py-2"
-                style="margin-bottom: 20px;">
-                BUSCAR MIS CARTONES
-            </a>
-            <!-- Información de Whatsapp -->
-            <p class="mt-4 fw-bold">
-                Toda la información de los sorteos se entregará a través de nuestro grupo de Whatsapp.
-            </p>
-            <p>
-                Si aún no perteneces a un grupo de Whatsapp, ingresa a uno en el botón aquí debajo.
-            </p>
-
-            <!-- Botón: Ingresar a grupo de Whatsapp -->
-            <a href="{{ $grupoWhatsapp }}"
-                class="btn btn-verde text-white fw-bold w-100 py-2"
-                style="margin-top: 10px;">
-                INGRESAR A GRUPO DE WHATSAPP
-            </a>
+    <form action="{{ route('cartones.buscar') }}" method="POST" class="mb-4">
+        @csrf
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <input type="text" name="celular" class="form-control" placeholder="Número de celular" value="{{ old('celular', $celular ?? '') }}" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Buscar</button>
+            </div>
         </div>
-    </div>
+    </form>
+
+    @if(isset($reservas) && count($reservas))
+        <h5 class="mb-3">Resultados para: <strong>{{ $celular }}</strong></h5>
+        @if(isset($seriesDetalladas) && count($seriesDetalladas))
+    <h4 class="mt-4">Series por Cartón</h4>
+    <table class="table table-bordered">
+        <thead class="table-secondary">
+            <tr>
+                <th>#</th>
+                <th>Número de Cartón</th>
+                <th>Series</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($seriesDetalladas as $serie)
+                <tr>
+                    <td>{{ $loop->iteration }}</td>
+                    <td>{{ $serie->carton }}</td>
+                    <td>{{ implode(', ', $serie->series ?? []) }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+@endif
+
+    @elseif(isset($reservas))
+        <div class="alert alert-warning text-center">
+            No se encontraron reservas con ese número de celular.
+        </div>
+    @endif
+</div>
+
 
     <!-- Botón flotante de WhatsApp que usa el teléfono de atención al cliente -->
 @if($enlaces->mostrar_boton_whatsapp ?? true)
