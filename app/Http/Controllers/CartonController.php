@@ -323,21 +323,20 @@ public function descargar($numero, $bingoId = null) {
         
                 $img = $manager->read($rutaCompleta);
         
-                // Línea 1: Nombre
                 $img->text($nombrePersona, $img->width() / 2, 40, function ($font) {
                     $font->filename(public_path('fonts/arial.ttf'));
                     $font->size(32);
-                    $font->color('#ff0000');
+                    $font->color('#000000'); // Mejor visibilidad en fondos claros
                     $font->align('center');
                 });
-        
-                // Línea 2: Bingo
+                
                 $img->text($nombreBingo, $img->width() / 2, 80, function ($font) {
                     $font->filename(public_path('fonts/arial.ttf'));
                     $font->size(24);
-                    $font->color('#007bff');
+                    $font->color('#000000');
                     $font->align('center');
                 });
+                
         
                 $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
                 $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
