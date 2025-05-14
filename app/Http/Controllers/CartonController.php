@@ -315,8 +315,9 @@ public function descargar($numero, $bingoId = null) {
             try {
                 Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
         
-                $nombrePersona = $reservaEncontrada->nombre;
-                $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
+                $nombrePersona = 'TEST MARCA';
+                $nombreBingo = 'BINGO PRUEBA';
+                
         
                 // ✅ Crear el manager con el driver GD correctamente
                 $manager = new ImageManager(new Driver());
@@ -326,14 +327,14 @@ public function descargar($numero, $bingoId = null) {
                 $img->text($nombrePersona, $img->width() / 2, 40, function ($font) {
                     $font->filename(public_path('fonts/arial.ttf'));
                     $font->size(32);
-                    $font->color('#000000'); // Mejor visibilidad en fondos claros
+                    $font->color([0, 0, 0, 0.8]); // negro con opacidad
                     $font->align('center');
                 });
                 
                 $img->text($nombreBingo, $img->width() / 2, 80, function ($font) {
                     $font->filename(public_path('fonts/arial.ttf'));
                     $font->size(24);
-                    $font->color('#000000');
+                    $font->color([0, 0, 0, 0.8]); // negro con opacidad
                     $font->align('center');
                 });
                 
