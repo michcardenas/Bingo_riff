@@ -325,66 +325,8 @@ public function descargar($numero, $bingoId = null) {
                     throw new \Exception("El archivo no existe o no es legible: $rutaCompleta");
                 }
         
-                // Solución: usar directamente Imagick nativo sin Intervention Image
+                // Solución: usar directamente GD que es más confiable para este caso
                 try {
-                    // Crear una nueva instancia de Imagick con la imagen original
-                    $imagick = new \Imagick($rutaCompleta);
-                    
-                    // Configurar el objeto de dibujo
-                    $draw = new \ImagickDraw();
-                    
-                    // Verificar si la fuente existe
-                    $fuente = base_path('public/fonts/arial.ttf');
-                    if (!file_exists($fuente)) {
-                        throw new \Exception("No se encontró la fuente en $fuente");
-                    }
-                    
-                    // Configurar la fuente
-                    $draw->setFont($fuente);
-                    $draw->setTextAlignment(\Imagick::ALIGN_CENTER);
-                    $draw->setGravity(\Imagick::GRAVITY_CENTER); // Esto ayuda a centrar el texto
-                    
-                    // Obtener las dimensiones de la imagen
-                    $width = $imagick->getImageWidth();
-                    
-                    // Configurar el primer texto (nombre de la persona)
-                    $draw->setFontSize(32);
-                    $draw->setFillColor(new \ImagickPixel('black')); // Color sólido para mejor visibilidad
-                    
-                    // Crear un rectángulo semitransparente para el fondo del texto
-                    $bgDraw = new \ImagickDraw();
-                    $bgDraw->setFillColor(new \ImagickPixel('rgba(255,255,255,0.7)'));
-                    $bgDraw->rectangle(0, 10, $width, 100);
-                    $imagick->drawImage($bgDraw);
-                    
-                    // Añadir el nombre de la persona - posición más baja para que se vea
-                    $imagick->annotateImage($draw, 0, -40, 0, $nombrePersona);
-                    
-                    // Configurar el segundo texto (nombre del bingo)
-                    $draw->setFontSize(24);
-                    $draw->setFillColor(new \ImagickPixel('rgba(0,0,150,1)')); // Azul oscuro para el nombre del bingo
-                    
-                    // Añadir el nombre del bingo
-                    $imagick->annotateImage($draw, 0, 10, 0, $nombreBingo);
-                    
-                    // Guardar la imagen con marca de agua
-                    $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
-                    if (!file_exists(dirname($rutaTemporal))) {
-                        mkdir(dirname($rutaTemporal), 0775, true);
-                    }
-                    
-                    // Guardar la imagen
-                    $imagick->writeImage($rutaTemporal);
-                    Log::info("✅ Imagen con marca de agua guardada con Imagick nativo: $rutaTemporal");
-                    $rutaCompleta = $rutaTemporal;
-                    
-                    // Liberar recursos
-                    $imagick->clear();
-                    
-                } catch (\ImagickException $ie) {
-                    // Si Imagick falla, intentamos con GD directamente
-                    Log::warning("⚠️ Imagick falló, intentando con GD: " . $ie->getMessage());
-                    
                     // Cargar la imagen con GD
                     $sourceImage = @imagecreatefromjpeg($rutaCompleta);
                     if (!$sourceImage) {
@@ -395,13 +337,18 @@ public function descargar($numero, $bingoId = null) {
                     $width = imagesx($sourceImage);
                     $height = imagesy($sourceImage);
                     
-                    // Crear un rectángulo semitransparente para el fondo del texto
-                    $white = imagecolorallocatealpha($sourceImage, 255, 255, 255, 60); // Blanco semitransparente
-                    imagefilledrectangle($sourceImage, 0, 10, $width, 100, $white);
+                    // Crear un rectángulo para el fondo del texto (barra superior)
+                    // Usar un color sólido para garantizar que el texto sea visible
+                    $backgroundColor = imagecolorallocatealpha($sourceImage, 255, 255, 255, 30); // Blanco con 30/127 transparencia
+                    imagefilledrectangle($sourceImage, 0, 0, $width, 120, $backgroundColor);
                     
-                    // Color para el texto
-                    $black = imagecolorallocate($sourceImage, 0, 0, 0); // Negro sólido
-                    $blue = imagecolorallocate($sourceImage, 0, 0, 150); // Azul oscuro
+                    // Agregar un borde inferior al rectángulo para separarlo del contenido
+                    $borderColor = imagecolorallocate($sourceImage, 0, 0, 0);
+                    imageline($sourceImage, 0, 120, $width, 120, $borderColor);
+                    
+                    // Colores para el texto - usar colores sólidos para mejor visibilidad
+                    $textColor1 = imagecolorallocate($sourceImage, 0, 0, 0); // Negro
+                    $textColor2 = imagecolorallocate($sourceImage, 0, 0, 128); // Azul oscuro
                     
                     // Verificar si la fuente existe
                     $fuente = base_path('public/fonts/arial.ttf');
@@ -409,7 +356,7 @@ public function descargar($numero, $bingoId = null) {
                         throw new \Exception("No se encontró la fuente en $fuente");
                     }
                     
-                    // Calcular posición central para el texto
+                    // Calcular posiciones para centrar el texto
                     $bbox1 = imagettfbbox(32, 0, $fuente, $nombrePersona);
                     $textWidth1 = $bbox1[2] - $bbox1[0];
                     $textX1 = ($width / 2) - ($textWidth1 / 2);
@@ -418,11 +365,16 @@ public function descargar($numero, $bingoId = null) {
                     $textWidth2 = $bbox2[2] - $bbox2[0];
                     $textX2 = ($width / 2) - ($textWidth2 / 2);
                     
-                    // Añadir el nombre de la persona (coordenadas Y son positivas hacia abajo)
-                    imagettftext($sourceImage, 32, 0, $textX1, 50, $black, $fuente, $nombrePersona);
+                    // Asegurarse de que el texto no se salga de la imagen
+                    $textX1 = max(10, $textX1); // Al menos 10px desde el borde izquierdo
+                    $textX2 = max(10, $textX2);
                     
-                    // Añadir el nombre del bingo
-                    imagettftext($sourceImage, 24, 0, $textX2, 90, $blue, $fuente, $nombreBingo);
+                    // Nombre de la persona - más grande y prominente
+                    // La coordenada Y en GD es la línea base del texto, no la parte superior
+                    imagettftext($sourceImage, 32, 0, $textX1, 50, $textColor1, $fuente, $nombrePersona);
+                    
+                    // Nombre del bingo - debajo del nombre de la persona
+                    imagettftext($sourceImage, 24, 0, $textX2, 100, $textColor2, $fuente, $nombreBingo);
                     
                     // Guardar la imagen con marca de agua
                     $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
@@ -430,13 +382,84 @@ public function descargar($numero, $bingoId = null) {
                         mkdir(dirname($rutaTemporal), 0775, true);
                     }
                     
-                    // Guardar la imagen
-                    imagejpeg($sourceImage, $rutaTemporal, 95); // Mayor calidad
-                    Log::info("✅ Imagen con marca de agua guardada con GD: $rutaTemporal");
+                    // Guardar la imagen con alta calidad
+                    imagejpeg($sourceImage, $rutaTemporal, 95);
+                    Log::info("✅ Imagen con marca de agua guardada exitosamente: $rutaTemporal");
                     $rutaCompleta = $rutaTemporal;
                     
                     // Liberar recursos
                     imagedestroy($sourceImage);
+                    
+                } catch (\Exception $gde) {
+                    // Si GD falla, intentar Imagick como último recurso
+                    Log::warning("⚠️ GD falló, intentando con Imagick: " . $gde->getMessage());
+                    
+                    try {
+                        // Crear una nueva instancia de Imagick
+                        $imagick = new \Imagick($rutaCompleta);
+                        
+                        // Obtener dimensiones
+                        $width = $imagick->getImageWidth();
+                        $height = $imagick->getImageHeight();
+                        
+                        // Crear un rectángulo blanco semitransparente en la parte superior
+                        $rect = new \ImagickDraw();
+                        $rect->setFillColor(new \ImagickPixel('rgba(255,255,255,0.7)'));
+                        $rect->rectangle(0, 0, $width, 120);
+                        $imagick->drawImage($rect);
+                        
+                        // Agregar línea divisoria
+                        $line = new \ImagickDraw();
+                        $line->setStrokeColor(new \ImagickPixel('black'));
+                        $line->setStrokeWidth(1);
+                        $line->line(0, 120, $width, 120);
+                        $imagick->drawImage($line);
+                        
+                        // Configurar para el texto
+                        $draw = new \ImagickDraw();
+                        $draw->setFont($fuente);
+                        
+                        // IMPORTANTE: Deshabilitar la gravedad para poder posicionar exactamente
+                        $draw->setGravity(\Imagick::GRAVITY_NORTHWEST);
+                        
+                        // Configurar el primer texto (nombre de la persona)
+                        $draw->setFontSize(32);
+                        $draw->setFillColor(new \ImagickPixel('black'));
+                        
+                        // Calcular ancho del texto para centrarlo
+                        $metrics1 = $imagick->queryFontMetrics($draw, $nombrePersona);
+                        $textX1 = ($width - $metrics1['textWidth']) / 2;
+                        
+                        // Añadir el nombre de la persona en posición calculada
+                        $imagick->annotateImage($draw, $textX1, 50, 0, $nombrePersona);
+                        
+                        // Configurar el segundo texto (nombre del bingo)
+                        $draw->setFontSize(24);
+                        $draw->setFillColor(new \ImagickPixel('rgb(0,0,128)'));
+                        
+                        // Calcular ancho del texto para centrarlo
+                        $metrics2 = $imagick->queryFontMetrics($draw, $nombreBingo);
+                        $textX2 = ($width - $metrics2['textWidth']) / 2;
+                        
+                        // Añadir el nombre del bingo
+                        $imagick->annotateImage($draw, $textX2, 100, 0, $nombreBingo);
+                        
+                        // Guardar la imagen
+                        $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
+                        if (!file_exists(dirname($rutaTemporal))) {
+                            mkdir(dirname($rutaTemporal), 0775, true);
+                        }
+                        
+                        $imagick->writeImage($rutaTemporal);
+                        Log::info("✅ Imagen con marca de agua guardada con Imagick: $rutaTemporal");
+                        $rutaCompleta = $rutaTemporal;
+                        
+                        // Liberar recursos
+                        $imagick->clear();
+                        
+                    } catch (\ImagickException $ie) {
+                        throw new \Exception("Ambos métodos (GD e Imagick) fallaron: " . $ie->getMessage());
+                    }
                 }
                 
             } catch (\Exception $e) {
