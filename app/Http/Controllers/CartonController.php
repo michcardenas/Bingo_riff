@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use Carbon\Carbon;
 use App\Models\Serie;
+use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
 
@@ -317,12 +318,14 @@ public function descargar($numero, $bingoId = null) {
                 $nombrePersona = $reservaEncontrada->nombre;
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
         
-                $manager = new ImageManager(['driver' => 'gd']);
-                $img = $manager->make($rutaCompleta);
+                // ✅ Crear el manager con el driver GD correctamente
+                $manager = new ImageManager(new Driver());
+        
+                $img = $manager->read($rutaCompleta);
         
                 // Línea 1: Nombre
                 $img->text($nombrePersona, $img->width() / 2, 40, function ($font) {
-                    $font->filename(public_path('fonts/arial.ttf')); // usa filename en v3
+                    $font->filename(public_path('fonts/arial.ttf'));
                     $font->size(32);
                     $font->color('#ff0000');
                     $font->align('center');
@@ -336,7 +339,6 @@ public function descargar($numero, $bingoId = null) {
                     $font->align('center');
                 });
         
-                // Guardar temporalmente
                 $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
                 $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
         
