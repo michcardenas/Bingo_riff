@@ -674,17 +674,27 @@ document.getElementById('formComprobante').addEventListener('submit', function (
     const form = document.getElementById('formComprobante');
     const formData = new FormData(form);
 
+    // Mostrar loading mientras sube
+    Swal.fire({
+        title: 'Subiendo comprobante...',
+        text: 'Esto puede tardar unos segundos...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
     fetch('/admin/comprobantes/' + formData.get('reserva_id'), {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         },
         body: formData,
-        credentials: 'same-origin' // Asegura que se mantenga la sesión
+        credentials: 'same-origin'
     })
     .then(async res => {
         if (res.redirected) {
-            // Redirección detectada, probablemente a /login
+            Swal.close();
             console.warn("⚠️ Redirigido a:", res.url);
             Swal.fire({
                 icon: 'warning',
@@ -701,22 +711,32 @@ document.getElementById('formComprobante').addEventListener('submit', function (
         try {
             const data = JSON.parse(text);
 
+            Swal.close();
+
             if (data.success) {
                 Swal.fire({
                     icon: 'success',
-                    title: 'Comprobante actualizado',
+                    title: 'Comprobante actualizado correctamente',
                     toast: true,
                     position: 'top-end',
                     timer: 2000,
                     showConfirmButton: false
                 });
                 bootstrap.Modal.getInstance(document.getElementById('modalComprobante')).hide();
+
+                // Opción: recargar DataTable u otra parte si lo necesitas
+                // $('#tablaReservas').DataTable().ajax.reload();
             } else {
-                throw new Error('Fallo al actualizar');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar',
+                    text: data.message || 'Ocurrió un error inesperado',
+                });
             }
         } catch (e) {
             console.error("❌ La respuesta no es JSON válido. HTML recibido:");
-            console.error(text); // Muestra el HTML (seguramente el login)
+            console.error(text);
+            Swal.close();
             Swal.fire({
                 icon: 'error',
                 title: 'Error de sesión',
@@ -726,17 +746,19 @@ document.getElementById('formComprobante').addEventListener('submit', function (
     })
     .catch(error => {
         console.error("❌ Error general:", error);
+        Swal.close();
         Swal.fire({
             icon: 'error',
             title: 'Error inesperado',
             text: error.message,
             toast: true,
             position: 'top-end',
-            timer: 2000,
+            timer: 3000,
             showConfirmButton: false
         });
     });
 });
+
 
 document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
     btn.addEventListener('click', function () {
