@@ -320,7 +320,13 @@ public function descargar($numero, $bingoId = null) {
         
                 $manager = new ImageManager(new Driver());
         
-                // Abrimos como recurso binario seguro
+                // Validaciones previas
+                Log::info("📄 Intentando abrir imagen en modo binario: $rutaCompleta");
+                Log::info("📦 Tamaño archivo: " . filesize($rutaCompleta));
+                $mime = mime_content_type($rutaCompleta);
+                Log::info("📎 MIME TYPE detectado: $mime");
+        
+                // Abrir stream
                 $stream = fopen($rutaCompleta, 'rb');
                 if (!$stream) {
                     throw new \Exception("No se pudo abrir el archivo en modo binario.");
@@ -350,18 +356,15 @@ public function descargar($numero, $bingoId = null) {
         
                 $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
                 $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
-                Log::info("📄 Intentando abrir imagen en modo binario: $rutaCompleta");
-                Log::info("📦 Tamaño archivo: " . filesize($rutaCompleta));
-                
+        
                 if (!file_exists(dirname($rutaTemporal))) {
                     mkdir(dirname($rutaTemporal), 0775, true);
                 }
         
                 $img->save($rutaTemporal);
-                $rutaCompleta = $rutaTemporal;
+                fclose($stream); // ✅ Cerramos el recurso
         
-                fclose($stream); // ✅ Cerramos el recurso de archivo
-        
+                $rutaCompleta = $rutaTemporal; // Se usará esta ruta para descargar
             } catch (\Exception $e) {
                 Log::error("❌ Error al aplicar marca de agua: " . $e->getMessage());
             }
