@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use Carbon\Carbon;
 use App\Models\Serie;
+use Intervention\Image\ImageManagerStatic as Image;
 
 class CartonController extends Controller
 {
