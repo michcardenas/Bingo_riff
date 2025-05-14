@@ -397,8 +397,8 @@ public function descargar($numero, $bingoId = null) {
                 }
                 
                 // Calcular el tamaño de la fuente y margen para alinear a la derecha
-                $fontSize1 = 24;
-                $fontSize2 = 24;
+                $fontSize1 = 20;
+                $fontSize2 = 20;
                 
                 // Calcular posiciones para alinear a la derecha (con un margen de 20px)
                 $margenDerecho = 20;
@@ -413,12 +413,11 @@ public function descargar($numero, $bingoId = null) {
                 $textX2 = $width - $textWidth2 - $margenDerecho;
                 
                 // Posición Y para cada línea
-                $textY1 = 35; // Primera línea
-                $textY2 = 70; // Segunda línea
+                $textY1 = 70; // Primera línea
+                $textY2 = 105; // Segunda línea
                 
                 // Añadir las dos líneas de texto (alineadas a la derecha)
-                imagettftext($sourceImage, $fontSize1, 0, $textX1, $textY1, $textColor1, $fuente, $textoBingo);
-                imagettftext($sourceImage, $fontSize2, 0, $textX2, $textY2, $textColor2, $fuente, $textoNombre);
+        
                 
                 // Guardar la imagen con marca de agua
                 $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
