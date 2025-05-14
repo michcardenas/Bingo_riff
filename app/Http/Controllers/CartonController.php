@@ -317,9 +317,6 @@ public function descargar($numero, $bingoId = null) {
             try {
                 Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
         
-                // Obtener información relevante para la marca de agua
-                $numeroCarton = "Cartón #" . $numeroParaArchivo;
-                
                 // Intentamos obtener el nombre del propietario
                 $nombrePropietario = "";
                 
@@ -354,30 +351,19 @@ public function descargar($numero, $bingoId = null) {
                 // Si no encontramos un nombre válido, usamos el número de celular
                 if (empty($nombrePropietario)) {
                     $nombrePropietario = !empty($reservaEncontrada->celular) ? 
-                        "Tel: " . $reservaEncontrada->celular : 
+                        $reservaEncontrada->celular : 
                         "Reserva #" . $reservaEncontrada->id;
-                } else {
-                    // Si encontramos un nombre válido, lo formateamos
-                    $nombrePropietario = "Propietario: " . $nombrePropietario;
                 }
                 
                 // Nombre del evento/bingo
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? "Bingo RIFFY";
-                $fechaBingo = "";
                 
-                // Si el bingo tiene una fecha, la mostramos
-                if (isset($reservaEncontrada->bingo->fecha) && !empty($reservaEncontrada->bingo->fecha)) {
-                    $fechaBingo = "Fecha: " . $reservaEncontrada->bingo->fecha;
-                } elseif (isset($reservaEncontrada->fecha) && !empty($reservaEncontrada->fecha)) {
-                    $fechaBingo = "Fecha: " . $reservaEncontrada->fecha;
-                }
+                // Formatear textos para la marca de agua
+                $textoBingo = "Bingo: " . $nombreBingo;
+                $textoNombre = "Nombre: " . $nombrePropietario;
                 
-                Log::info("Línea 1 (Número de cartón): " . $numeroCarton);
-                Log::info("Línea 2 (Propietario): " . $nombrePropietario);
-                Log::info("Línea 3 (Nombre del evento): " . $nombreBingo);
-                if (!empty($fechaBingo)) {
-                    Log::info("Línea 4 (Fecha): " . $fechaBingo);
-                }
+                Log::info("Línea 1 (Bingo): " . $textoBingo);
+                Log::info("Línea 2 (Nombre): " . $textoNombre);
                 
                 // Cargar la imagen con GD
                 $sourceImage = @imagecreatefromjpeg($rutaCompleta);
@@ -389,8 +375,8 @@ public function descargar($numero, $bingoId = null) {
                 $width = imagesx($sourceImage);
                 $height = imagesy($sourceImage);
                 
-                // Altura del rectángulo de fondo (ajustable si hay fecha)
-                $rectHeight = !empty($fechaBingo) ? 150 : 130;
+                // Altura del rectángulo de fondo
+                $rectHeight = 80;
                 
                 // Crear un rectángulo para el fondo del texto
                 $backgroundColor = imagecolorallocatealpha($sourceImage, 255, 255, 255, 30);
@@ -401,10 +387,8 @@ public function descargar($numero, $bingoId = null) {
                 imageline($sourceImage, 0, $rectHeight, $width, $rectHeight, $borderColor);
                 
                 // Colores para el texto
-                $textColor1 = imagecolorallocate($sourceImage, 0, 0, 0); // Negro
-                $textColor2 = imagecolorallocate($sourceImage, 0, 0, 128); // Azul oscuro
-                $textColor3 = imagecolorallocate($sourceImage, 128, 0, 0); // Rojo oscuro
-                $textColor4 = imagecolorallocate($sourceImage, 0, 128, 0); // Verde oscuro
+                $textColor1 = imagecolorallocate($sourceImage, 0, 0, 128); // Azul oscuro
+                $textColor2 = imagecolorallocate($sourceImage, 128, 0, 0); // Rojo oscuro
                 
                 // Verificar si la fuente existe
                 $fuente = base_path('public/fonts/arial.ttf');
@@ -412,38 +396,29 @@ public function descargar($numero, $bingoId = null) {
                     throw new \Exception("No se encontró la fuente en $fuente");
                 }
                 
-                // Calcular posiciones para centrar cada línea de texto
-                $bbox1 = imagettfbbox(28, 0, $fuente, $numeroCarton);
+                // Calcular el tamaño de la fuente y margen para alinear a la derecha
+                $fontSize1 = 24;
+                $fontSize2 = 24;
+                
+                // Calcular posiciones para alinear a la derecha (con un margen de 20px)
+                $margenDerecho = 20;
+                
+                // Posición X para alinear a la derecha
+                $bbox1 = imagettfbbox($fontSize1, 0, $fuente, $textoBingo);
                 $textWidth1 = $bbox1[2] - $bbox1[0];
-                $textX1 = ($width / 2) - ($textWidth1 / 2);
+                $textX1 = $width - $textWidth1 - $margenDerecho;
                 
-                $bbox2 = imagettfbbox(24, 0, $fuente, $nombrePropietario);
+                $bbox2 = imagettfbbox($fontSize2, 0, $fuente, $textoNombre);
                 $textWidth2 = $bbox2[2] - $bbox2[0];
-                $textX2 = ($width / 2) - ($textWidth2 / 2);
+                $textX2 = $width - $textWidth2 - $margenDerecho;
                 
-                $bbox3 = imagettfbbox(26, 0, $fuente, $nombreBingo);
-                $textWidth3 = $bbox3[2] - $bbox3[0];
-                $textX3 = ($width / 2) - ($textWidth3 / 2);
+                // Posición Y para cada línea
+                $textY1 = 35; // Primera línea
+                $textY2 = 70; // Segunda línea
                 
-                // Asegurarse de que el texto no se salga de la imagen
-                $textX1 = max(10, $textX1);
-                $textX2 = max(10, $textX2);
-                $textX3 = max(10, $textX3);
-                
-                // Añadir tres líneas de texto
-                imagettftext($sourceImage, 28, 0, $textX1, 35, $textColor1, $fuente, $numeroCarton);
-                imagettftext($sourceImage, 24, 0, $textX2, 70, $textColor2, $fuente, $nombrePropietario);
-                imagettftext($sourceImage, 26, 0, $textX3, 110, $textColor3, $fuente, $nombreBingo);
-                
-                // Si hay fecha, añadirla como cuarta línea
-                if (!empty($fechaBingo)) {
-                    $bbox4 = imagettfbbox(22, 0, $fuente, $fechaBingo);
-                    $textWidth4 = $bbox4[2] - $bbox4[0];
-                    $textX4 = ($width / 2) - ($textWidth4 / 2);
-                    $textX4 = max(10, $textX4);
-                    
-                    imagettftext($sourceImage, 22, 0, $textX4, 140, $textColor4, $fuente, $fechaBingo);
-                }
+                // Añadir las dos líneas de texto (alineadas a la derecha)
+                imagettftext($sourceImage, $fontSize1, 0, $textX1, $textY1, $textColor1, $fuente, $textoBingo);
+                imagettftext($sourceImage, $fontSize2, 0, $textX2, $textY2, $textColor2, $fuente, $textoNombre);
                 
                 // Guardar la imagen con marca de agua
                 $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
