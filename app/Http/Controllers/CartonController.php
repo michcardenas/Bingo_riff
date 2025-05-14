@@ -322,7 +322,7 @@ public function descargar($numero, $bingoId = null) {
                 // ✅ Crear el manager con el driver GD correctamente
                 $manager = new ImageManager(new Driver());
         
-                $img = $manager->read($rutaCompleta);
+                $img = $manager->read(fopen($rutaCompleta, 'r'));
         
                 $img->text($nombrePersona, $img->width() / 2, 40, function ($font) {
                     $font->filename(base_path('public/fonts/arial.ttf'));
