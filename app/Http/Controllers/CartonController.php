@@ -375,20 +375,9 @@ public function descargar($numero, $bingoId = null) {
                 $width = imagesx($sourceImage);
                 $height = imagesy($sourceImage);
                 
-                // Altura del rectángulo de fondo
-                $rectHeight = 80;
-                
-                // Crear un rectángulo para el fondo del texto
-                $backgroundColor = imagecolorallocatealpha($sourceImage, 255, 255, 255, 30);
-                imagefilledrectangle($sourceImage, 0, 0, $width, $rectHeight, $backgroundColor);
-                
-                // Agregar un borde inferior
-                $borderColor = imagecolorallocate($sourceImage, 0, 0, 0);
-                imageline($sourceImage, 0, $rectHeight, $width, $rectHeight, $borderColor);
-                
-                // Colores para el texto
-                $textColor1 = imagecolorallocate($sourceImage, 0, 0, 128); // Azul oscuro
-                $textColor2 = imagecolorallocate($sourceImage, 128, 0, 0); // Rojo oscuro
+                // Color negro para el texto, con leve sombreado para mejor visibilidad
+                $textColor = imagecolorallocate($sourceImage, 0, 0, 0); // Negro
+                $shadowColor = imagecolorallocate($sourceImage, 255, 255, 255); // Blanco para sombreado
                 
                 // Verificar si la fuente existe
                 $fuente = base_path('public/fonts/arial.ttf');
@@ -396,29 +385,32 @@ public function descargar($numero, $bingoId = null) {
                     throw new \Exception("No se encontró la fuente en $fuente");
                 }
                 
-                // Calcular el tamaño de la fuente y margen para alinear a la derecha
-                $fontSize1 = 20;
-                $fontSize2 = 20;
+                // Tamaño de la fuente
+                $fontSize = 22;
                 
                 // Calcular posiciones para alinear a la derecha (con un margen de 20px)
                 $margenDerecho = 20;
                 
                 // Posición X para alinear a la derecha
-                $bbox1 = imagettfbbox($fontSize1, 0, $fuente, $textoBingo);
+                $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
                 $textWidth1 = $bbox1[2] - $bbox1[0];
                 $textX1 = $width - $textWidth1 - $margenDerecho;
                 
-                $bbox2 = imagettfbbox($fontSize2, 0, $fuente, $textoNombre);
+                $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
                 $textWidth2 = $bbox2[2] - $bbox2[0];
                 $textX2 = $width - $textWidth2 - $margenDerecho;
                 
-                // Posición Y para cada línea
-                $textY1 = 35; // Primera línea
-                $textY2 = 70; // Segunda línea
+                // Posición Y para cada línea - posicionadas más abajo
+                $textY1 = 80; // Primera línea más abajo
+                $textY2 = 110; // Segunda línea
+                
+                // Añadir sombreado para mejor visibilidad (1px offset)
+                imagettftext($sourceImage, $fontSize, 0, $textX1+1, $textY1+1, $shadowColor, $fuente, $textoBingo);
+                imagettftext($sourceImage, $fontSize, 0, $textX2+1, $textY2+1, $shadowColor, $fuente, $textoNombre);
                 
                 // Añadir las dos líneas de texto (alineadas a la derecha)
-                imagettftext($sourceImage, $fontSize1, 0, $textX1, $textY1, $textColor1, $fuente, $textoBingo);
-                imagettftext($sourceImage, $fontSize2, 0, $textX2, $textY2, $textColor2, $fuente, $textoNombre);
+                imagettftext($sourceImage, $fontSize, 0, $textX1, $textY1, $textColor, $fuente, $textoBingo);
+                imagettftext($sourceImage, $fontSize, 0, $textX2, $textY2, $textColor, $fuente, $textoNombre);
                 
                 // Guardar la imagen con marca de agua
                 $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
