@@ -323,8 +323,9 @@ public function descargar($numero, $bingoId = null) {
                 // Abrimos como recurso binario seguro
                 $stream = fopen($rutaCompleta, 'rb');
                 if (!$stream) {
-                    throw new \Exception("No se pudo abrir el archivo para lectura binaria: $rutaCompleta");
+                    throw new \Exception("No se pudo abrir el archivo en modo binario.");
                 }
+                Log::info("🔓 Archivo abierto correctamente como stream.");
         
                 $img = $manager->read($stream);
         
@@ -349,7 +350,9 @@ public function descargar($numero, $bingoId = null) {
         
                 $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
                 $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
-        
+                Log::info("📄 Intentando abrir imagen en modo binario: $rutaCompleta");
+                Log::info("📦 Tamaño archivo: " . filesize($rutaCompleta));
+                
                 if (!file_exists(dirname($rutaTemporal))) {
                     mkdir(dirname($rutaTemporal), 0775, true);
                 }
