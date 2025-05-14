@@ -389,7 +389,7 @@ public function descargar($numero, $bingoId = null) {
                 $fontSize = 22;
                 
                 // Calcular posiciones para alinear a la derecha (con un margen de 20px)
-                $margenDerecho = 10;
+                $margenDerecho = 40;
                 
                 // Posición X para alinear a la derecha
                 $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
