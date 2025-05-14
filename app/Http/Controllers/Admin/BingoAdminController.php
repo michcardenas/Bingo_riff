@@ -477,107 +477,107 @@ class BingoAdminController extends Controller
 
         return response()->json(['success' => true]);
     }
-    public function updateComprobante(Request $request, $id)
-    {
-        $inicio = microtime(true);
-        Log::info('📥 Inicio actualización de comprobante', ['reserva_id' => $id]);
-    
-        try {
-            $request->validate([
-                'comprobante' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            ]);
-    
-            $reserva = Reserva::findOrFail($id);
-            $file = $request->file('comprobante');
-    
-            if (!$file) {
-                throw new \Exception('No se recibió ningún archivo');
-            }
-    
-            Log::info("📦 Procesando comprobante", [
-                'original_name' => $file->getClientOriginalName(),
-                'size' => $file->getSize()
-            ]);
-    
-            // Hash rápido para comparar archivos por contenido
-            $hashArchivo = sha1_file($file->getRealPath());
-    
-            // Si ya existe comprobante, podemos saltarnos análisis pesado
-            if (!empty($reserva->comprobante)) {
-                Log::info('📌 Ya existe comprobante en reserva. Se omitirá análisis de duplicado.');
-    
-                $metadatos = [
-                    'sha1' => $hashArchivo,
-                    'fecha_subida' => now()->toDateTimeString(),
-                    'mime_type' => $file->getMimeType(),
-                    'extension' => $file->getClientOriginalExtension(),
-                ];
-            } else {
-                // Verificación de duplicado perceptual
-                $verificacion = $this->verificarComprobanteUnico($file);
-                $metadatos = $verificacion['metadatos'];
-                $metadatos['sha1'] = $hashArchivo;
-                $metadatos['fecha_subida'] = now()->toDateTimeString();
-                $metadatos['mime_type'] = $file->getMimeType();
-                $metadatos['extension'] = $file->getClientOriginalExtension();
-    
-                if (!$verificacion['es_unico']) {
-                    $metadatos['posible_duplicado'] = true;
-                    $metadatos['reserva_coincidente_id'] = optional($verificacion['reserva_coincidente'])->id;
-                    $metadatos['similaridad'] = $verificacion['similaridad'];
-    
-                    Log::warning("⚠️ Posible comprobante duplicado", [
-                        'archivo' => $file->getClientOriginalName(),
-                        'similaridad' => $verificacion['similaridad'] . '%'
-                    ]);
-                }
-            }
-    
-            // Ruta destino
-            $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
-            $isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
-            $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
-    
-            if (!file_exists($destino)) {
-                mkdir($destino, 0775, true);
-            }
-    
-            // Guardar archivo
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move($destino, $filename);
-            $rutaRelativa = 'comprobantes/' . $filename;
-    
-            Log::info('✅ Comprobante guardado', ['ruta' => $rutaRelativa]);
-    
-            // Guardar en base de datos
-            $reserva->comprobante = json_encode([$rutaRelativa]);
-            $reserva->comprobante_metadata = json_encode([$metadatos]);
-            $reserva->save();
-    
-            $duracion = round(microtime(true) - $inicio, 2);
-            Log::info("⏱ Tiempo total de ejecución updateComprobante: {$duracion}s");
-    
-            return response()->json([
-                'success' => true,
-                'ruta' => $rutaRelativa,
-                'posible_duplicado' => $metadatos['posible_duplicado'] ?? false,
-            ]);
-    
-        } catch (\Exception $e) {
-            Log::error('❌ Error al actualizar comprobante', [
-                'error' => $e->getMessage(),
-                'linea' => $e->getLine(),
-                'archivo' => $e->getFile(),
-            ]);
-    
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar comprobante',
-                'error' => $e->getMessage(),
-            ]);
+   public function updateComprobante(Request $request, $id)
+{
+    $inicio = microtime(true);
+    Log::info('📥 Inicio actualización de comprobante', ['reserva_id' => $id]);
+
+    try {
+        $request->validate([
+            'comprobante' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        $reserva = Reserva::findOrFail($id);
+        $file = $request->file('comprobante');
+
+        if (!$file) {
+            throw new \Exception('No se recibió ningún archivo');
         }
+
+        Log::info("📦 Procesando comprobante", [
+            'original_name' => $file->getClientOriginalName(),
+            'size' => $file->getSize()
+        ]);
+
+        // Hash rápido para comparar archivos por contenido
+        $hashArchivo = sha1_file($file->getRealPath());
+
+        // Si ya existe comprobante, podemos saltarnos análisis pesado
+        if (!empty($reserva->comprobante)) {
+            Log::info('📌 Ya existe comprobante en reserva. Se omitirá análisis de duplicado.');
+
+            $metadatos = [
+                'sha1' => $hashArchivo,
+                'fecha_subida' => now()->toDateTimeString(),
+                'mime_type' => $file->getMimeType(),
+                'extension' => $file->getClientOriginalExtension(),
+            ];
+        } else {
+            // Verificación de duplicado perceptual
+            $verificacion = $this->verificarComprobanteUnico($file);
+            $metadatos = $verificacion['metadatos'];
+            $metadatos['sha1'] = $hashArchivo;
+            $metadatos['fecha_subida'] = now()->toDateTimeString();
+            $metadatos['mime_type'] = $file->getMimeType();
+            $metadatos['extension'] = $file->getClientOriginalExtension();
+
+            if (!$verificacion['es_unico']) {
+                $metadatos['posible_duplicado'] = true;
+                $metadatos['reserva_coincidente_id'] = optional($verificacion['reserva_coincidente'])->id;
+                $metadatos['similaridad'] = $verificacion['similaridad'];
+
+                Log::warning("⚠️ Posible comprobante duplicado", [
+                    'archivo' => $file->getClientOriginalName(),
+                    'similaridad' => $verificacion['similaridad'] . '%'
+                ]);
+            }
+        }
+
+        // Ruta destino
+        $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+        $isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
+        $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+
+        if (!file_exists($destino)) {
+            mkdir($destino, 0775, true);
+        }
+
+        // Guardar archivo
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $file->move($destino, $filename);
+        $rutaRelativa = 'comprobantes/' . $filename;
+
+        Log::info('✅ Comprobante guardado', ['ruta' => $rutaRelativa]);
+
+        // Guardar en base de datos
+        $reserva->comprobante = json_encode([$rutaRelativa]);
+        $reserva->comprobante_metadata = json_encode([$metadatos]);
+        $reserva->save();
+
+        $duracion = round(microtime(true) - $inicio, 2);
+        Log::info("⏱ Tiempo total de ejecución updateComprobante: {$duracion}s");
+
+        return response()->json([
+            'success' => true,
+            'ruta' => $rutaRelativa,
+            'posible_duplicado' => $metadatos['posible_duplicado'] ?? false,
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('❌ Error al actualizar comprobante', [
+            'error' => $e->getMessage(),
+            'linea' => $e->getLine(),
+            'archivo' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al actualizar comprobante',
+            'error' => $e->getMessage(),
+        ]);
     }
-    
+}
+
 
     
     public function eliminarSerie(Request $request)
