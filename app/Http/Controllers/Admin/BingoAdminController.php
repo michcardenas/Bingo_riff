@@ -478,73 +478,81 @@ class BingoAdminController extends Controller
         return response()->json(['success' => true]);
     }
     public function updateComprobante(Request $request, $id)
-    {
-        Log::info('Inicio actualización de comprobante', ['reserva_id' => $id]);
-    
+{
+    Log::info('📥 Inicio actualización de comprobante', ['reserva_id' => $id]);
+
+    try {
         $request->validate([
             'comprobante' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
-    
-        try {
-            $reserva = Reserva::findOrFail($id);
-            $file = $request->file('comprobante');
-    
-            Log::info("Procesando comprobante actualizado", [
-                'original_name' => $file->getClientOriginalName(),
-                'size' => $file->getSize()
-            ]);
-    
-            // Verificación de duplicado
-            $verificacion = $this->verificarComprobanteUnico($file);
-            $metadatos = $verificacion['metadatos'];
-    
-            if (!$verificacion['es_unico']) {
-                $metadatos['posible_duplicado'] = true;
-                $metadatos['reserva_coincidente_id'] = optional($verificacion['reserva_coincidente'])->id;
-                $metadatos['similaridad'] = $verificacion['similaridad'];
-    
-                Log::warning("Comprobante actualizado posiblemente duplicado", [
-                    'archivo' => $file->getClientOriginalName(),
-                    'similaridad' => $verificacion['similaridad'] . '%'
-                ]);
-            }
-    
-            // Guardar archivo
-            $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
-            $isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
-            $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
-    
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move($destino, $filename);
-    
-            $rutaRelativa = 'comprobantes/' . $filename;
-    
-            Log::info('Nuevo comprobante guardado', [
-                'archivo' => $rutaRelativa
-            ]);
-    
-            // Actualizar en base de datos
-            $reserva->ruta_comprobante = $rutaRelativa;
-            $reserva->comprobante_metadata = json_encode([$metadatos]);
-            $reserva->save();
-    
-            if ($request->ajax() && $request->has('reserva_id')) {
-                \Log::info('⚡ Redireccionando a updateComprobante desde store()');
-                return app()->call([$this, 'updateComprobante'], [
-                    'request' => $request,
-                    'id' => $request->input('reserva_id')
-                ]);
-            }
-            
-    
-        } catch (\Exception $e) {
-            Log::error('Error al actualizar comprobante', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar comprobante',
+
+        $reserva = Reserva::findOrFail($id);
+        $file = $request->file('comprobante');
+
+        if (!$file) {
+            throw new \Exception('No se recibió ningún archivo');
+        }
+
+        Log::info("📦 Procesando comprobante", [
+            'original_name' => $file->getClientOriginalName(),
+            'size' => $file->getSize()
+        ]);
+
+        // Verificación de duplicado
+        $verificacion = $this->verificarComprobanteUnico($file);
+        $metadatos = $verificacion['metadatos'];
+
+        if (!$verificacion['es_unico']) {
+            $metadatos['posible_duplicado'] = true;
+            $metadatos['reserva_coincidente_id'] = optional($verificacion['reserva_coincidente'])->id;
+            $metadatos['similaridad'] = $verificacion['similaridad'];
+
+            Log::warning("⚠️ Posible comprobante duplicado", [
+                'archivo' => $file->getClientOriginalName(),
+                'similaridad' => $verificacion['similaridad'] . '%'
             ]);
         }
+
+        // Guardar archivo
+        $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+        $isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
+        $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+
+        if (!file_exists($destino)) {
+            mkdir($destino, 0775, true);
+        }
+
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $file->move($destino, $filename);
+        $rutaRelativa = 'comprobantes/' . $filename;
+
+        Log::info('✅ Comprobante guardado', ['ruta' => $rutaRelativa]);
+
+        // Actualizar en base de datos
+        $reserva->ruta_comprobante = $rutaRelativa;
+        $reserva->comprobante_metadata = json_encode([$metadatos]);
+        $reserva->save();
+
+        return response()->json([
+            'success' => true,
+            'ruta' => $rutaRelativa,
+            'posible_duplicado' => $metadatos['posible_duplicado'] ?? false,
+        ]);
+    } catch (\Exception $e) {
+        Log::error('❌ Error al actualizar comprobante', [
+            'error' => $e->getMessage(),
+            'linea' => $e->getLine(),
+            'archivo' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al actualizar comprobante',
+            'error' => $e->getMessage(), // solo durante depuración
+        ]);
     }
+}
+
     
     public function eliminarSerie(Request $request)
     {
