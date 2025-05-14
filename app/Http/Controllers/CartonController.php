@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use App\Models\Serie;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Imagick\Driver;
+use GuzzleHttp\Psr7\Utils;
 
 
 
@@ -319,43 +320,42 @@ public function descargar($numero, $bingoId = null) {
                 $nombrePersona = $reservaEncontrada->nombre;
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
         
-                $manager = new ImageManager(new Driver()); // ahora Driver es Imagick
-        
-                Log::info("📄 Intentando leer imagen directamente: $rutaCompleta");
-                Log::info("📦 Tamaño archivo: " . filesize($rutaCompleta));
-                Log::info("📎 MIME TYPE detectado: " . mime_content_type($rutaCompleta));
-        
-                $img = $manager->read($rutaCompleta); // ✅ usar directamente el path, no fopen()
-        
+                $manager = new ImageManager(new Driver());
+
+                $binary = file_get_contents($rutaCompleta);
+                if (!$binary) {
+                    throw new \Exception("No se pudo leer el contenido binario de la imagen.");
+                }
+                
+                $stream = Utils::streamFor($binary); // ✅ obligatorio para Intervention 3
+                $img = $manager->read($stream);
+                
                 $fuente = base_path('public/fonts/arial.ttf');
                 if (!file_exists($fuente)) {
                     throw new \Exception("No se encontró la fuente en $fuente");
                 }
-        
+                
                 $img->text($nombrePersona, $img->width() / 2, 40, function ($font) use ($fuente) {
                     $font->filename($fuente);
                     $font->size(32);
                     $font->color([0, 0, 0, 0.8]);
                     $font->align('center');
                 });
-        
+                
                 $img->text($nombreBingo, $img->width() / 2, 80, function ($font) use ($fuente) {
                     $font->filename($fuente);
                     $font->size(24);
                     $font->color([0, 0, 0, 0.8]);
                     $font->align('center');
                 });
-        
-                $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
-                $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
-        
+                
+                $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg');
                 if (!file_exists(dirname($rutaTemporal))) {
                     mkdir(dirname($rutaTemporal), 0775, true);
                 }
-        
+                
                 $img->save($rutaTemporal);
                 $rutaCompleta = $rutaTemporal;
-        
             } catch (\Exception $e) {
                 Log::error("❌ Error al aplicar marca de agua: " . $e->getMessage());
             }
