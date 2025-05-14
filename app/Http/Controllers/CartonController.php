@@ -315,30 +315,38 @@ public function descargar($numero, $bingoId = null) {
             try {
                 Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
         
-                $nombrePersona = 'TEST MARCA';
-                $nombreBingo = 'BINGO PRUEBA';
-                
+                $nombrePersona = 'TEST MARCA'; // Puedes cambiar esto por $reservaEncontrada->nombre;
+                $nombreBingo = 'BINGO PRUEBA'; // O por $reservaEncontrada->bingo->nombre;
         
-                // ✅ Crear el manager con el driver GD correctamente
+                // Ruta absoluta a la fuente
+                $fontPath = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/Bingo_riff/public/fonts/arial.ttf';
+                Log::debug('Ruta de fuente usada: ' . $fontPath);
+        
+                // Crear el manager con GD
                 $manager = new ImageManager(new Driver());
         
+                // Leer la imagen
                 $img = $manager->read($rutaCompleta);
         
-                $img->text($nombrePersona, $img->width() / 2, 40, function ($font) {
-                    $font->filename(public_path('fonts/arial.ttf'));
+                // Línea 1: Nombre de la persona
+                $img->text($nombrePersona, $img->width() / 2, 40, function ($font) use ($fontPath) {
+                    $font->filename($fontPath);
                     $font->size(32);
-                    $font->color([0, 0, 0, 0.8]); // negro con opacidad
+                    $font->color([0, 0, 0, 0.8]); // Negro con opacidad
                     $font->align('center');
+                    $font->valign('top');
                 });
-                
-                $img->text($nombreBingo, $img->width() / 2, 80, function ($font) {
-                    $font->filename(public_path('fonts/arial.ttf'));
-                    $font->size(24);
-                    $font->color([0, 0, 0, 0.8]); // negro con opacidad
-                    $font->align('center');
-                });
-                
         
+                // Línea 2: Nombre del bingo
+                $img->text($nombreBingo, $img->width() / 2, 80, function ($font) use ($fontPath) {
+                    $font->filename($fontPath);
+                    $font->size(24);
+                    $font->color([0, 0, 255, 0.9]); // Azul con opacidad
+                    $font->align('center');
+                    $font->valign('top');
+                });
+        
+                // Guardar temporalmente
                 $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
                 $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
         
@@ -353,6 +361,7 @@ public function descargar($numero, $bingoId = null) {
                 Log::error("❌ Error al aplicar marca de agua: " . $e->getMessage());
             }
         }
+        
         
 
         // Intentar descarga directa
