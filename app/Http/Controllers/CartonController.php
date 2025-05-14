@@ -317,7 +317,7 @@ public function descargar($numero, $bingoId = null) {
                 $nombrePersona = $reservaEncontrada->nombre;
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
         
-                $manager = new ImageManager(); // Intervention 3.x requiere instancia
+                $manager = new ImageManager(['driver' => 'gd']);
                 $img = $manager->make($rutaCompleta);
         
                 // Línea 1: Nombre
