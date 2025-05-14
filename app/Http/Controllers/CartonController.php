@@ -308,6 +308,47 @@ public function descargar($numero, $bingoId = null) {
             $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
             return redirect($urlDirecta);
         }
+        if ($extension === 'jpg' && isset($reservaEncontrada)) {
+            try {
+                Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
+        
+                $nombrePersona = $reservaEncontrada->nombre;
+                $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
+        
+                $img = \Intervention\Image\Facades\Image::make($rutaCompleta);
+        
+                // Línea 1: Nombre
+                $img->text($nombrePersona, $img->width() / 2, 40, function ($font) {
+                    $font->file(public_path('fonts/arial.ttf'));
+                    $font->size(32);
+                    $font->color('#ff0000');
+                    $font->align('center');
+                });
+        
+                // Línea 2: Bingo
+                $img->text($nombreBingo, $img->width() / 2, 80, function ($font) {
+                    $font->file(public_path('fonts/arial.ttf'));
+                    $font->size(24);
+                    $font->color('#007bff');
+                    $font->align('center');
+                });
+        
+                // Guardar temporalmente con nombre único
+                $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
+                $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
+        
+                // Asegurarse que el directorio exista
+                if (!file_exists(dirname($rutaTemporal))) {
+                    mkdir(dirname($rutaTemporal), 0775, true);
+                }
+        
+                $img->save($rutaTemporal);
+                $rutaCompleta = $rutaTemporal; // ⚠️ Sobrescribimos la ruta a descargar
+            } catch (\Exception $e) {
+                Log::error("Error aplicando marca de agua: " . $e->getMessage());
+                // Si falla, continúa con el archivo original sin marca
+            }
+        }
         
         // Intentar descarga directa
         Log::info("Iniciando descarga del archivo: " . $rutaCompleta);
