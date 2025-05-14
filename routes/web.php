@@ -53,6 +53,7 @@ Route::fallback(function ($e = null) {
         return redirect()->route('home');
     }
 });
+Route::post('/admin/comprobantes/{id}', [BingoAdminController::class, 'updateComprobante'])->name('reservas.update-comprobante');
 
 // Rutas protegidas por autenticación
 Route::middleware('auth')->group(function () {

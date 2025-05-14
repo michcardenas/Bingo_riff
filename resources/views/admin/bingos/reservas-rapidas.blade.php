@@ -674,7 +674,7 @@ document.getElementById('formComprobante').addEventListener('submit', function (
     const form = document.getElementById('formComprobante');
     const formData = new FormData(form);
 
-    fetch('/admin/reservas/' + formData.get('reserva_id') + '/update-comprobante', {
+    fetch('/admin/comprobantes/' + formData.get('reserva_id'), {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
