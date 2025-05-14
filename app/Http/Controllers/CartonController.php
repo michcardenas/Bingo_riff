@@ -315,29 +315,37 @@ public function descargar($numero, $bingoId = null) {
             try {
                 Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
         
-                $nombrePersona = 'TEST MARCA';
-                $nombreBingo = 'BINGO PRUEBA';
-                
+                $nombrePersona = $reservaEncontrada->nombre;
+                $nombreBingo = $reservaEncontrada->bingo->nombre ?? 'Bingo';
         
-                // ✅ Crear el manager con el driver GD correctamente
                 $manager = new ImageManager(new Driver());
         
-                $img = $manager->read(fopen($rutaCompleta, 'r'));
+                // Abrimos como recurso binario seguro
+                $stream = fopen($rutaCompleta, 'rb');
+                if (!$stream) {
+                    throw new \Exception("No se pudo abrir el archivo para lectura binaria: $rutaCompleta");
+                }
         
-                $img->text($nombrePersona, $img->width() / 2, 40, function ($font) {
-                    $font->filename(base_path('public/fonts/arial.ttf'));
+                $img = $manager->read($stream);
+        
+                $fuente = base_path('public/fonts/arial.ttf');
+                if (!file_exists($fuente)) {
+                    throw new \Exception("No se encontró la fuente en $fuente");
+                }
+        
+                $img->text($nombrePersona, $img->width() / 2, 40, function ($font) use ($fuente) {
+                    $font->filename($fuente);
                     $font->size(32);
                     $font->color([0, 0, 0, 0.8]); // negro con opacidad
                     $font->align('center');
                 });
-                
-                $img->text($nombreBingo, $img->width() / 2, 80, function ($font) {
-                    $font->filename(base_path('public/fonts/arial.ttf'));
+        
+                $img->text($nombreBingo, $img->width() / 2, 80, function ($font) use ($fuente) {
+                    $font->filename($fuente);
                     $font->size(24);
-                    $font->color([0, 0, 0, 0.8]); // negro con opacidad
+                    $font->color([0, 0, 0, 0.8]);
                     $font->align('center');
                 });
-                
         
                 $nombreTemporal = 'Carton-RIFFY-' . $numeroParaArchivo . '-marca.jpg';
                 $rutaTemporal = storage_path('app/public/tmp/' . $nombreTemporal);
@@ -348,6 +356,8 @@ public function descargar($numero, $bingoId = null) {
         
                 $img->save($rutaTemporal);
                 $rutaCompleta = $rutaTemporal;
+        
+                fclose($stream); // ✅ Cerramos el recurso de archivo
         
             } catch (\Exception $e) {
                 Log::error("❌ Error al aplicar marca de agua: " . $e->getMessage());
