@@ -357,10 +357,7 @@ public function descargar($numero, $bingoId = null) {
                 
                 // Truncar el nombre si es demasiado largo para evitar que se salga
                 $maxLongitudNombre = 500; // Ajustar según sea necesario
-                if (mb_strlen($nombrePropietario) > $maxLongitudNombre) {
-                    $nombrePropietario = mb_substr($nombrePropietario, 0, $maxLongitudNombre) . '...';
-                    Log::info("Nombre truncado por longitud excesiva: " . $nombrePropietario);
-                }
+                
                 
                 // Nombre del evento/bingo
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? "Bingo RIFFY";
