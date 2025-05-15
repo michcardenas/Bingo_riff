@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cartones Rechazados - Bingo: {{ $bingo->nombre }}</title>
+    <title>Rechazados - Bingo: {{ $bingo->nombre }}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -27,7 +27,7 @@
                 <div class="card">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0">
-                            Cartones Rechazados - Bingo: {{ $bingo->nombre }}
+                            Rechazados - Bingo: {{ $bingo->nombre }}
                             <a href="{{ route('bingos.reservas.rechazados.excel', $bingo->id) }}" class="btn btn-sm btn-light float-end">
                                 <i class="bi bi-download"></i> Descargar Excel
                             </a>
@@ -48,7 +48,40 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    @php
+                                        $totalRegistros = 0;
+                                    @endphp
+                                    
+                                    <!-- Cartones de reservas rechazadas -->
+                                    @foreach($reservasRechazadas as $reserva)
+                                        @foreach($reserva['cartones'] as $carton)
+                                            @php
+                                                $totalRegistros++;
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $reserva['reserva']->nombre }}</td>
+                                                <td>{{ $reserva['reserva']->celular }}</td>
+                                                <td>{{ $carton }}</td>
+                                                <td>
+                                                    @if(isset($reserva['cartonesSeries'][$carton]))
+                                                        @if(is_array($reserva['cartonesSeries'][$carton]))
+                                                            {{ implode(', ', $reserva['cartonesSeries'][$carton]) }}
+                                                        @else
+                                                            {{ $reserva['cartonesSeries'][$carton] }}
+                                                        @endif
+                                                    @else
+                                                        No disponible
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    @endforeach
+                                    
+                                    <!-- Cartones rechazados individuales -->
                                     @foreach($cartonesRechazados as $item)
+                                        @php
+                                            $totalRegistros++;
+                                        @endphp
                                         <tr>
                                             <td>
                                                 @if($item['reserva'])
@@ -82,7 +115,7 @@
                             </table>
                         </div>
                         
-                        @if(count($cartonesRechazados) == 0)
+                        @if($totalRegistros == 0)
                             <div class="alert alert-info">
                                 No hay cartones rechazados para este bingo.
                             </div>
