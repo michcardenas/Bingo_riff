@@ -223,7 +223,7 @@
         <thead class="table-secondary">
             <tr>
                 <th>#</th>
-                <th>Número de Cartón</th>
+                <th>Número de Hoja</th>
                 <th>Series</th>
             </tr>
         </thead>
