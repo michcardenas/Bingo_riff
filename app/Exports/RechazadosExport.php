@@ -19,7 +19,7 @@ class RechazadosExport implements FromCollection, WithHeadings
     {
         return Reserva::where('bingo_id', $this->bingoId)
             ->where('estado', 'rechazado')
-            ->select('id', 'nombre', 'celular', 'cantidad', 'total', 'estado', 'created_at')
+            ->select('id', 'nombre', 'celular', 'cantidad', 'total','series', 'estado', 'created_at')
             ->get();
     }
 
@@ -31,6 +31,7 @@ class RechazadosExport implements FromCollection, WithHeadings
             'Celular',
             'Cantidad Cartones',
             'Total',
+            'Series',
             'Estado',
             'Fecha de Registro'
         ];
