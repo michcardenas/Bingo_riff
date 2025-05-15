@@ -20,6 +20,24 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
     public function __construct($bingoId)
     {
         $this->bingoId = $bingoId;
+        Log::info("RechazadosExport inicializado con bingoId: " . $bingoId);
+        
+        // Verificar si la tabla existe
+        $tableExists = DB::select("SHOW TABLES LIKE 'cartones_rechazados'");
+        Log::info("¿Existe la tabla cartones_rechazados?: " . (count($tableExists) > 0 ? 'Sí' : 'No'));
+        
+        // Verificar la estructura de la tabla
+        if (count($tableExists) > 0) {
+            $columns = DB::select("DESCRIBE cartones_rechazados");
+            $columnNames = array_map(function($col) {
+                return $col->Field;
+            }, $columns);
+            Log::info("Columnas en cartones_rechazados: " . implode(", ", $columnNames));
+        }
+        
+        // Verificar todos los IDs de bingo en la tabla
+        $bingoIds = DB::table('cartones_rechazados')->distinct('bingo_id')->pluck('bingo_id');
+        Log::info("IDs de bingo en cartones_rechazados: " . implode(", ", $bingoIds->toArray()));
     }
 
     /**
@@ -27,8 +45,23 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
      */
     public function query()
     {
-        $cartones = CartonRechazado::where('bingo_id', $this->bingoId)->count();
-        Log::info("Encontrados {$cartones} cartones rechazados para el bingo {$this->bingoId}");
+        // Verificar si hay cartones rechazados para cualquier bingo
+        $totalCartones = DB::table('cartones_rechazados')->count();
+        Log::info("Total de cartones rechazados en la tabla: " . $totalCartones);
+        
+        // Verificar cuántos cartones hay con este bingoId específico
+        $cartones = DB::table('cartones_rechazados')
+            ->where('bingo_id', $this->bingoId)
+            ->count();
+        Log::info("Cartones rechazados para el bingo {$this->bingoId}: {$cartones}");
+        
+        // Hacer una consulta más específica para ver si hay algún problema
+        $cartonesDetalle = DB::select("SELECT id, bingo_id FROM cartones_rechazados WHERE bingo_id = ?", [$this->bingoId]);
+        Log::info("Detalles de cartones encontrados: " . json_encode($cartonesDetalle));
+        
+        // Verificar si el bingo existe
+        $bingo = DB::table('bingos')->where('id', $this->bingoId)->first();
+        Log::info("¿Existe el bingo {$this->bingoId}?: " . ($bingo ? 'Sí' : 'No'));
         
         return CartonRechazado::query()
             ->where('bingo_id', $this->bingoId)
@@ -64,6 +97,8 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
      */
     public function map($cartonRechazado): array
     {
+        Log::info("Mapeando cartón rechazado ID: " . $cartonRechazado->id);
+        
         // Valores por defecto
         $nombreTitular = "N/A";
         $telefono = "N/A";
@@ -75,6 +110,7 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
         // Obtener datos de la reserva si existe
         if ($cartonRechazado->reserva) {
             $reserva = $cartonRechazado->reserva;
+            Log::info("Reserva encontrada ID: " . $reserva->id);
             
             $nombreTitular = $reserva->nombre ?? "N/A";
             $telefono = $reserva->celular ?? "N/A";
@@ -101,8 +137,11 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
                 
                 if ($otraReserva && !empty($otraReserva->nombre)) {
                     $nombreTitular = $otraReserva->nombre;
+                    Log::info("Nombre real encontrado para el celular {$telefono}: {$nombreTitular}");
                 }
             }
+        } else {
+            Log::warning("Reserva no encontrada para el cartón rechazado ID: " . $cartonRechazado->id);
         }
         
         // Obtener información de la tabla series para el cartón rechazado
@@ -172,6 +211,9 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
             if (!$serieBD) {
                 return "No encontrado";
             }
+            
+            // Loguear los datos encontrados
+            Log::info("Serie encontrada para el cartón {$numeroSerie}: " . json_encode($serieBD));
             
             // Si existe la columna series en la tabla, formatearla
             if (isset($serieBD->series)) {
