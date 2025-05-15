@@ -86,6 +86,9 @@
 <a href="{{ route('bingos.reservas.rechazados.excel', $bingoId) }}" class="btn btn-sm btn-outline-dark">
     <i class="bi bi-download"></i> Excel Rechazados
 </a>
+<a href="{{ route('bingos.reservas.rechazados.view', $bingoId) }}" class="btn btn-sm btn-outline-danger">
+    <i class="bi bi-eye"></i> Ver Rechazados
+</a>
 
 
 
