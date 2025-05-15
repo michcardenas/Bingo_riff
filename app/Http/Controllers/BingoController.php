@@ -1140,7 +1140,7 @@ public function pedidosDuplicados($bingoId)
             ];
         }
         
-        return view('bingos.rechazados', [
+        return view('admin.bingos.rechazados', [
             'bingo' => $bingo,
             'reservasRechazadas' => $reservasProcesadas,
             'cartonesRechazados' => $cartonesProcesados
