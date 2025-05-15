@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Models\CartonRechazado;
 
 
 class BingoAdminController extends Controller
@@ -580,50 +581,95 @@ class BingoAdminController extends Controller
 
 
     
-    public function eliminarSerie(Request $request)
-    {
-        $request->validate([
-            'reserva_id' => 'required|exists:reservas,id',
-            'serie' => 'required|string'
+public function eliminarSerie(Request $request)
+{
+    $request->validate([
+        'reserva_id' => 'required|exists:reservas,id',
+        'serie' => 'required|string',
+        'motivo' => 'nullable|string'
+    ]);
+    
+    $reserva = Reserva::findOrFail($request->reserva_id);
+    
+    $series = $reserva->series;
+    // Si es JSON, decodifica
+    if (is_string($series)) {
+        $decoded = json_decode($series, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $series = $decoded;
+        } else {
+            // Si viene mal formado, intenta dividirlo manualmente
+            $series = preg_split('/[",\s]+/', $series);
+        }
+    }
+    
+    // Asegurar que sea array limpio
+    $series = array_filter(array_map('trim', $series));
+    
+    $serieAEliminar = preg_replace('/[^0-9]/', '', $request->serie);
+    
+    // Verificar si la serie existe en las series de la reserva
+    $serieExiste = false;
+    foreach ($series as $serie) {
+        if (trim($serie) === $serieAEliminar) {
+            $serieExiste = true;
+            break;
+        }
+    }
+    
+    if (!$serieExiste) {
+        return response()->json([
+            'success' => false,
+            'message' => 'La serie no existe en esta reserva'
         ]);
+    }
     
-        $reserva = Reserva::findOrFail($request->reserva_id);
+    $nuevasSeries = array_filter($series, fn($s) => trim($s) !== $serieAEliminar);
     
-        $series = $reserva->series;
-
-        // Si es JSON, decodifica
-        if (is_string($series)) {
-            $decoded = json_decode($series, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $series = $decoded;
-            } else {
-                // Si viene mal formado, intenta dividirlo manualmente
-                $series = preg_split('/[",\s]+/', $series);
-            }
-        }
-        
-        // Asegurar que sea array limpio
-        $series = array_filter(array_map('trim', $series));
-        
+    if (count($nuevasSeries) < 1) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No se puede dejar la reserva sin cartones'
+        ]);
+    }
     
-        $serieAEliminar = preg_replace('/[^0-9]/', '', $request->serie);
-        $nuevasSeries = array_filter($series, fn($s) => trim($s) !== $serieAEliminar);
+    // Iniciar transacción para asegurar la integridad de los datos
+    DB::beginTransaction();
     
-        if (count($nuevasSeries) < 1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se puede dejar la reserva sin cartones'
-            ]);
-        }
-    
+    try {
+        // Actualizar la reserva
         $reserva->series = json_encode(array_values($nuevasSeries));
         $reserva->cantidad = count($nuevasSeries);
         $reserva->total = $reserva->bingo->precio * count($nuevasSeries);
         $reserva->save();
-    
-        return response()->json(['success' => true]);
+        
+        // Registrar el cartón rechazado
+        CartonRechazado::create([
+            'reserva_id' => $reserva->id,
+            'bingo_id' => $reserva->bingo_id,
+            'serie_rechazada' => $serieAEliminar,
+            'fecha_rechazo' => now(),
+            'motivo' => $request->motivo ?? 'Eliminación manual',
+            'usuario' => auth()->check() ? auth()->user()->name : null
+        ]);
+        
+        // Confirmar transacción
+        DB::commit();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Serie eliminada correctamente'
+        ]);
+    } catch (\Exception $e) {
+        // Revertir transacción en caso de error
+        DB::rollBack();
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al eliminar la serie: ' . $e->getMessage()
+        ]);
     }
-    
+}
     
 
 
