@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('content')
@@ -49,7 +48,6 @@
                                                 <th>Total</th>
                                                 <th>Cartones</th>
                                                 <th>Fecha</th>
-                                                <th>Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -68,12 +66,6 @@
                                                         </button>
                                                     </td>
                                                     <td>{{ date('d/m/Y H:i', strtotime($item['reserva']->created_at)) }}</td>
-                                                    <td>
-                                                        <a href="{{ route('reservas.show', $item['reserva']->id) }}" 
-                                                           class="btn btn-sm btn-primary">
-                                                            <i class="bi bi-eye"></i>
-                                                        </a>
-                                                    </td>
                                                 </tr>
                                                 
                                                 <!-- Modal para ver los cartones de esta reserva -->
@@ -143,7 +135,7 @@
                                             <tr>
                                                 <th>ID</th>
                                                 <th>Cartón</th>
-                                                <th>Reserva</th>
+                                                <th>Reserva ID</th>
                                                 <th>Nombre</th>
                                                 <th>Series</th>
                                                 <th>Fecha Rechazo</th>
@@ -158,9 +150,7 @@
                                                     <td>{{ $item['carton']->serie_rechazada }}</td>
                                                     <td>
                                                         @if($item['reserva'])
-                                                            <a href="{{ route('reservas.show', $item['reserva']->id) }}">
-                                                                #{{ $item['reserva']->id }}
-                                                            </a>
+                                                            {{ $item['reserva']->id }}
                                                         @else
                                                             N/A
                                                         @endif
