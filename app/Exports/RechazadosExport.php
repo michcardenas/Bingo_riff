@@ -36,7 +36,7 @@ class RechazadosExport implements FromCollection, WithHeadings, WithMapping, Sho
             'Cantidad Cartones',
             'Total',
             'Cartones',
-            'Info Series',
+            'Series por Cartón',
             'Estado',
             'Fecha de Registro'
         ];
@@ -129,35 +129,27 @@ class RechazadosExport implements FromCollection, WithHeadings, WithMapping, Sho
                     ->orWhere('carton', ltrim($carton, '0'))
                     ->first();
                 
-                if ($info) {
-                    // Obtener y formatear la información de la tabla series
-                    $seriesData = "";
-                    if (isset($info->series)) {
-                        // Si la columna series es JSON, decodificarla
-                        if (is_string($info->series)) {
-                            $decoded = json_decode($info->series, true);
-                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                                $seriesData = count($decoded) . " series";
-                            } else {
-                                $seriesData = $info->series;
-                            }
-                        } else {
-                            $seriesData = $info->series;
-                        }
-                    }
+                if ($info && isset($info->series)) {
+                    // Obtener y formatear las series de la tabla series
+                    $seriesInfo = $info->series;
                     
-                    $infoDetalles[] = "$carton: $seriesData";
+                    // Si es JSON, decodificarlo y formatearlo como una lista separada por comas
+                    if (is_string($seriesInfo)) {
+                        $seriesData = json_decode($seriesInfo, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($seriesData)) {
+                            $infoDetalles[] = "Cartón " . $carton . ": " . implode(", ", $seriesData);
+                        } else {
+                            $infoDetalles[] = "Cartón " . $carton . ": " . $seriesInfo;
+                        }
+                    } else {
+                        $infoDetalles[] = "Cartón " . $carton . ": " . $seriesInfo;
+                    }
                 } else {
-                    $infoDetalles[] = "$carton: No encontrado";
+                    $infoDetalles[] = "Cartón " . $carton . ": No encontrado";
                 }
             }
             
-            // Si hay demasiadas series, limitar la salida para evitar celdas enormes
-            if (count($infoDetalles) > 5) {
-                $infoMostrada = array_slice($infoDetalles, 0, 5);
-                return implode("\n", $infoMostrada) . "\n(+" . (count($infoDetalles) - 5) . " más)";
-            }
-            
+            // Combinar toda la información en un solo string con saltos de línea
             return implode("\n", $infoDetalles);
         } catch (\Exception $e) {
             Log::error("Error al obtener info series: " . $e->getMessage());
