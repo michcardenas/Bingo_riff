@@ -7,10 +7,39 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class RechazadosExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize
+class RechazadosExport implements WithMultipleSheets
+{
+    protected $bingoId;
+
+    public function __construct($bingoId)
+    {
+        $this->bingoId = $bingoId;
+    }
+
+    /**
+     * @return array
+     */
+    public function sheets(): array
+    {
+        $sheets = [
+            new ReservasRechazadasSheet($this->bingoId),
+            new CartonesRechazadosSheet($this->bingoId),
+        ];
+
+        return $sheets;
+    }
+}
+
+// Hoja 1: Reservas Rechazadas
+class ReservasRechazadasSheet implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithTitle, WithStyles
 {
     protected $bingoId;
 
@@ -25,6 +54,11 @@ class RechazadosExport implements FromCollection, WithHeadings, WithMapping, Sho
             ->where('estado', 'rechazado')
             ->select('id', 'nombre', 'celular', 'cantidad', 'total', 'series', 'estado', 'created_at')
             ->get();
+    }
+
+    public function title(): string
+    {
+        return 'Reservas Rechazadas';
     }
 
     public function headings(): array
@@ -42,9 +76,6 @@ class RechazadosExport implements FromCollection, WithHeadings, WithMapping, Sho
         ];
     }
 
-    /**
-     * Mapea los datos de cada fila
-     */
     public function map($reserva): array
     {
         // Formatear la columna series (convertir JSON a texto legible)
@@ -69,9 +100,6 @@ class RechazadosExport implements FromCollection, WithHeadings, WithMapping, Sho
         ];
     }
 
-    /**
-     * Formatea los cartones desde JSON a texto legible
-     */
     private function formatearCartones($seriesJson)
     {
         if (empty($seriesJson)) {
@@ -100,9 +128,6 @@ class RechazadosExport implements FromCollection, WithHeadings, WithMapping, Sho
         }
     }
 
-    /**
-     * Obtiene información de la tabla series para cada cartón
-     */
     private function obtenerInfoSeries($seriesJson)
     {
         if (empty($seriesJson)) {
@@ -155,5 +180,167 @@ class RechazadosExport implements FromCollection, WithHeadings, WithMapping, Sho
             Log::error("Error al obtener info series: " . $e->getMessage());
             return "Error al procesar información de series";
         }
+    }
+    
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            // Estilo para la fila de encabezados
+            1 => [
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '4472C4'],
+                ],
+            ],
+            // Ajustar la altura de filas para mostrar múltiples líneas
+            'A' => ['alignment' => ['wrapText' => true]],
+            'G' => ['alignment' => ['wrapText' => true]],
+        ];
+    }
+}
+
+// Hoja 2: Cartones Rechazados Individuales
+class CartonesRechazadosSheet implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithTitle, WithStyles
+{
+    protected $bingoId;
+
+    public function __construct($bingoId)
+    {
+        $this->bingoId = $bingoId;
+    }
+
+    public function collection()
+    {
+        return DB::table('cartones_rechazados')
+            ->where('bingo_id', $this->bingoId)
+            ->orderBy('fecha_rechazo', 'desc')
+            ->get();
+    }
+
+    public function title(): string
+    {
+        return 'Cartones Individuales';
+    }
+
+    public function headings(): array
+    {
+        return [
+            'ID',
+            'Cartón',
+            'Series del Cartón',
+            'Nombre Titular',
+            'Celular',
+            'ID Reserva',
+            'Fecha Rechazo',
+            'Motivo',
+            'Usuario',
+            'Fecha Registro'
+        ];
+    }
+
+    public function map($carton): array
+    {
+        // Obtener información de la reserva
+        $nombreTitular = "N/A";
+        $celular = "N/A";
+        
+        if ($carton->reserva_id) {
+            $reserva = DB::table('reservas')->find($carton->reserva_id);
+            if ($reserva) {
+                $nombreTitular = $reserva->nombre ?? "N/A";
+                $celular = $reserva->celular ?? "N/A";
+                
+                // Si el nombre es igual al nombre del bingo, buscar el nombre real
+                if (!empty($reserva->celular) && 
+                   (!empty($reserva->nombre) && $reserva->bingo_id)) {
+                    
+                    $bingo = DB::table('bingos')->find($reserva->bingo_id);
+                    if ($bingo && $reserva->nombre == $bingo->nombre) {
+                        // Buscar otra reserva con el mismo celular
+                        $otraReserva = DB::table('reservas')
+                            ->where('celular', $reserva->celular)
+                            ->where('nombre', '!=', $bingo->nombre)
+                            ->whereNotNull('nombre')
+                            ->where('nombre', '!=', '')
+                            ->orderBy('id', 'desc')
+                            ->first();
+                        
+                        if ($otraReserva && !empty($otraReserva->nombre)) {
+                            $nombreTitular = $otraReserva->nombre;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Obtener información de series para este cartón específico
+        $seriesInfo = $this->obtenerInfoSeries($carton->serie_rechazada);
+        
+        // Formatear fechas
+        $fechaRechazo = $carton->fecha_rechazo ? date('d/m/Y H:i', strtotime($carton->fecha_rechazo)) : "N/A";
+        $fechaRegistro = $carton->created_at ? date('d/m/Y H:i', strtotime($carton->created_at)) : "N/A";
+        
+        return [
+            $carton->id,
+            $carton->serie_rechazada,
+            $seriesInfo,
+            $nombreTitular,
+            $celular,
+            $carton->reserva_id,
+            $fechaRechazo,
+            $carton->motivo ?? "No especificado",
+            $carton->usuario ?? "Sistema",
+            $fechaRegistro
+        ];
+    }
+
+    private function obtenerInfoSeries($numeroCarton)
+    {
+        try {
+            // Buscar el cartón en la tabla series
+            $info = DB::table('series')
+                ->where('carton', $numeroCarton)
+                ->orWhere('carton', ltrim($numeroCarton, '0'))
+                ->first();
+            
+            if ($info && isset($info->series)) {
+                // Obtener y formatear las series de la tabla series
+                $seriesInfo = $info->series;
+                
+                // Si es JSON, decodificarlo y formatearlo como una lista separada por comas
+                if (is_string($seriesInfo)) {
+                    $seriesData = json_decode($seriesInfo, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesData)) {
+                        return implode(", ", $seriesData);
+                    } else {
+                        return $seriesInfo;
+                    }
+                } else {
+                    return $seriesInfo;
+                }
+            } else {
+                return "No encontrado";
+            }
+        } catch (\Exception $e) {
+            Log::error("Error al obtener info series para cartón {$numeroCarton}: " . $e->getMessage());
+            return "Error al procesar información";
+        }
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            // Estilo para la fila de encabezados
+            1 => [
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '4472C4'],
+                ],
+            ],
+            // Ajustar la altura de filas para mostrar múltiples líneas
+            'C' => ['alignment' => ['wrapText' => true]],
+        ];
     }
 }
