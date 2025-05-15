@@ -3,7 +3,6 @@
 namespace App\Exports;
 
 use App\Models\CartonRechazado;
-use App\Models\Serie;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -40,15 +39,19 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
     {
         return [
             'ID',
-            'Serie/Cartón',
-            'Datos Serie', // Nueva columna para mostrar datos de la tabla series
+            'Cartón Rechazado',
             'Nombre Titular',
-            'Teléfono',
+            'Celular',
+            'Cantidad',
+            'Series Reserva',
+            'Series Tabla Series',
+            'Total',
+            'Estado',
             'Nombre del Bingo',
             'Fecha Rechazo',
             'Motivo',
             'Usuario que Rechazó',
-            'Fecha Creación'
+            'Fecha de Registro'
         ];
     }
 
@@ -57,22 +60,35 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
      */
     public function map($cartonRechazado): array
     {
-        // Encontrar el nombre del titular de la reserva
+        // Valores por defecto
         $nombreTitular = "N/A";
         $telefono = "N/A";
+        $cantidad = 0;
+        $seriesReserva = "N/A";
+        $total = "0.00";
+        $estado = "N/A";
         
+        // Obtener datos de la reserva si existe
         if ($cartonRechazado->reserva) {
-            $nombreTitular = $cartonRechazado->reserva->nombre ?? "N/A";
-            $telefono = $cartonRechazado->reserva->celular ?? "N/A";
+            $reserva = $cartonRechazado->reserva;
+            
+            $nombreTitular = $reserva->nombre ?? "N/A";
+            $telefono = $reserva->celular ?? "N/A";
+            $cantidad = $reserva->cantidad ?? 0;
+            $total = $reserva->total ?? "0.00";
+            $estado = $reserva->estado ?? "N/A";
+            
+            // Obtener las series de la reserva (columna series de la tabla reservas)
+            $seriesReserva = $this->formatearSeriesReserva($reserva->series);
             
             // Si el nombre es igual al nombre del bingo, intentar buscar el nombre real
-            if (!empty($cartonRechazado->reserva->celular) && 
-                (!empty($cartonRechazado->reserva->nombre) && 
-                 $cartonRechazado->reserva->nombre == $cartonRechazado->bingo->nombre)) {
+            if (!empty($reserva->celular) && 
+                (!empty($reserva->nombre) && 
+                 $reserva->nombre == $cartonRechazado->bingo->nombre)) {
                 
                 // Buscar otra reserva del mismo celular con nombre diferente
                 $otraReserva = DB::table('reservas')
-                    ->where('celular', $cartonRechazado->reserva->celular)
+                    ->where('celular', $reserva->celular)
                     ->where('nombre', '!=', $cartonRechazado->bingo->nombre)
                     ->whereNotNull('nombre')
                     ->where('nombre', '!=', '')
@@ -85,15 +101,19 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
             }
         }
         
-        // Obtener información de la serie desde la tabla series
-        $datosSerie = $this->obtenerDatosSerie($cartonRechazado->serie_rechazada);
+        // Obtener información de la tabla series para el cartón rechazado
+        $seriesTabla = $this->obtenerSeriesTabla($cartonRechazado->serie_rechazada);
         
         return [
             $cartonRechazado->id,
             $cartonRechazado->serie_rechazada,
-            $datosSerie, // Nueva columna con datos de la serie
             $nombreTitular,
             $telefono,
+            $cantidad,
+            $seriesReserva, // Series de la tabla reservas
+            $seriesTabla,   // Series de la tabla series
+            $total,
+            $estado,
             $cartonRechazado->bingo->nombre ?? "Bingo ID: ".$cartonRechazado->bingo_id,
             $cartonRechazado->fecha_rechazo ? date('d/m/Y H:i', strtotime($cartonRechazado->fecha_rechazo)) : "N/A",
             $cartonRechazado->motivo ?? "No especificado",
@@ -103,29 +123,63 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
     }
 
     /**
-     * Obtiene los datos de la serie desde la tabla series
+     * Formatea las series de la reserva para mostrarlas legiblemente
      */
-    private function obtenerDatosSerie($numeroSerie)
+    private function formatearSeriesReserva($series)
+    {
+        if (empty($series)) {
+            return "No hay series";
+        }
+        
+        // Si es JSON, decodifica
+        if (is_string($series)) {
+            $decoded = json_decode($series, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $series = $decoded;
+            } else {
+                // Si viene mal formado, intenta dividirlo manualmente
+                $series = preg_split('/[",\s]+/', $series);
+            }
+        }
+        
+        // Si sigue siendo un string después de intentar decodificar
+        if (is_string($series)) {
+            return $series;
+        }
+        
+        // Si es un array, formatearlo para mostrarlo legiblemente
+        if (is_array($series)) {
+            // Filtrar valores vacíos y valores duplicados
+            $series = array_filter(array_unique($series));
+            return implode(", ", $series);
+        }
+        
+        return "Formato no reconocido";
+    }
+
+    /**
+     * Obtiene los datos de la columna series de la tabla series
+     */
+    private function obtenerSeriesTabla($numeroSerie)
     {
         // Eliminar ceros a la izquierda para la búsqueda
         $numeroSinCeros = ltrim($numeroSerie, '0');
         
         try {
-            // Buscar la serie en la tabla series
-            $serie = DB::table('series')
+            // Buscar el cartón en la tabla series
+            $serieBD = DB::table('series')
                 ->where('carton', $numeroSerie)
                 ->orWhere('carton', $numeroSinCeros)
                 ->first();
             
-            if ($serie) {
-                // Devuelve la información de la columna 'series' de la tabla series
-                // Ajusta esto según la estructura real de tu tabla
-                return $serie->series ?? "Serie encontrada: ID #".$serie->id;
+            if ($serieBD) {
+                // Devolver el contenido de la columna "series" de la tabla series
+                return $serieBD->series ?? "N/A";
             } else {
-                return "Serie no encontrada en tabla series";
+                return "No encontrado";
             }
         } catch (\Exception $e) {
-            return "Error al buscar serie: " . $e->getMessage();
+            return "Error: " . $e->getMessage();
         }
     }
 
@@ -135,7 +189,7 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
     public function styles(Worksheet $sheet)
     {
         // Estilo para la fila de encabezados
-        $sheet->getStyle('A1:J1')->applyFromArray([
+        $sheet->getStyle('A1:N1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => 'FFFFFF'],
@@ -147,7 +201,7 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
         ]);
         
         // Agregar bordes a todas las celdas con datos
-        $sheet->getStyle('A1:J'.$sheet->getHighestRow())->applyFromArray([
+        $sheet->getStyle('A1:N'.$sheet->getHighestRow())->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
@@ -158,10 +212,13 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
         
         // Centrar algunas columnas
         $sheet->getStyle('A:A')->getAlignment()->setHorizontal('center'); // ID
-        $sheet->getStyle('B:B')->getAlignment()->setHorizontal('center'); // Serie
-        $sheet->getStyle('E:E')->getAlignment()->setHorizontal('center'); // Teléfono
-        $sheet->getStyle('G:G')->getAlignment()->setHorizontal('center'); // Fecha rechazo
-        $sheet->getStyle('J:J')->getAlignment()->setHorizontal('center'); // Fecha creación
+        $sheet->getStyle('B:B')->getAlignment()->setHorizontal('center'); // Cartón
+        $sheet->getStyle('D:D')->getAlignment()->setHorizontal('center'); // Celular
+        $sheet->getStyle('E:E')->getAlignment()->setHorizontal('center'); // Cantidad
+        $sheet->getStyle('H:H')->getAlignment()->setHorizontal('center'); // Total
+        $sheet->getStyle('I:I')->getAlignment()->setHorizontal('center'); // Estado
+        $sheet->getStyle('K:K')->getAlignment()->setHorizontal('center'); // Fecha rechazo
+        $sheet->getStyle('N:N')->getAlignment()->setHorizontal('center'); // Fecha registro
         
         return $sheet;
     }
@@ -177,8 +234,8 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
             $bingoName = $bingo ? $bingo->nombre : "Bingo ".$this->bingoId;
             
             // Limitar longitud a 31 caracteres (límite de Excel)
-            if (mb_strlen($bingoName) > 28) {
-                $bingoName = mb_substr($bingoName, 0, 28).'...';
+            if (mb_strlen($bingoName) > 25) {
+                $bingoName = mb_substr($bingoName, 0, 25).'...';
             }
             
             return "Rechazados - ".$bingoName;
