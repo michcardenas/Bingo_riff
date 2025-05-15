@@ -11,6 +11,7 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithTitle
 {
@@ -26,9 +27,12 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
      */
     public function query()
     {
+        $cartones = CartonRechazado::where('bingo_id', $this->bingoId)->count();
+        Log::info("Encontrados {$cartones} cartones rechazados para el bingo {$this->bingoId}");
+        
         return CartonRechazado::query()
             ->where('bingo_id', $this->bingoId)
-            ->with(['reserva', 'bingo']) // Cargar relaciones para acceder a sus datos
+            ->with(['reserva', 'bingo'])
             ->orderBy('fecha_rechazo', 'desc');
     }
 
@@ -78,8 +82,8 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
             $total = $reserva->total ?? "0.00";
             $estado = $reserva->estado ?? "N/A";
             
-            // Obtener las series de la reserva (columna series de la tabla reservas)
-            $seriesReserva = $this->formatearSeriesReserva($reserva->series);
+            // Obtener las series de la reserva
+            $seriesReserva = $this->formatearSeriesJson($reserva->series);
             
             // Si el nombre es igual al nombre del bingo, intentar buscar el nombre real
             if (!empty($reserva->celular) && 
@@ -110,8 +114,8 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
             $nombreTitular,
             $telefono,
             $cantidad,
-            $seriesReserva, // Series de la tabla reservas
-            $seriesTabla,   // Series de la tabla series
+            $seriesReserva,
+            $seriesTabla,
             $total,
             $estado,
             $cartonRechazado->bingo->nombre ?? "Bingo ID: ".$cartonRechazado->bingo_id,
@@ -123,38 +127,34 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
     }
 
     /**
-     * Formatea las series de la reserva para mostrarlas legiblemente
+     * Formatea las series almacenadas como JSON
      */
-    private function formatearSeriesReserva($series)
+    private function formatearSeriesJson($jsonSeries)
     {
-        if (empty($series)) {
+        if (empty($jsonSeries)) {
             return "No hay series";
         }
         
-        // Si es JSON, decodifica
-        if (is_string($series)) {
-            $decoded = json_decode($series, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $series = $decoded;
-            } else {
-                // Si viene mal formado, intenta dividirlo manualmente
-                $series = preg_split('/[",\s]+/', $series);
+        try {
+            // Si ya es un array, usarlo directamente
+            if (is_array($jsonSeries)) {
+                return implode(", ", $jsonSeries);
             }
+            
+            // Intentar decodificar JSON
+            $series = json_decode($jsonSeries, true);
+            
+            // Si la decodificación fue exitosa
+            if (json_last_error() === JSON_ERROR_NONE && is_array($series)) {
+                return implode(", ", $series);
+            }
+            
+            // Si falla la decodificación, mostrar el string tal cual
+            return $jsonSeries;
+        } catch (\Exception $e) {
+            Log::error("Error al formatear series JSON: " . $e->getMessage());
+            return "Error: " . substr($e->getMessage(), 0, 50) . "...";
         }
-        
-        // Si sigue siendo un string después de intentar decodificar
-        if (is_string($series)) {
-            return $series;
-        }
-        
-        // Si es un array, formatearlo para mostrarlo legiblemente
-        if (is_array($series)) {
-            // Filtrar valores vacíos y valores duplicados
-            $series = array_filter(array_unique($series));
-            return implode(", ", $series);
-        }
-        
-        return "Formato no reconocido";
     }
 
     /**
@@ -162,24 +162,26 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
      */
     private function obtenerSeriesTabla($numeroSerie)
     {
-        // Eliminar ceros a la izquierda para la búsqueda
-        $numeroSinCeros = ltrim($numeroSerie, '0');
-        
         try {
             // Buscar el cartón en la tabla series
             $serieBD = DB::table('series')
                 ->where('carton', $numeroSerie)
-                ->orWhere('carton', $numeroSinCeros)
+                ->orWhere('carton', ltrim($numeroSerie, '0'))
                 ->first();
             
-            if ($serieBD) {
-                // Devolver el contenido de la columna "series" de la tabla series
-                return $serieBD->series ?? "N/A";
-            } else {
+            if (!$serieBD) {
                 return "No encontrado";
             }
+            
+            // Si existe la columna series en la tabla, formatearla
+            if (isset($serieBD->series)) {
+                return $this->formatearSeriesJson($serieBD->series);
+            }
+            
+            return "Columna 'series' no encontrada";
         } catch (\Exception $e) {
-            return "Error: " . $e->getMessage();
+            Log::error("Error al obtener series: " . $e->getMessage());
+            return "Error: " . substr($e->getMessage(), 0, 50) . "...";
         }
     }
 
@@ -201,14 +203,17 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
         ]);
         
         // Agregar bordes a todas las celdas con datos
-        $sheet->getStyle('A1:N'.$sheet->getHighestRow())->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => ['rgb' => '000000'],
+        $lastRow = $sheet->getHighestRow();
+        if ($lastRow > 1) {
+            $sheet->getStyle('A1:N'.$lastRow)->applyFromArray([
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['rgb' => '000000'],
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        }
         
         // Centrar algunas columnas
         $sheet->getStyle('A:A')->getAlignment()->setHorizontal('center'); // ID
@@ -228,7 +233,6 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
      */
     public function title(): string
     {
-        // Intentar obtener el nombre del bingo para usarlo como título
         try {
             $bingo = DB::table('bingos')->where('id', $this->bingoId)->first();
             $bingoName = $bingo ? $bingo->nombre : "Bingo ".$this->bingoId;
@@ -240,6 +244,7 @@ class RechazadosExport implements FromQuery, WithHeadings, WithMapping, WithStyl
             
             return "Rechazados - ".$bingoName;
         } catch (\Exception $e) {
+            Log::error("Error al obtener título: " . $e->getMessage());
             return "Cartones Rechazados";
         }
     }
