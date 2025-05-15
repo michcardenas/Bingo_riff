@@ -321,32 +321,83 @@ public function descargar($numero, $bingoId = null) {
                 $nombrePropietario = "";
                 
                 // Si la reserva tiene un número de celular, intentamos buscar en la BD
-                if (!empty($reservaEncontrada->celular)) {
-                    try {
-                        // Buscar todas las reservas con el mismo número de celular
-                        $reservasPorCelular = Reserva::where('celular', $reservaEncontrada->celular)
-                                                    ->where('eliminado', 0)
-                                                    ->whereNotNull('nombre')
-                                                    ->where('nombre', '!=', '')
-                                                    ->where('nombre', '!=', $reservaEncontrada->bingo->nombre) // Evitar que sea igual al nombre del bingo
-                                                    ->get();
-                        
-                        Log::info("Buscando nombre por celular: " . $reservaEncontrada->celular);
-                        Log::info("Reservas encontradas con mismo celular: " . count($reservasPorCelular));
-                        
-                        // Si encontramos reservas con ese celular, usamos el nombre de la primera que tenga un nombre válido
-                        foreach ($reservasPorCelular as $reservaPorCelular) {
-                            if (!empty($reservaPorCelular->nombre) && 
-                                $reservaPorCelular->nombre != $reservaEncontrada->bingo->nombre) {
-                                $nombrePropietario = trim($reservaPorCelular->nombre); // Asegurar que no hay espacios extras
-                                Log::info("Nombre encontrado por celular: " . $nombrePropietario);
-                                break;
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        Log::warning("Error al buscar nombre por celular: " . $e->getMessage());
-                    }
+            // Si la reserva tiene un número de celular, intentamos buscar en la BD
+if (!empty($reservaEncontrada->celular)) {
+    try {
+        // Buscar todas las reservas con el mismo número de celular
+        $reservasPorCelular = Reserva::where('celular', $reservaEncontrada->celular)
+                                    ->where('eliminado', 0)
+                                    ->whereNotNull('nombre')
+                                    ->where('nombre', '!=', '')
+                                    ->where('nombre', '!=', $reservaEncontrada->bingo->nombre)
+                                    ->orderBy('id', 'desc') // Ordenar por ID descendente para tomar la más reciente
+                                    ->get();
+        
+        Log::info("Buscando nombre por celular: " . $reservaEncontrada->celular);
+        Log::info("Reservas encontradas con mismo celular: " . count($reservasPorCelular));
+        
+        // Loggear todas las reservas encontradas para diagnóstico
+        foreach ($reservasPorCelular as $index => $reserva) {
+            Log::info("Reserva #" . ($index + 1) . " - ID: " . $reserva->id . 
+                     ", Nombre: '" . $reserva->nombre . "'" .
+                     ", Fecha creación: " . $reserva->created_at);
+        }
+        
+        // Si encontramos reservas, usamos la primera que tenga un nombre válido completo
+        if ($reservasPorCelular->isNotEmpty()) {
+            // Intentemos buscar nombres completos (que contengan al menos un espacio)
+            $nombreCompleto = null;
+            foreach ($reservasPorCelular as $reserva) {
+                if (strpos($reserva->nombre, ' ') !== false && 
+                    $reserva->nombre != $reservaEncontrada->bingo->nombre) {
+                    $nombreCompleto = $reserva->nombre;
+                    break;
                 }
+            }
+            
+            // Si no encontramos nombre con espacio, usamos el primero disponible
+            if ($nombreCompleto === null && !empty($reservasPorCelular[0]->nombre)) {
+                $nombreCompleto = $reservasPorCelular[0]->nombre;
+            }
+            
+            if ($nombreCompleto !== null) {
+                $nombrePropietario = trim($nombreCompleto);
+                Log::info("Nombre completo encontrado: '" . $nombrePropietario . "'");
+            }
+        }
+        
+        // Última opción: consultar directamente con DB::select para verificar
+        if (empty($nombrePropietario)) {
+            $celular = $reservaEncontrada->celular;
+            $results = DB::select("
+                SELECT id, nombre 
+                FROM reservas 
+                WHERE celular = ? 
+                  AND eliminado = 0 
+                  AND nombre IS NOT NULL 
+                  AND nombre != '' 
+                ORDER BY id DESC
+            ", [$celular]);
+            
+            Log::info("Consulta directa a la BD - Resultados: " . count($results));
+            
+            foreach ($results as $index => $result) {
+                Log::info("Resultado directo #" . ($index + 1) . 
+                         " - ID: " . $result->id . 
+                         ", Nombre: '" . $result->nombre . "'");
+                
+                if (empty($nombrePropietario) && !empty($result->nombre) && 
+                    $result->nombre != $reservaEncontrada->bingo->nombre) {
+                    $nombrePropietario = trim($result->nombre);
+                    Log::info("Nombre encontrado por consulta directa: '" . $nombrePropietario . "'");
+                    break;
+                }
+            }
+        }
+    } catch (\Exception $e) {
+        Log::warning("Error al buscar nombre por celular: " . $e->getMessage());
+    }
+}
                 
                 // Si no encontramos un nombre válido, usamos el número de celular
                 if (empty($nombrePropietario)) {
