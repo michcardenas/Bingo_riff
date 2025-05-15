@@ -502,12 +502,12 @@
                         <td>{{ $carton['nombre'] ?? 'Usuario' }}</td>
                         <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}" data-bingo-estado="{{ $carton['bingo_estado'] ?? '' }}">{{ $carton['bingo_nombre'] ?? 'Sin asignar' }}</td>
                         <td class="carton-estado" data-estado="{{ $carton['estado'] }}">
-                            @if($carton['estado'] == 'aprobado')
+                            <!-- @if($carton['estado'] == 'aprobado') -->
                             <span class="estado-aprobado">Aprobado</span>
                             <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="btn btn-sm ms-2 download-link" title="Descargar cartón" style="background-color: #00bf63; color: white;">
                                 Descargar
                             </a>
-                            @elseif($carton['estado'] == 'revision')
+                            <!-- @elseif($carton['estado'] == 'revision')
                             <span class="estado-revision">Disponible</span>
                             <a href="{{ route('cartones.descargar', $carton['numero']) }}" class="btn btn-sm ms-2 download-link" title="Descargar cartón" style="background-color: #00bf63; color: white;">
                                 Descargar
@@ -519,7 +519,7 @@
                             </a>
                             @else
                             <span class="estado-desconocido">{{ ucfirst($carton['estado'] ?? 'Desconocido') }}</span>
-                            @endif
+                            @endif -->
                         </td>
                     </tr>
                     @endforeach
