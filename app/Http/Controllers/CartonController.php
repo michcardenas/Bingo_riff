@@ -338,7 +338,7 @@ public function descargar($numero, $bingoId = null) {
                         foreach ($reservasPorCelular as $reservaPorCelular) {
                             if (!empty($reservaPorCelular->nombre) && 
                                 $reservaPorCelular->nombre != $reservaEncontrada->bingo->nombre) {
-                                $nombrePropietario = $reservaPorCelular->nombre;
+                                $nombrePropietario = trim($reservaPorCelular->nombre); // Asegurar que no hay espacios extras
                                 Log::info("Nombre encontrado por celular: " . $nombrePropietario);
                                 break;
                             }
@@ -355,8 +355,21 @@ public function descargar($numero, $bingoId = null) {
                         "Reserva #" . $reservaEncontrada->id;
                 }
                 
+                // Truncar el nombre si es demasiado largo para evitar que se salga
+                $maxLongitudNombre = 25; // Ajustar según sea necesario
+                if (mb_strlen($nombrePropietario) > $maxLongitudNombre) {
+                    $nombrePropietario = mb_substr($nombrePropietario, 0, $maxLongitudNombre) . '...';
+                    Log::info("Nombre truncado por longitud excesiva: " . $nombrePropietario);
+                }
+                
                 // Nombre del evento/bingo
                 $nombreBingo = $reservaEncontrada->bingo->nombre ?? "Bingo RIFFY";
+                
+                // Truncar el nombre del bingo si es demasiado largo
+                if (mb_strlen($nombreBingo) > $maxLongitudNombre) {
+                    $nombreBingo = mb_substr($nombreBingo, 0, $maxLongitudNombre) . '...';
+                    Log::info("Nombre del bingo truncado por longitud excesiva: " . $nombreBingo);
+                }
                 
                 // Formatear textos para la marca de agua
                 $textoBingo = "Bingo: " . $nombreBingo;
@@ -388,27 +401,62 @@ public function descargar($numero, $bingoId = null) {
                 // Tamaño de la fuente
                 $fontSize = 16;
                 
-                // Calcular posiciones para alinear a la derecha (con un margen de 20px)
+                // Márgenes y posiciones
                 $margenDerecho = 200;
+                $margenIzquierdo = 20; // Para asegurar que el texto no se salga por la izquierda
                 
-                // Posición X para alinear a la derecha
+                // Calcular el ancho máximo disponible para el texto
+                $maxTextWidth = $width - $margenDerecho - $margenIzquierdo;
+                
+                // Asegurarnos de que el texto no se salga por la izquierda
                 $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
                 $textWidth1 = $bbox1[2] - $bbox1[0];
-                $textX1 = $width - $textWidth1 - $margenDerecho;
                 
+                // Si el texto es más ancho que el espacio disponible, lo reducimos
+                if ($textWidth1 > $maxTextWidth) {
+                    // Reducir el texto gradualmente hasta que quepa
+                    $tempTextoBingo = $textoBingo;
+                    while ($textWidth1 > $maxTextWidth && mb_strlen($tempTextoBingo) > 10) {
+                        $tempTextoBingo = mb_substr($tempTextoBingo, 0, mb_strlen($tempTextoBingo) - 1);
+                        $bbox1 = imagettfbbox($fontSize, 0, $fuente, $tempTextoBingo . "...");
+                        $textWidth1 = $bbox1[2] - $bbox1[0];
+                    }
+                    $textoBingo = $tempTextoBingo . "...";
+                    Log::info("Texto bingo ajustado para caber: " . $textoBingo);
+                }
+                
+                // Lo mismo para el nombre
                 $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
                 $textWidth2 = $bbox2[2] - $bbox2[0];
+                
+                if ($textWidth2 > $maxTextWidth) {
+                    $tempTextoNombre = $textoNombre;
+                    while ($textWidth2 > $maxTextWidth && mb_strlen($tempTextoNombre) > 10) {
+                        $tempTextoNombre = mb_substr($tempTextoNombre, 0, mb_strlen($tempTextoNombre) - 1);
+                        $bbox2 = imagettfbbox($fontSize, 0, $fuente, $tempTextoNombre . "...");
+                        $textWidth2 = $bbox2[2] - $bbox2[0];
+                    }
+                    $textoNombre = $tempTextoNombre . "...";
+                    Log::info("Texto nombre ajustado para caber: " . $textoNombre);
+                }
+                
+                // Calcular posiciones finales
+                $textX1 = $width - $textWidth1 - $margenDerecho;
                 $textX2 = $width - $textWidth2 - $margenDerecho;
                 
-                // Posición Y para cada línea - posicionadas más abajo
-                $textY1 = 170; // Primera línea más abajo
-                $textY2 = 200; // Segunda línea
+                // Asegurarse de que el texto no se salga de la imagen
+                $textX1 = max($margenIzquierdo, $textX1);
+                $textX2 = max($margenIzquierdo, $textX2);
+                
+                // Posición Y para cada línea
+                $textY1 = 170;
+                $textY2 = 200;
                 
                 // Añadir sombreado para mejor visibilidad (1px offset)
                 imagettftext($sourceImage, $fontSize, 0, $textX1+1, $textY1+1, $shadowColor, $fuente, $textoBingo);
                 imagettftext($sourceImage, $fontSize, 0, $textX2+1, $textY2+1, $shadowColor, $fuente, $textoNombre);
                 
-                // Añadir las dos líneas de texto (alineadas a la derecha)
+                // Añadir las dos líneas de texto
                 imagettftext($sourceImage, $fontSize, 0, $textX1, $textY1, $textColor, $fuente, $textoBingo);
                 imagettftext($sourceImage, $fontSize, 0, $textX2, $textY2, $textColor, $fuente, $textoNombre);
                 
@@ -433,6 +481,7 @@ public function descargar($numero, $bingoId = null) {
                 // Fallback: usar la imagen original sin marca de agua
                 Log::warning("⚠️ Usando imagen original sin marca de agua debido al error");
             }
+        
         }
         // Intentar descarga directa
         Log::info("Iniciando descarga del archivo: " . $rutaCompleta);
