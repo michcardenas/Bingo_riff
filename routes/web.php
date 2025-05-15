@@ -54,6 +54,8 @@ Route::fallback(function ($e = null) {
     }
 });
 Route::post('/admin/comprobantes/{id}', [BingoAdminController::class, 'updateComprobante'])->name('reservas.update-comprobante');
+Route::get('/cartones/serie', [CartonController::class, 'buscarPorSerieCarton'])->name('cartones.serie');
+Route::post('/cartones/serie/buscar', [CartonController::class, 'buscarSeriesPorCelular'])->name('cartones.buscarserie');
 
 // Rutas protegidas por autenticación
 Route::middleware('auth')->group(function () {
@@ -64,8 +66,6 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/admin/borrar-clientes', [BingoAdminController::class, 'truncateClientes'])->name('admin.borrarClientes');
 
-    Route::get('/cartones/serie', [CartonController::class, 'buscarPorSerieCarton'])->name('cartones.serie');
-    Route::post('/cartones/serie/buscar', [CartonController::class, 'buscarSeriesPorCelular'])->name('cartones.buscarserie');
 
 
     // Rutas de administrador (ahora dentro del middleware auth para protegerlas)
