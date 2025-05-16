@@ -14,7 +14,6 @@ use App\Models\Serie;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Imagick\Driver;
 use GuzzleHttp\Psr7\Utils;
-use Illuminate\Support\Facades\DB;
 
 
 
@@ -438,13 +437,81 @@ if (!empty($reservaEncontrada->celular)) {
                 
                 
                 // Nombre del evento/bingo
-                $nombreBingo = null;
-                if (!empty($reservaEncontrada->bingo_id)) {
-                    $bingo = DB::table('bingos')->where('id', $reservaEncontrada->bingo_id)->first();
-                    $nombreBingo = $bingo ? $bingo->nombre : "Bingo RIFFY";
-                } else {
-                    $nombreBingo = "Bingo RIFFY";
-                }                
+// En la parte donde se determina el nombre del bingo
+Log::info("Intentando obtener el nombre del bingo correcto para la ID: " . $reservaEncontrada->bingo_id);
+
+// Primero, veamos si la reserva tiene un bingo_id
+if (!empty($reservaEncontrada->bingo_id)) {
+    // Consulta detallada que busca bingos activos o cerrados, ordenados por fecha
+    $bingoQuery = "
+        SELECT id, nombre, estado, created_at 
+        FROM bingos 
+        WHERE id = ? 
+        AND (estado = 'abierto' OR estado = 'cerrado')
+        ORDER BY created_at DESC
+        LIMIT 1
+    ";
+    
+    // Registramos la consulta
+    Log::info("Consulta SQL para bingo: " . $bingoQuery);
+    Log::info("Buscando bingo con ID: " . $reservaEncontrada->bingo_id);
+    
+    $bingoResultado = DB::select($bingoQuery, [$reservaEncontrada->bingo_id]);
+    
+    if (!empty($bingoResultado)) {
+        $bingoEncontrado = $bingoResultado[0];
+        $nombreBingo = $bingoEncontrado->nombre;
+        
+        Log::info("Bingo encontrado - ID: " . $bingoEncontrado->id . 
+                 ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                 ", Estado: " . $bingoEncontrado->estado . 
+                 ", Fecha: " . $bingoEncontrado->created_at);
+    } else {
+        // Si no hay resultados, buscamos cualquier bingo con esa ID
+        $bingoQuery2 = "SELECT id, nombre, estado, created_at FROM bingos WHERE id = ? LIMIT 1";
+        $bingoResultado2 = DB::select($bingoQuery2, [$reservaEncontrada->bingo_id]);
+        
+        if (!empty($bingoResultado2)) {
+            $bingoEncontrado = $bingoResultado2[0];
+            $nombreBingo = $bingoEncontrado->nombre;
+            
+            Log::info("Bingo encontrado (segunda búsqueda) - ID: " . $bingoEncontrado->id . 
+                     ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                     ", Estado: " . $bingoEncontrado->estado . 
+                     ", Fecha: " . $bingoEncontrado->created_at);
+        } else {
+            $nombreBingo = "Bingo RIFFY";
+            Log::info("No se encontró ningún bingo con ID: " . $reservaEncontrada->bingo_id . ". Usando nombre por defecto.");
+        }
+    }
+} else {
+    // Si no hay bingo_id, intentamos buscar el bingo más reciente
+    $bingoQuery = "
+        SELECT id, nombre, estado, created_at 
+        FROM bingos 
+        WHERE estado = 'abierto' OR estado = 'cerrado'
+        ORDER BY created_at DESC
+        LIMIT 1
+    ";
+    
+    $bingoResultado = DB::select($bingoQuery);
+    
+    if (!empty($bingoResultado)) {
+        $bingoEncontrado = $bingoResultado[0];
+        $nombreBingo = $bingoEncontrado->nombre;
+        
+        Log::info("Usando bingo más reciente - ID: " . $bingoEncontrado->id . 
+                 ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                 ", Estado: " . $bingoEncontrado->estado . 
+                 ", Fecha: " . $bingoEncontrado->created_at);
+    } else {
+        $nombreBingo = "Bingo RIFFY";
+        Log::info("No se encontraron bingos activos o cerrados. Usando nombre por defecto.");
+    }
+}
+
+// Verificar el valor final
+Log::info("Nombre del bingo final: " . $nombreBingo);                
                 // Truncar el nombre del bingo si es demasiado largo
                 if (mb_strlen($nombreBingo) > $maxLongitudNombre) {
                     $nombreBingo = mb_substr($nombreBingo, 0, $maxLongitudNombre) . '...';
