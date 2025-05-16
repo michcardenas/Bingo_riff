@@ -437,8 +437,13 @@ if (!empty($reservaEncontrada->celular)) {
                 
                 
                 // Nombre del evento/bingo
-                $nombreBingo = $reservaEncontrada->bingo->nombre ?? "Bingo RIFFY";
-                
+                $nombreBingo = null;
+                if (!empty($reservaEncontrada->bingo_id)) {
+                    $bingo = DB::table('bingos')->where('id', $reservaEncontrada->bingo_id)->first();
+                    $nombreBingo = $bingo ? $bingo->nombre : "Bingo RIFFY";
+                } else {
+                    $nombreBingo = "Bingo RIFFY";
+                }                
                 // Truncar el nombre del bingo si es demasiado largo
                 if (mb_strlen($nombreBingo) > $maxLongitudNombre) {
                     $nombreBingo = mb_substr($nombreBingo, 0, $maxLongitudNombre) . '...';
