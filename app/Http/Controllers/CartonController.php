@@ -71,10 +71,16 @@ public function buscar(Request $request) {
     
     Log::info('Vista seleccionada para resultados: ' . $vista);
     
-    // Buscar reservas asociadas al número de teléfono
-    $reservas = Reserva::where('celular', $telefono)->get();
+    // Buscar reservas asociadas al número de teléfono y que pertenezcan a bingos abiertos o cerrados
+    // Utilizamos un join con la tabla bingos para filtrar directamente
+    $reservas = Reserva::join('bingos', 'reservas.bingo_id', '=', 'bingos.id')
+        ->where('reservas.celular', $telefono)
+        ->whereIn('bingos.estado', ['abierto', 'cerrado']) // Solo bingos abiertos o cerrados
+        ->where('bingos.visible', 1) // Solo bingos visibles
+        ->select('reservas.*') // Seleccionamos solo los campos de la tabla reservas
+        ->get();
     
-    Log::info('Reservas encontradas: ' . $reservas->count());
+    Log::info('Reservas encontradas (solo de bingos abiertos o cerrados): ' . $reservas->count());
     
     // Preparar datos de cartones
     $cartones = collect();
@@ -109,25 +115,37 @@ public function buscar(Request $request) {
         
         Log::info('Procesando reserva ID: ' . $reserva->id . ', Series: ' . $seriesInfo . ', Estado: ' . $reserva->estado);
         
+        // Cargar la información del bingo explícitamente para asegurarnos de tener datos actualizados
+        $bingo = DB::table('bingos')->find($reserva->bingo_id);
+        
         // Información del bingo
         $bingoNombre = 'No asignado';
         $bingoId = null;
         $bingoEstado = null;
         $bingoVisible = null;
         
-        if ($reserva->bingo_id && $reserva->bingo) {
-            $bingoNombre = $reserva->bingo->nombre;
-            $bingoId = $reserva->bingo_id;
-            $bingoEstado = $reserva->bingo->estado;
-            $bingoVisible = $reserva->bingo->visible;
+        if ($bingo) {
+            $bingoNombre = $bingo->nombre;
+            $bingoId = $bingo->id;
+            $bingoEstado = $bingo->estado;
+            $bingoVisible = $bingo->visible;
             
-            if (strtolower($bingoEstado) === 'archivado' || $bingoVisible == 0) {
-                Log::info('Saltando reserva para bingo archivado o no visible: ' . $bingoNombre);
+            // Verificación adicional por si acaso (aunque ya filtramos en la consulta)
+            if (strtolower($bingoEstado) !== 'abierto' && strtolower($bingoEstado) !== 'cerrado') {
+                Log::info('Saltando reserva porque el bingo no está abierto ni cerrado: ' . $bingoNombre . ', Estado: ' . $bingoEstado);
                 continue;
             }
+            
+            if ($bingoVisible != 1) {
+                Log::info('Saltando reserva porque el bingo no es visible: ' . $bingoNombre);
+                continue;
+            }
+        } else {
+            Log::info('No se encontró información del bingo ID: ' . $reserva->bingo_id);
+            continue; // Saltamos esta reserva si no existe el bingo
         }
         
-        Log::info('Bingo asociado: ' . $bingoNombre . ', Estado: ' . ($bingoEstado ?? 'N/A') . ', Visible: ' . ($bingoVisible ?? 'N/A'));
+        Log::info('Bingo asociado: ' . $bingoNombre . ', Estado: ' . $bingoEstado . ', Visible: ' . $bingoVisible);
         
         // Procesar cada serie
         if (!empty($seriesArray)) {
@@ -160,7 +178,7 @@ public function buscar(Request $request) {
         }
     }
     
-    Log::info('Total de cartones encontrados (después de filtrar archivados y no visibles): ' . $cartones->count());
+    Log::info('Total de cartones encontrados (solo de bingos abiertos o cerrados): ' . $cartones->count());
     
     // Obtener número de contacto para WhatsApp
     $enlaces = Enlace::first();
