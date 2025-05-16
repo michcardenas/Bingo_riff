@@ -14,6 +14,7 @@ use App\Models\Serie;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Imagick\Driver;
 use GuzzleHttp\Psr7\Utils;
+use Illuminate\Support\Facades\DB;
 
 
 
