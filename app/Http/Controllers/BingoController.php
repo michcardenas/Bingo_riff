@@ -199,46 +199,79 @@ Log::info('Archivo subido correctamente', [
         return back()->with('status', 'Reserva rechazada correctamente.');
     }
 
-    public function buscarGanador(Request $request, $bingoId)
-    {
-        $serie = $request->input('serie');
-    
+    public function buscarGanador(Request $request, $bingoId) 
+    { 
+        $serie = $request->input('serie'); 
         $datos = null;
-    
+        $debugInfo = []; // Para almacenar información de depuración
+     
         if ($serie) {
-    
-            // Buscar en series para obtener el cartón
-            $serieEncontrada = Serie::whereJsonContains('series', $serie)->first();
-    
+            $debugInfo['serie_buscada'] = $serie;
+     
+            // Buscar en series para obtener el cartón 
+            $query1 = Serie::whereJsonContains('series', $serie);
+            $debugInfo['query_1'] = $query1->toSql();
+            $debugInfo['params_1'] = $query1->getBindings();
+            
+            $serieEncontrada = $query1->first(); 
+     
             if ($serieEncontrada) {
-    
+                $debugInfo['serie_encontrada'] = $serieEncontrada->toArray();
                 $carton = $serieEncontrada->carton;
-    
-                // Buscar en reservas que tengan el cartón EN ESTE BINGO
-                $reserva = Reserva::where('bingo_id', $bingoId)
-                    ->whereJsonContains('series', $carton)
-                    ->first();
-    
+                $debugInfo['carton_obtenido'] = $carton;
+     
+                // Buscar en reservas que tengan el cartón EN ESTE BINGO 
+                $query2 = Reserva::where('bingo_id', $bingoId)
+                    ->whereJsonContains('series', $carton);
+                $debugInfo['query_2'] = $query2->toSql();
+                $debugInfo['params_2'] = $query2->getBindings();
+                
+                $reserva = $query2->first(); 
+     
                 if ($reserva) {
                     $datos = $reserva;
+                    $debugInfo['reserva_encontrada'] = true;
+                } else {
+                    $debugInfo['reserva_encontrada'] = false;
+                    
+                    // Buscar todas las reservas de este bingo para depuración
+                    $todasReservasBingo = Reserva::where('bingo_id', $bingoId)->get();
+                    $debugInfo['todas_reservas_bingo'] = $todasReservasBingo->map(function($r) {
+                        return [
+                            'id' => $r->id,
+                            'series' => $r->series
+                        ];
+                    })->toArray();
                 }
+            } else {
+                $debugInfo['serie_encontrada'] = false;
+                
+                // Buscar todas las series para depuración
+                $todasSeries = Serie::limit(10)->get();
+                $debugInfo['muestra_series'] = $todasSeries->map(function($s) {
+                    return [
+                        'id' => $s->id,
+                        'series' => $s->series,
+                        'carton' => $s->carton
+                    ];
+                })->toArray();
             }
-        }
-         // Obtener ganadores de este bingo para mostrar en tabla
-         $ganadores = Reserva::where('bingo_id', $bingoId)
-         ->where('ganador', 1)
-         ->orderByDesc('fecha_ganador')
-         ->get();
+        } 
+        
+        // Obtener ganadores de este bingo para mostrar en tabla 
+        $ganadores = Reserva::where('bingo_id', $bingoId) 
+            ->where('ganador', 1) 
+            ->orderByDesc('fecha_ganador') 
+            ->get(); 
     
-        return view('admin.bingos.buscar-ganador', [
-            'datos' => $datos,
-            'serieBuscada' => $serie,
-            'bingoId' => $bingoId,
+        return view('admin.bingos.buscar-ganador', [ 
+            'datos' => $datos, 
+            'serieBuscada' => $serie, 
+            'bingoId' => $bingoId, 
             'ganadores' => $ganadores,
-
-        ]);
+            'debugInfo' => $debugInfo // Información de depuración  
+        ]); 
     }
-    
     
 
     public function buscarGanadorConBingo(Request $request, $bingoId)
