@@ -213,82 +213,78 @@ Log::info('Archivo subido correctamente', [
             $serieNormalizada = ltrim($serie, '0');
             Log::info('Serie normalizada (sin ceros iniciales): ' . $serieNormalizada);
             
-            // 1. Intentar buscar con whereJsonContains
-            Log::info('MÉTODO 1: Buscando con whereJsonContains');
-            $serieEncontrada = Serie::whereJsonContains('series', $serie)->first(); 
+            // 1. Buscar en la tabla Series con diferentes enfoques
+            Log::info('Buscando serie en la tabla Series');
             
-            // Log para ver la consulta SQL generada
-            $queryLog = DB::getQueryLog();
-            Log::info('Consulta SQL (MÉTODO 1): ' . end($queryLog)['query']);
-            Log::info('Parámetros (MÉTODO 1): ' . json_encode(end($queryLog)['bindings']));
+            // Método 1: Directamente buscando la serie exacta en el JSON
+            $serieQuery1 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serie . "\"') LIMIT 1";
+            Log::info('Consulta SQL 1: ' . $serieQuery1);
+            $serieResultado1 = DB::select($serieQuery1);
             
-            if (!$serieEncontrada) {
-                // 2. Si no funciona, intentar buscar directamente en el campo series con LIKE
-                Log::info('MÉTODO 2: Serie no encontrada con whereJsonContains, intentando con LIKE');
-                $serieEncontrada = Serie::whereRaw('JSON_CONTAINS(series, ?) OR JSON_CONTAINS(series, ?)', 
-                    ['"'.$serie.'"', '"'.$serieNormalizada.'"'])->first();
+            if (empty($serieResultado1)) {
+                // Método 2: Buscar con la serie sin ceros iniciales
+                $serieQuery2 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieNormalizada . "\"') LIMIT 1";
+                Log::info('Consulta SQL 2: ' . $serieQuery2);
+                $serieResultado2 = DB::select($serieQuery2);
                 
-                // Log para ver la consulta SQL generada
-                $queryLog = DB::getQueryLog();
-                Log::info('Consulta SQL (MÉTODO 2): ' . end($queryLog)['query']);
-                Log::info('Parámetros (MÉTODO 2): ' . json_encode(end($queryLog)['bindings']));
-            }
-            
-            // 3. Si aún no funciona, vamos a hacer un escaneo completo para diagnóstico
-            if (!$serieEncontrada) {
-                Log::info('MÉTODO 3: Serie no encontrada, realizando diagnóstico completo');
-                // Obtener todas las series (con límite para no sobrecargar)
-                $todasLasSeries = Serie::limit(20)->get();
-                foreach ($todasLasSeries as $s) {
-                    Log::info('Serie ID: ' . $s->id . ', Series JSON: ' . json_encode($s->series) . ', Cartón: ' . $s->carton);
-                }
-            }
-            
-            if ($serieEncontrada) { 
-                Log::info('¡Serie encontrada! ID: ' . $serieEncontrada->id . ', Cartón: ' . $serieEncontrada->carton);
-                $carton = $serieEncontrada->carton; 
-                
-                // Buscar en reservas que tengan el cartón EN ESTE BINGO 
-                Log::info('Buscando reserva con cartón: ' . $carton . ' en bingo ID: ' . $bingoId);
-                $reserva = Reserva::where('bingo_id', $bingoId) 
-                    ->whereJsonContains('series', $carton) 
-                    ->first(); 
-                
-                // Log para ver la consulta SQL generada
-                $queryLog = DB::getQueryLog();
-                Log::info('Consulta SQL (Reserva): ' . end($queryLog)['query']);
-                Log::info('Parámetros (Reserva): ' . json_encode(end($queryLog)['bindings']));
-                
-                if (!$reserva) {
-                    // Si no se encuentra, intentar con búsqueda alternativa
-                    Log::info('No se encontró reserva con whereJsonContains, intentando con búsqueda alternativa');
-                    $reserva = Reserva::where('bingo_id', $bingoId)
-                        ->whereRaw('JSON_CONTAINS(series, ?) OR JSON_CONTAINS(series, ?)', 
-                            ['"'.$carton.'"', '"'.ltrim($carton, '0').'"'])
-                        ->first();
-                    
-                    // Log para ver la consulta SQL generada
-                    $queryLog = DB::getQueryLog();
-                    Log::info('Consulta SQL (Reserva alt): ' . end($queryLog)['query']);
-                    Log::info('Parámetros (Reserva alt): ' . json_encode(end($queryLog)['bindings']));
-                }
-                
-                if (!$reserva) {
-                    // Diagnóstico de todas las reservas para este bingo
-                    Log::info('Reserva no encontrada, listando todas las reservas para bingo ID: ' . $bingoId);
-                    $todasReservas = Reserva::where('bingo_id', $bingoId)->limit(10)->get();
-                    foreach ($todasReservas as $r) {
-                        Log::info('Reserva ID: ' . $r->id . ', Series: ' . json_encode($r->series) . ', Nombre: ' . $r->nombre);
-                    }
+                if (!empty($serieResultado2)) {
+                    $serieResultado = $serieResultado2[0];
+                    Log::info('Serie encontrada con búsqueda normalizada (sin ceros iniciales)');
                 } else {
-                    Log::info('¡Reserva encontrada! ID: ' . $reserva->id . ', Nombre: ' . $reserva->nombre);
-                    $datos = $reserva; 
+                    // Método 3: Mostrar algunas series para diagnóstico
+                    $seriesQuery = "SELECT id, series, carton FROM series LIMIT 10";
+                    $ejemploSeries = DB::select($seriesQuery);
+                    Log::info('No se encontró la serie. Mostrando ejemplos de series en la BD:');
+                    foreach ($ejemploSeries as $s) {
+                        Log::info('Serie ID: ' . $s->id . ', Series: ' . $s->series . ', Cartón: ' . $s->carton);
+                    }
+                    
+                    Log::info('No se encontró la serie: ' . $serie);
+                    $serieResultado = null;
                 }
             } else {
-                Log::info('No se encontró ninguna serie que coincida con: ' . $serie);
+                $serieResultado = $serieResultado1[0];
+                Log::info('Serie encontrada con búsqueda exacta');
+            }
+            
+            if ($serieResultado) {
+                $carton = $serieResultado->carton;
+                Log::info('Cartón encontrado: ' . $carton);
+                
+                // Buscar en reservas que tengan el cartón EN ESTE BINGO
+                $reservaQuery = "SELECT * FROM reservas WHERE bingo_id = ? AND JSON_CONTAINS(series, '\"" . $carton . "\"') LIMIT 1";
+                Log::info('Consulta SQL Reserva: ' . $reservaQuery);
+                $reservaResultado = DB::select($reservaQuery, [$bingoId]);
+                
+                if (empty($reservaResultado)) {
+                    // Intentar con la versión normalizada
+                    $cartonNormalizado = ltrim($carton, '0');
+                    $reservaQuery2 = "SELECT * FROM reservas WHERE bingo_id = ? AND JSON_CONTAINS(series, '\"" . $cartonNormalizado . "\"') LIMIT 1";
+                    Log::info('Consulta SQL Reserva 2: ' . $reservaQuery2);
+                    $reservaResultado = DB::select($reservaQuery2, [$bingoId]);
+                }
+                
+                if (!empty($reservaResultado)) {
+                    Log::info('Reserva encontrada');
+                    $reservaEncontrada = $reservaResultado[0];
+                    
+                    // Convertir el objeto StdClass a un modelo Reserva
+                    $datos = new Reserva();
+                    foreach ((array)$reservaEncontrada as $key => $value) {
+                        $datos->$key = $value;
+                    }
+                } else {
+                    // Diagnóstico: Listar todas las reservas para este bingo
+                    $reservasQuery = "SELECT id, series, nombre FROM reservas WHERE bingo_id = ? LIMIT 10";
+                    $todasReservas = DB::select($reservasQuery, [$bingoId]);
+                    Log::info('No se encontró reserva. Mostrando reservas en el bingo ' . $bingoId . ':');
+                    foreach ($todasReservas as $r) {
+                        Log::info('Reserva ID: ' . $r->id . ', Series: ' . $r->series . ', Nombre: ' . $r->nombre);
+                    }
+                }
             }
         } 
-         
+        
         // Obtener ganadores de este bingo para mostrar en tabla 
         $ganadores = Reserva::where('bingo_id', $bingoId) 
             ->where('ganador', 1) 
@@ -297,7 +293,7 @@ Log::info('Archivo subido correctamente', [
         
         Log::info('Total de ganadores encontrados: ' . $ganadores->count());
         Log::info('--------- FIN BÚSQUEDA DE GANADOR ---------');
-    
+        
         return view('admin.bingos.buscar-ganador', [ 
             'datos' => $datos, 
             'serieBuscada' => $serie, 
