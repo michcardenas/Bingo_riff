@@ -212,10 +212,7 @@ public function descargar($numero, $bingoId = null) {
         
         // Preparar la consulta base para las reservas
         Log::info("Iniciando búsqueda de reserva en la base de datos");
-        $query = Reserva::where(function($q) {
-            $q->where('reservas.estado', 'aprobado')
-              ->orWhere('reservas.estado', 'revision');
-        })->where('reservas.eliminado', 0);
+        $query = Reserva::where('reservas.eliminado', 0);
         
         // Si se proporciona un bingoId específico, priorizar ese bingo
         if ($bingoId) {
@@ -241,10 +238,66 @@ public function descargar($numero, $bingoId = null) {
                 $seriesArray = $reserva->series;
                 Log::debug("Verificando reserva ID: " . $reserva->id . ", Series: " . json_encode($seriesArray));
                 
+                // Si seriesArray es un string, intentar decodificarlo como JSON
+                if (is_string($seriesArray)) {
+                    try {
+                        // Primera decodificación
+                        $decodedArray = json_decode($seriesArray, true);
+                        
+                        // Si aún es string, intentar decodificar de nuevo (caso de doble codificación)
+                        if (is_string($decodedArray)) {
+                            $decodedArray = json_decode($decodedArray, true);
+                        }
+                        
+                        if (is_array($decodedArray)) {
+                            $seriesArray = $decodedArray;
+                            Log::debug("Series decodificadas correctamente: " . json_encode($seriesArray));
+                        } else {
+                            // Si no se pudo decodificar, crear un array con el string
+                            $seriesArray = [$seriesArray];
+                            Log::debug("No se pudo decodificar, usando como string simple: " . json_encode($seriesArray));
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning("Error decodificando series como JSON: " . $e->getMessage());
+                        $seriesArray = [$seriesArray];
+                    }
+                }
+                
+                // Realizar las comparaciones de varias formas para asegurar que se encuentre
+                $encontrado = false;
+                
+                // Método 1: Comparación directa en el array
                 if (is_array($seriesArray) && in_array($numero, $seriesArray)) {
+                    $encontrado = true;
+                    Log::info("Cartón encontrado (comparación directa) en reserva ID: " . $reserva->id);
+                }
+                
+                // Método 2: Comparación sin ceros iniciales
+                if (!$encontrado && is_array($seriesArray)) {
+                    $numeroSinCeros = ltrim($numero, '0');
+                    foreach ($seriesArray as $serie) {
+                        if (ltrim($serie, '0') === $numeroSinCeros) {
+                            $encontrado = true;
+                            Log::info("Cartón encontrado (sin ceros iniciales) en reserva ID: " . $reserva->id);
+                            break;
+                        }
+                    }
+                }
+                
+                // Método 3: Búsqueda en string JSON
+                if (!$encontrado && is_string($reserva->series)) {
+                    // Buscar directamente el número en el string JSON
+                    if (strpos($reserva->series, '"' . $numero . '"') !== false || 
+                        strpos($reserva->series, '"' . ltrim($numero, '0') . '"') !== false) {
+                        $encontrado = true;
+                        Log::info("Cartón encontrado (búsqueda en string JSON) en reserva ID: " . $reserva->id);
+                    }
+                }
+                
+                if ($encontrado) {
                     $reservaEncontrada = $reserva;
                     Log::info("Cartón encontrado en reserva ID: " . $reserva->id);
-                    break; // Romper el ciclo al encontrar la primera reserva (la más reciente debido al orderBy)
+                    break; // Romper el ciclo al encontrar la primera reserva
                 }
             }
         }
@@ -357,6 +410,7 @@ public function descargar($numero, $bingoId = null) {
             $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
             return redirect($urlDirecta);
         }
+        
         if ($extension === 'jpg' && isset($reservaEncontrada)) {
             try {
                 Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
@@ -365,83 +419,79 @@ public function descargar($numero, $bingoId = null) {
                 $nombrePropietario = "";
                 
                 // Si la reserva tiene un número de celular, intentamos buscar en la BD
-            // Si la reserva tiene un número de celular, intentamos buscar en la BD
-if (!empty($reservaEncontrada->celular)) {
-    try {
-        // Buscar todas las reservas con el mismo número de celular
-        $reservasPorCelular = Reserva::where('celular', $reservaEncontrada->celular)
-                                    ->where('eliminado', 0)
-                                    ->whereNotNull('nombre')
-                                    ->where('nombre', '!=', '')
-                                    ->where('nombre', '!=', $reservaEncontrada->bingo->nombre)
-                                    ->orderBy('id', 'desc') // Ordenar por ID descendente para tomar la más reciente
-                                    ->get();
-        
-        Log::info("Buscando nombre por celular: " . $reservaEncontrada->celular);
-        Log::info("Reservas encontradas con mismo celular: " . count($reservasPorCelular));
-        
-        // Loggear todas las reservas encontradas para diagnóstico
-        foreach ($reservasPorCelular as $index => $reserva) {
-            Log::info("Reserva #" . ($index + 1) . " - ID: " . $reserva->id . 
-                     ", Nombre: '" . $reserva->nombre . "'" .
-                     ", Fecha creación: " . $reserva->created_at);
-        }
-        
-        // Si encontramos reservas, usamos la primera que tenga un nombre válido completo
-        if ($reservasPorCelular->isNotEmpty()) {
-            // Intentemos buscar nombres completos (que contengan al menos un espacio)
-            $nombreCompleto = null;
-            foreach ($reservasPorCelular as $reserva) {
-                if (strpos($reserva->nombre, ' ') !== false && 
-                    $reserva->nombre != $reservaEncontrada->bingo->nombre) {
-                    $nombreCompleto = $reserva->nombre;
-                    break;
+                if (!empty($reservaEncontrada->celular)) {
+                    try {
+                        // Buscar todas las reservas con el mismo número de celular
+                        $reservasPorCelular = Reserva::where('celular', $reservaEncontrada->celular)
+                                                    ->where('eliminado', 0)
+                                                    ->whereNotNull('nombre')
+                                                    ->where('nombre', '!=', '')
+                                                    ->orderBy('id', 'desc') // Ordenar por ID descendente para tomar la más reciente
+                                                    ->get();
+                        
+                        Log::info("Buscando nombre por celular: " . $reservaEncontrada->celular);
+                        Log::info("Reservas encontradas con mismo celular: " . count($reservasPorCelular));
+                        
+                        // Loggear todas las reservas encontradas para diagnóstico
+                        foreach ($reservasPorCelular as $index => $reserva) {
+                            Log::info("Reserva #" . ($index + 1) . " - ID: " . $reserva->id . 
+                                     ", Nombre: '" . $reserva->nombre . "'" .
+                                     ", Fecha creación: " . $reserva->created_at);
+                        }
+                        
+                        // Si encontramos reservas, usamos la primera que tenga un nombre válido completo
+                        if ($reservasPorCelular->isNotEmpty()) {
+                            // Intentemos buscar nombres completos (que contengan al menos un espacio)
+                            $nombreCompleto = null;
+                            foreach ($reservasPorCelular as $reserva) {
+                                if (strpos($reserva->nombre, ' ') !== false) {
+                                    $nombreCompleto = $reserva->nombre;
+                                    break;
+                                }
+                            }
+                            
+                            // Si no encontramos nombre con espacio, usamos el primero disponible
+                            if ($nombreCompleto === null && !empty($reservasPorCelular[0]->nombre)) {
+                                $nombreCompleto = $reservasPorCelular[0]->nombre;
+                            }
+                            
+                            if ($nombreCompleto !== null) {
+                                $nombrePropietario = trim($nombreCompleto);
+                                Log::info("Nombre completo encontrado: '" . $nombrePropietario . "'");
+                            }
+                        }
+                        
+                        // Última opción: consultar directamente con DB::select para verificar
+                        if (empty($nombrePropietario)) {
+                            $celular = $reservaEncontrada->celular;
+                            $results = DB::select("
+                                SELECT id, nombre 
+                                FROM reservas 
+                                WHERE celular = ? 
+                                  AND eliminado = 0 
+                                  AND nombre IS NOT NULL 
+                                  AND nombre != '' 
+                                ORDER BY id DESC
+                            ", [$celular]);
+                            
+                            Log::info("Consulta directa a la BD - Resultados: " . count($results));
+                            
+                            foreach ($results as $index => $result) {
+                                Log::info("Resultado directo #" . ($index + 1) . 
+                                         " - ID: " . $result->id . 
+                                         ", Nombre: '" . $result->nombre . "'");
+                                
+                                if (empty($nombrePropietario) && !empty($result->nombre)) {
+                                    $nombrePropietario = trim($result->nombre);
+                                    Log::info("Nombre encontrado por consulta directa: '" . $nombrePropietario . "'");
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning("Error al buscar nombre por celular: " . $e->getMessage());
+                    }
                 }
-            }
-            
-            // Si no encontramos nombre con espacio, usamos el primero disponible
-            if ($nombreCompleto === null && !empty($reservasPorCelular[0]->nombre)) {
-                $nombreCompleto = $reservasPorCelular[0]->nombre;
-            }
-            
-            if ($nombreCompleto !== null) {
-                $nombrePropietario = trim($nombreCompleto);
-                Log::info("Nombre completo encontrado: '" . $nombrePropietario . "'");
-            }
-        }
-        
-        // Última opción: consultar directamente con DB::select para verificar
-        if (empty($nombrePropietario)) {
-            $celular = $reservaEncontrada->celular;
-            $results = DB::select("
-                SELECT id, nombre 
-                FROM reservas 
-                WHERE celular = ? 
-                  AND eliminado = 0 
-                  AND nombre IS NOT NULL 
-                  AND nombre != '' 
-                ORDER BY id DESC
-            ", [$celular]);
-            
-            Log::info("Consulta directa a la BD - Resultados: " . count($results));
-            
-            foreach ($results as $index => $result) {
-                Log::info("Resultado directo #" . ($index + 1) . 
-                         " - ID: " . $result->id . 
-                         ", Nombre: '" . $result->nombre . "'");
-                
-                if (empty($nombrePropietario) && !empty($result->nombre) && 
-                    $result->nombre != $reservaEncontrada->bingo->nombre) {
-                    $nombrePropietario = trim($result->nombre);
-                    Log::info("Nombre encontrado por consulta directa: '" . $nombrePropietario . "'");
-                    break;
-                }
-            }
-        }
-    } catch (\Exception $e) {
-        Log::warning("Error al buscar nombre por celular: " . $e->getMessage());
-    }
-}
                 
                 // Si no encontramos un nombre válido, usamos el número de celular
                 if (empty($nombrePropietario)) {
@@ -453,83 +503,82 @@ if (!empty($reservaEncontrada->celular)) {
                 // Truncar el nombre si es demasiado largo para evitar que se salga
                 $maxLongitudNombre = 500; // Ajustar según sea necesario
                 
+                // En la parte donde se determina el nombre del bingo
+                Log::info("Intentando obtener el nombre del bingo correcto para la ID: " . $reservaEncontrada->bingo_id);
+
+                // Primero, veamos si la reserva tiene un bingo_id
+                if (!empty($reservaEncontrada->bingo_id)) {
+                    // Consulta detallada que busca bingos activos o cerrados, ordenados por fecha
+                    $bingoQuery = "
+                        SELECT id, nombre, estado, created_at 
+                        FROM bingos 
+                        WHERE id = ? 
+                        AND (estado = 'abierto' OR estado = 'cerrado')
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                    ";
+                    
+                    // Registramos la consulta
+                    Log::info("Consulta SQL para bingo: " . $bingoQuery);
+                    Log::info("Buscando bingo con ID: " . $reservaEncontrada->bingo_id);
+                    
+                    $bingoResultado = DB::select($bingoQuery, [$reservaEncontrada->bingo_id]);
+                    
+                    if (!empty($bingoResultado)) {
+                        $bingoEncontrado = $bingoResultado[0];
+                        $nombreBingo = $bingoEncontrado->nombre;
+                        
+                        Log::info("Bingo encontrado - ID: " . $bingoEncontrado->id . 
+                                ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                                ", Estado: " . $bingoEncontrado->estado . 
+                                ", Fecha: " . $bingoEncontrado->created_at);
+                    } else {
+                        // Si no hay resultados, buscamos cualquier bingo con esa ID
+                        $bingoQuery2 = "SELECT id, nombre, estado, created_at FROM bingos WHERE id = ? LIMIT 1";
+                        $bingoResultado2 = DB::select($bingoQuery2, [$reservaEncontrada->bingo_id]);
+                        
+                        if (!empty($bingoResultado2)) {
+                            $bingoEncontrado = $bingoResultado2[0];
+                            $nombreBingo = $bingoEncontrado->nombre;
+                            
+                            Log::info("Bingo encontrado (segunda búsqueda) - ID: " . $bingoEncontrado->id . 
+                                    ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                                    ", Estado: " . $bingoEncontrado->estado . 
+                                    ", Fecha: " . $bingoEncontrado->created_at);
+                        } else {
+                            $nombreBingo = "Bingo RIFFY";
+                            Log::info("No se encontró ningún bingo con ID: " . $reservaEncontrada->bingo_id . ". Usando nombre por defecto.");
+                        }
+                    }
+                } else {
+                    // Si no hay bingo_id, intentamos buscar el bingo más reciente
+                    $bingoQuery = "
+                        SELECT id, nombre, estado, created_at 
+                        FROM bingos 
+                        WHERE estado = 'abierto' OR estado = 'cerrado'
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                    ";
+                    
+                    $bingoResultado = DB::select($bingoQuery);
+                    
+                    if (!empty($bingoResultado)) {
+                        $bingoEncontrado = $bingoResultado[0];
+                        $nombreBingo = $bingoEncontrado->nombre;
+                        
+                        Log::info("Usando bingo más reciente - ID: " . $bingoEncontrado->id . 
+                                ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                                ", Estado: " . $bingoEncontrado->estado . 
+                                ", Fecha: " . $bingoEncontrado->created_at);
+                    } else {
+                        $nombreBingo = "Bingo RIFFY";
+                        Log::info("No se encontraron bingos activos o cerrados. Usando nombre por defecto.");
+                    }
+                }
+
+                // Verificar el valor final
+                Log::info("Nombre del bingo final: " . $nombreBingo);
                 
-                // Nombre del evento/bingo
-// En la parte donde se determina el nombre del bingo
-Log::info("Intentando obtener el nombre del bingo correcto para la ID: " . $reservaEncontrada->bingo_id);
-
-// Primero, veamos si la reserva tiene un bingo_id
-if (!empty($reservaEncontrada->bingo_id)) {
-    // Consulta detallada que busca bingos activos o cerrados, ordenados por fecha
-    $bingoQuery = "
-        SELECT id, nombre, estado, created_at 
-        FROM bingos 
-        WHERE id = ? 
-        AND (estado = 'abierto' OR estado = 'cerrado')
-        ORDER BY created_at DESC
-        LIMIT 1
-    ";
-    
-    // Registramos la consulta
-    Log::info("Consulta SQL para bingo: " . $bingoQuery);
-    Log::info("Buscando bingo con ID: " . $reservaEncontrada->bingo_id);
-    
-    $bingoResultado = DB::select($bingoQuery, [$reservaEncontrada->bingo_id]);
-    
-    if (!empty($bingoResultado)) {
-        $bingoEncontrado = $bingoResultado[0];
-        $nombreBingo = $bingoEncontrado->nombre;
-        
-        Log::info("Bingo encontrado - ID: " . $bingoEncontrado->id . 
-                 ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
-                 ", Estado: " . $bingoEncontrado->estado . 
-                 ", Fecha: " . $bingoEncontrado->created_at);
-    } else {
-        // Si no hay resultados, buscamos cualquier bingo con esa ID
-        $bingoQuery2 = "SELECT id, nombre, estado, created_at FROM bingos WHERE id = ? LIMIT 1";
-        $bingoResultado2 = DB::select($bingoQuery2, [$reservaEncontrada->bingo_id]);
-        
-        if (!empty($bingoResultado2)) {
-            $bingoEncontrado = $bingoResultado2[0];
-            $nombreBingo = $bingoEncontrado->nombre;
-            
-            Log::info("Bingo encontrado (segunda búsqueda) - ID: " . $bingoEncontrado->id . 
-                     ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
-                     ", Estado: " . $bingoEncontrado->estado . 
-                     ", Fecha: " . $bingoEncontrado->created_at);
-        } else {
-            $nombreBingo = "Bingo RIFFY";
-            Log::info("No se encontró ningún bingo con ID: " . $reservaEncontrada->bingo_id . ". Usando nombre por defecto.");
-        }
-    }
-} else {
-    // Si no hay bingo_id, intentamos buscar el bingo más reciente
-    $bingoQuery = "
-        SELECT id, nombre, estado, created_at 
-        FROM bingos 
-        WHERE estado = 'abierto' OR estado = 'cerrado'
-        ORDER BY created_at DESC
-        LIMIT 1
-    ";
-    
-    $bingoResultado = DB::select($bingoQuery);
-    
-    if (!empty($bingoResultado)) {
-        $bingoEncontrado = $bingoResultado[0];
-        $nombreBingo = $bingoEncontrado->nombre;
-        
-        Log::info("Usando bingo más reciente - ID: " . $bingoEncontrado->id . 
-                 ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
-                 ", Estado: " . $bingoEncontrado->estado . 
-                 ", Fecha: " . $bingoEncontrado->created_at);
-    } else {
-        $nombreBingo = "Bingo RIFFY";
-        Log::info("No se encontraron bingos activos o cerrados. Usando nombre por defecto.");
-    }
-}
-
-// Verificar el valor final
-Log::info("Nombre del bingo final: " . $nombreBingo);                
                 // Truncar el nombre del bingo si es demasiado largo
                 if (mb_strlen($nombreBingo) > $maxLongitudNombre) {
                     $nombreBingo = mb_substr($nombreBingo, 0, $maxLongitudNombre) . '...';
@@ -646,8 +695,8 @@ Log::info("Nombre del bingo final: " . $nombreBingo);
                 // Fallback: usar la imagen original sin marca de agua
                 Log::warning("⚠️ Usando imagen original sin marca de agua debido al error");
             }
-        
         }
+        
         // Intentar descarga directa
         Log::info("Iniciando descarga del archivo: " . $rutaCompleta);
         Log::info("=== FIN PROCESO DESCARGA ===");
