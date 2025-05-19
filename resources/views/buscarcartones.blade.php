@@ -498,42 +498,37 @@
                 </thead>
   <tbody>
 @foreach ($cartones as $carton)
-    @if(in_array($carton['estado'], ['aprobado', 'revision']))
-        <tr class="carton-row {{ $carton['estado'] }}">
-            {{-- Nombre del usuario --}}
-            <td>{{ $carton['nombre'] ?? 'Usuario' }}</td>
+    {{--  ➡️  Si el estado no es aprobado ni revision, pasa al siguiente registro  --}}
+    @continue(!in_array($carton['estado'], ['aprobado', 'revision']))
 
-            {{-- Nombre del bingo --}}
-            <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}"
-                data-bingo-estado="{{ $carton['bingo_estado'] ?? '' }}">
-                {{ $carton['bingo_nombre'] ?? 'Sin asignar' }}
-            </td>
+    <tr class="carton-row {{ $carton['estado'] }}">
+        <td>{{ $carton['nombre'] ?? 'Usuario' }}</td>
 
-            {{-- Estado y acciones --}}
-            <td class="carton-estado" data-estado="{{ $carton['estado'] }}">
-                @if($carton['estado'] === 'aprobado')
-                    <span class="badge bg-success">Aprobado</span>
+        <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}"
+            data-bingo-estado="{{ $carton['bingo_estado'] ?? '' }}">
+            {{ $carton['bingo_nombre'] ?? 'Sin asignar' }}
+        </td>
 
-                    {{-- Botón de descarga solo para aprobados --}}
-                    <a href="{{ route('cartones.descargar', $carton['numero']) }}"
-                       class="btn btn-sm ms-2 btn-success"
-                       title="Descargar cartón">
-                        Descargar
-                    </a>
-                @else
-                    {{-- Estado: Revisión --}}
-                    <span class="badge bg-warning text-dark">Revisión</span>
-                      <a href="{{ route('cartones.descargar', $carton['numero']) }}"
-                       class="btn btn-sm ms-2 btn-success"
-                       title="Descargar cartón">
-                        Descargar
-                    </a>
-                @endif
-            </td>
-        </tr>
-    @endif
+        {{-- Estado y acciones --}}
+        <td class="carton-estado" data-estado="{{ $carton['estado'] }}">
+            @if($carton['estado'] === 'aprobado')
+                <span class="badge bg-success">Aprobado</span>
+
+                {{-- Botón de descarga solo para aprobados --}}
+                <a href="{{ route('cartones.descargar', $carton['numero']) }}"
+                   class="btn btn-sm ms-2 btn-success"
+                   title="Descargar cartón">
+                    Descargar
+                </a>
+            @else
+                {{-- Estado: Revisión --}}
+                <span class="badge bg-warning text-dark">Revisión</span>
+            @endif
+        </td>
+    </tr>
 @endforeach
 </tbody>
+
 
             </table>
             @elseif(isset($cartones) && count($cartones) == 0)
