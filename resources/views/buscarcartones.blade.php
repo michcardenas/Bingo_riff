@@ -501,6 +501,7 @@
     {{-- Normaliza estado: quita espacios y pasa a minúsculas --}}
     @php
         $estado = strtolower(trim($carton['estado'] ?? ''));
+        $eliminado = $carton['eliminado'] ?? 0;
     @endphp
 
     {{-- Solo “aprobado” o “revision” --}}
@@ -521,7 +522,7 @@
             @endif
 
             {{-- Revisión --}}
-            @if($estado === 'revision')
+            @if($estado === 'revision' && $eliminado == 0)
                 <span class="badge bg-warning text-dark">Revisión</span>
             @endif
 
