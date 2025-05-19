@@ -496,46 +496,37 @@
                         <th>Estado</th>
                     </tr>
                 </thead>
- <tbody>
+ @php use Illuminate\Support\Str; @endphp
+
+<tbody>
 @foreach ($cartones as $carton)
-    {{-- Mostrar solo “aprobado” y “revision” --}}
-    @continue(!in_array($carton['estado'], ['aprobado', 'revision']))
+    @continue(!in_array(trim(Str::lower($carton['estado'])), ['aprobado', 'revision']))
 
-    <tr class="carton-row {{ $carton['estado'] }}">
+    <tr class="carton-row {{ Str::lower($carton['estado']) }}">
         <td>{{ $carton['nombre'] ?? 'Usuario' }}</td>
-
         <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}"
             data-bingo-estado="{{ $carton['bingo_estado'] ?? '' }}">
             {{ $carton['bingo_nombre'] ?? 'Sin asignar' }}
         </td>
 
-        {{-- Estado y acciones --}}
-        <td class="carton-estado" data-estado="{{ $carton['estado'] }}">
-
-            {{-- Aprobado --}}
-            @if($carton['estado'] === 'aprobado')
+        <td class="carton-estado">
+            @if(Str::lower($carton['estado']) === 'aprobado')
                 <span class="badge bg-success">Aprobado</span>
-                <a href="{{ route('cartones.descargar', $carton['numero']) }}"
-                   class="btn btn-sm ms-2 btn-success"
-                   title="Descargar cartón">
-                    Descargar
-                </a>
             @endif
 
-            {{-- Revisión --}}
-            @if($carton['estado'] === 'revision')
+            @if(Str::lower($carton['estado']) === 'revision')
                 <span class="badge bg-warning text-dark">Revisión</span>
-                <a href="{{ route('cartones.descargar', $carton['numero']) }}"
-                   class="btn btn-sm ms-2 btn-success"
-                   title="Descargar cartón">
-                    Descargar
-                </a>
             @endif
 
+            <a href="{{ route('cartones.descargar', $carton['numero']) }}"
+               class="btn btn-sm ms-2 btn-success">
+               Descargar
+            </a>
         </td>
     </tr>
 @endforeach
 </tbody>
+
 
 
 
