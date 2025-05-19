@@ -523,6 +523,11 @@
                 @else
                     {{-- Estado: Revisión --}}
                     <span class="badge bg-warning text-dark">Revisión</span>
+                      <a href="{{ route('cartones.descargar', $carton['numero']) }}"
+                       class="btn btn-sm ms-2 btn-success"
+                       title="Descargar cartón">
+                        Descargar
+                    </a>
                 @endif
             </td>
         </tr>
