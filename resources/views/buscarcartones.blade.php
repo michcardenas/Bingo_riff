@@ -496,9 +496,9 @@
                         <th>Estado</th>
                     </tr>
                 </thead>
-  <tbody>
+ <tbody>
 @foreach ($cartones as $carton)
-    {{--  ➡️  Si el estado no es aprobado ni revision, pasa al siguiente registro  --}}
+    {{-- Mostrar solo “aprobado” y “revision” --}}
     @continue(!in_array($carton['estado'], ['aprobado', 'revision']))
 
     <tr class="carton-row {{ $carton['estado'] }}">
@@ -511,23 +511,32 @@
 
         {{-- Estado y acciones --}}
         <td class="carton-estado" data-estado="{{ $carton['estado'] }}">
+
+            {{-- Aprobado --}}
             @if($carton['estado'] === 'aprobado')
                 <span class="badge bg-success">Aprobado</span>
-
-                {{-- Botón de descarga solo para aprobados --}}
                 <a href="{{ route('cartones.descargar', $carton['numero']) }}"
                    class="btn btn-sm ms-2 btn-success"
                    title="Descargar cartón">
                     Descargar
                 </a>
-            @else
-                {{-- Estado: Revisión --}}
-                <span class="badge bg-warning text-dark">Revisión</span>
             @endif
+
+            {{-- Revisión --}}
+            @if($carton['estado'] === 'revision')
+                <span class="badge bg-warning text-dark">Revisión</span>
+                <a href="{{ route('cartones.descargar', $carton['numero']) }}"
+                   class="btn btn-sm ms-2 btn-success"
+                   title="Descargar cartón">
+                    Descargar
+                </a>
+            @endif
+
         </td>
     </tr>
 @endforeach
 </tbody>
+
 
 
             </table>
