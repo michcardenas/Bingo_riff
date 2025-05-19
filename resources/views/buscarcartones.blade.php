@@ -496,31 +496,40 @@
                         <th>Estado</th>
                     </tr>
                 </thead>
- @php use Illuminate\Support\Str; @endphp
-
-<tbody>
+ <tbody>
 @foreach ($cartones as $carton)
-    @continue(!in_array(trim(Str::lower($carton['estado'])), ['aprobado', 'revision']))
+    {{-- Normaliza estado: quita espacios y pasa a minúsculas --}}
+    @php
+        $estado = strtolower(trim($carton['estado'] ?? ''));
+    @endphp
 
-    <tr class="carton-row {{ Str::lower($carton['estado']) }}">
+    {{-- Solo “aprobado” o “revision” --}}
+    @continue(!in_array($estado, ['aprobado', 'revision']))
+
+    <tr class="carton-row {{ $estado }}">
         <td>{{ $carton['nombre'] ?? 'Usuario' }}</td>
+
         <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}"
             data-bingo-estado="{{ $carton['bingo_estado'] ?? '' }}">
             {{ $carton['bingo_nombre'] ?? 'Sin asignar' }}
         </td>
 
-        <td class="carton-estado">
-            @if(Str::lower($carton['estado']) === 'aprobado')
+        <td class="carton-estado" data-estado="{{ $estado }}">
+            {{-- Aprobado --}}
+            @if($estado === 'aprobado')
                 <span class="badge bg-success">Aprobado</span>
             @endif
 
-            @if(Str::lower($carton['estado']) === 'revision')
+            {{-- Revisión --}}
+            @if($estado === 'revision')
                 <span class="badge bg-warning text-dark">Revisión</span>
             @endif
 
+            {{-- Botón de descarga para ambos estados permitidos --}}
             <a href="{{ route('cartones.descargar', $carton['numero']) }}"
-               class="btn btn-sm ms-2 btn-success">
-               Descargar
+               class="btn btn-sm ms-2 btn-success"
+               title="Descargar cartón">
+                Descargar
             </a>
         </td>
     </tr>
