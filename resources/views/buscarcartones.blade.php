@@ -523,7 +523,7 @@
 
             {{-- Revisión --}}
             @if($estado === 'revision' && $eliminado == 0)
-                <span class="badge bg-warning text-dark">Revisión</span>
+                <span class="badge bg-success">Aprobado</span>
             @endif
 
             {{-- Botón de descarga para ambos estados permitidos --}}
