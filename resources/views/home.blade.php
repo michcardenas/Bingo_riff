@@ -687,6 +687,12 @@ let isSubmitting = false; // Flag para controlar múltiples envíos
 function formatNumber(number) {
     return `$${Math.round(number).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} Pesos`;
 }
+document.getElementById('comprobante').addEventListener('change', function(e) {
+    if (this.files.length > 1) {
+        alert('Solo puedes subir una imagen como comprobante.');
+        this.value = ''; // Limpia la selección
+    }
+});
 
 // Make updateTotal a global function
 function updateTotal() {
