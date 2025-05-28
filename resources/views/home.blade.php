@@ -625,7 +625,7 @@ body {
                             <span>Foto/Captura de pantalla</span>
                             <input
                                 type="file"
-                                name="comprobante[]"
+                                name="comprobante"
                                 id="comprobante"
                                 style="display: none;"
                                 accept="image/*"
