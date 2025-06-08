@@ -438,7 +438,7 @@
     <!-- Contenido principal -->
     <div class="container">
         <div class="form-container">
-            <h1 class="main-title">Buscar mis cartonesss</h1>
+            <h1 class="main-title">Buscar mis cartones</h1>
 
             <!-- Mensajes de alerta -->
             @if(session('success'))
