@@ -479,12 +479,12 @@
             @endphp
 
             @if($cartonesRechazados > 0)
-            <div class="alert alert-warning mt-3">
+            <!-- <div class="alert alert-warning mt-3">
                 <a href="#" class="contactar-admin" data-carton="{{ $carton['numero'] }}" data-whatsapp="{{ $numeroContacto }}" style="text-decoration: none;">
                     <i class="fab fa-whatsapp text-success"></i>
                 </a>
-                <!-- Su {{ $cartonesRechazados == 1 ? 'cartón ha' : 'cartones han' }} sido {{ $cartonesRechazados == 1 ? 'rechazado' : 'rechazados' }}, contacta al administrador por medio del botón de Whatsapp. -->
-            </div>
+                Su {{ $cartonesRechazados == 1 ? 'cartón ha' : 'cartones han' }} sido {{ $cartonesRechazados == 1 ? 'rechazado' : 'rechazados' }}, contacta al administrador por medio del botón de Whatsapp.
+            </div> -->
             @endif
 
             <!-- Reemplaza la parte de la tabla en la vista -->
