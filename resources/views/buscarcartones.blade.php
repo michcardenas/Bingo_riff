@@ -498,6 +498,8 @@
                 </thead>
  <tbody>
 @foreach ($cartones as $carton)
+                    dd($carton);
+
     {{-- Normaliza estado: quita espacios y pasa a minúsculas --}}
     @php
         $estado = strtolower(trim($carton['estado'] ?? ''));
