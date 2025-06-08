@@ -501,8 +501,7 @@
 
     {{-- Normaliza estado: quita espacios y pasa a minúsculas --}}
     @php
-                        dd($carton);
-
+    
         $estado = strtolower(trim($carton['estado'] ?? ''));
         $eliminado = $carton['eliminado'] ?? 0;
     @endphp
@@ -530,7 +529,7 @@
             @endif
 
             {{-- Botón de descarga para ambos estados permitidos --}}
-            <a href="{{ route('cartones.descargar', $carton['numero']) }}"
+            <a href="{{ route('cartones.descargar', $carton['id_reserva']) }}"
                class="btn btn-sm ms-2 btn-success"
                title="Descargar cartón">
                 Descargar

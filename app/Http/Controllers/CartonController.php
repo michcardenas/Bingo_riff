@@ -201,106 +201,15 @@ public function descargar($numero, $bingoId = null) {
     Log::info("Parámetros recibidos - Número: $numero, Bingo ID: " . ($bingoId ?: 'no proporcionado'));
     
     try {
-        // Eliminar ceros a la izquierda para la búsqueda (en la base de datos)
-        $numeroSinCeros = ltrim($numero, '0');
-        
-        // Para buscar el archivo, convertir a entero para asegurar que no haya ceros iniciales
-        $numeroParaArchivo = intval($numero);
-        
-        Log::info("Número formateado para búsqueda en DB: $numeroSinCeros");
-        Log::info("Número formateado para archivo: $numeroParaArchivo");
-        
-        // Preparar la consulta base para las reservas
-        Log::info("Iniciando búsqueda de reserva en la base de datos");
-        $query = Reserva::where('reservas.eliminado', 0);
-        
-        // Si se proporciona un bingoId específico, priorizar ese bingo
-        if ($bingoId) {
-            Log::info("Filtrando por Bingo ID específico: $bingoId");
-            $query->where('reservas.bingo_id', $bingoId);
-        } else {
-            // Si no se proporciona un bingoId, unir con la tabla de bingos para ordenar
-            Log::info("No se proporcionó Bingo ID, priorizando bingos más recientes");
-            $query->join('bingos', 'reservas.bingo_id', '=', 'bingos.id')
-                  ->where('bingos.estado', '!=', 'archivado')
-                  ->orderBy('bingos.created_at', 'desc'); // Ordenar por fecha de creación descendente
+            $reservaEncontrada = Reserva::where('id', $numero) // o $id si cambiaste el parámetro
+            ->where('eliminado', 0)
+            ->first();
+
+        if (!$reservaEncontrada) {
+            Log::warning("Reserva no encontrada con ID: $numero");
+            return redirect()->back()->with('error', 'La reserva no existe o fue eliminada.');
         }
-        
-        $reservas = $query->get();
-        Log::info("Cantidad de reservas encontradas: " . count($reservas));
-        
-        $reservaEncontrada = null;
-        
-        // Buscar manualmente en las series
-        Log::info("Buscando cartón $numero en las series de reservas");
-        foreach ($reservas as $reserva) {
-            if (!empty($reserva->series)) {
-                $seriesArray = $reserva->series;
-                Log::debug("Verificando reserva ID: " . $reserva->id . ", Series: " . json_encode($seriesArray));
-                
-                // Si seriesArray es un string, intentar decodificarlo como JSON
-                if (is_string($seriesArray)) {
-                    try {
-                        // Primera decodificación
-                        $decodedArray = json_decode($seriesArray, true);
-                        
-                        // Si aún es string, intentar decodificar de nuevo (caso de doble codificación)
-                        if (is_string($decodedArray)) {
-                            $decodedArray = json_decode($decodedArray, true);
-                        }
-                        
-                        if (is_array($decodedArray)) {
-                            $seriesArray = $decodedArray;
-                            Log::debug("Series decodificadas correctamente: " . json_encode($seriesArray));
-                        } else {
-                            // Si no se pudo decodificar, crear un array con el string
-                            $seriesArray = [$seriesArray];
-                            Log::debug("No se pudo decodificar, usando como string simple: " . json_encode($seriesArray));
-                        }
-                    } catch (\Exception $e) {
-                        Log::warning("Error decodificando series como JSON: " . $e->getMessage());
-                        $seriesArray = [$seriesArray];
-                    }
-                }
-                
-                // Realizar las comparaciones de varias formas para asegurar que se encuentre
-                $encontrado = false;
-                
-                // Método 1: Comparación directa en el array
-                if (is_array($seriesArray) && in_array($numero, $seriesArray)) {
-                    $encontrado = true;
-                    Log::info("Cartón encontrado (comparación directa) en reserva ID: " . $reserva->id);
-                }
-                
-                // Método 2: Comparación sin ceros iniciales
-                if (!$encontrado && is_array($seriesArray)) {
-                    $numeroSinCeros = ltrim($numero, '0');
-                    foreach ($seriesArray as $serie) {
-                        if (ltrim($serie, '0') === $numeroSinCeros) {
-                            $encontrado = true;
-                            Log::info("Cartón encontrado (sin ceros iniciales) en reserva ID: " . $reserva->id);
-                            break;
-                        }
-                    }
-                }
-                
-                // Método 3: Búsqueda en string JSON
-                if (!$encontrado && is_string($reserva->series)) {
-                    // Buscar directamente el número en el string JSON
-                    if (strpos($reserva->series, '"' . $numero . '"') !== false || 
-                        strpos($reserva->series, '"' . ltrim($numero, '0') . '"') !== false) {
-                        $encontrado = true;
-                        Log::info("Cartón encontrado (búsqueda en string JSON) en reserva ID: " . $reserva->id);
-                    }
-                }
-                
-                if ($encontrado) {
-                    $reservaEncontrada = $reserva;
-                    Log::info("Cartón encontrado en reserva ID: " . $reserva->id);
-                    break; // Romper el ciclo al encontrar la primera reserva
-                }
-            }
-        }
+
         
         if (!$reservaEncontrada) {
             Log::warning("Cartón no encontrado o no disponible: $numero");
