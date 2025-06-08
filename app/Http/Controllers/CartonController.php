@@ -195,29 +195,24 @@ public function buscar(Request $request) {
 }
 
 
-public function descargar($numero, $bingoId = null) {
+public function descargar($reservaId, $numeroCarton = null) {
     // Debug inicial
     Log::info("=== INICIO PROCESO DESCARGA ===");
-    Log::info("Parámetros recibidos - Número: $numero, Bingo ID: " . ($bingoId ?: 'no proporcionado'));
+    Log::info("Parámetros recibidos - Reserva ID: $reservaId, Número cartón: " . ($numeroCarton ?: 'no proporcionado'));
     
     try {
-            $reservaEncontrada = Reserva::where('id', $numero) // o $id si cambiaste el parámetro
-            ->where('eliminado', 0)
-            ->first();
-
-     if (!$reservaEncontrada) {
-    Log::warning("Reserva no encontrada con ID: $numero");
-    return redirect()->back()->with('error', 'La reserva no existe o fue eliminada.');
-}
-
-$numeroParaArchivo = intval($reservaEncontrada->numero);
-
-
+        // Buscar la reserva directamente por ID
+        Log::info("Buscando reserva por ID: $reservaId");
+        $reservaEncontrada = Reserva::where('id', $reservaId)
+                                   ->where('eliminado', 0)
+                                   ->first();
         
         if (!$reservaEncontrada) {
-            Log::warning("Cartón no encontrado o no disponible: $numero");
-            return redirect()->back()->with('error', 'El cartón no existe o no está disponible para descarga.');
+            Log::warning("Reserva no encontrada o eliminada con ID: $reservaId");
+            return redirect()->back()->with('error', 'La reserva no existe o no está disponible para descarga.');
         }
+        
+        Log::info("Reserva encontrada - ID: {$reservaEncontrada->id}, Bingo ID: {$reservaEncontrada->bingo_id}");
         
         // Verificar el estado del bingo
         if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
@@ -227,11 +222,50 @@ $numeroParaArchivo = intval($reservaEncontrada->numero);
             
             // Verificar si el bingo está archivado
             if ($bingoEstado === 'archivado') {
-                Log::warning("Intento de descarga de cartón {$numero} para bingo archivado");
-                return redirect()->back()->with('error', 'Este cartón pertenece a un bingo archivado y no puede ser descargado.');
+                Log::warning("Intento de descarga de reserva {$reservaId} para bingo archivado");
+                return redirect()->back()->with('error', 'Esta reserva pertenece a un bingo archivado y no puede ser descargada.');
             }
         }
-
+        
+        // Determinar el número del cartón a descargar
+        $numeroParaArchivo = null;
+        
+        if ($numeroCarton) {
+            // Si se proporciona un número específico, usarlo
+            $numeroParaArchivo = intval($numeroCarton);
+            Log::info("Usando número de cartón específico: $numeroParaArchivo");
+        } else {
+            // Si no se proporciona número, intentar obtener el primero de las series
+            if (!empty($reservaEncontrada->series)) {
+                $seriesArray = $reservaEncontrada->series;
+                
+                // Decodificar series si es JSON
+                if (is_string($seriesArray)) {
+                    try {
+                        $decodedArray = json_decode($seriesArray, true);
+                        if (is_string($decodedArray)) {
+                            $decodedArray = json_decode($decodedArray, true);
+                        }
+                        if (is_array($decodedArray)) {
+                            $seriesArray = $decodedArray;
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning("Error decodificando series: " . $e->getMessage());
+                    }
+                }
+                
+                // Tomar el primer número de la serie
+                if (is_array($seriesArray) && !empty($seriesArray)) {
+                    $numeroParaArchivo = intval($seriesArray[0]);
+                    Log::info("Usando primer número de la serie: $numeroParaArchivo");
+                }
+            }
+        }
+        
+        if (!$numeroParaArchivo) {
+            Log::warning("No se pudo determinar el número del cartón para la reserva: $reservaId");
+            return redirect()->back()->with('error', 'No se pudo determinar el cartón a descargar.');
+        }
         
         // Definir rutas de archivos con directorio absoluto
         $directorioBingo = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/TablasbingoRIFFY';
@@ -254,8 +288,6 @@ $numeroParaArchivo = intval($reservaEncontrada->numero);
             Log::info("Permisos del archivo PDF: " . $permisos);
         }
         
-        // ELIMINADA LA LÍNEA QUE USA exec()
-        // En su lugar, simplemente registramos información del servidor
         Log::info("Verificando archivos en entorno de servidor compartido");
         
         // Determinar qué archivo existe y su extensión
@@ -317,7 +349,7 @@ $numeroParaArchivo = intval($reservaEncontrada->numero);
             return redirect($urlDirecta);
         }
         
-        // Planb: usar URL directa si la descarga falla
+        // Plan B: usar URL directa si la descarga falla
         if (!file_exists($rutaCompleta) || filesize($rutaCompleta) == 0) {
             Log::warning("Archivo no disponible o vacío, redirigiendo a URL directa");
             $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
@@ -632,6 +664,7 @@ $numeroParaArchivo = intval($reservaEncontrada->numero);
         
         // Plan B final: intentar redireccionar directamente como último recurso
         try {
+            $numeroParaArchivo = $numeroCarton ? intval($numeroCarton) : 1; // valor por defecto si no hay número
             $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
             Log::info("Error en descarga normal. Último intento: redirección a " . $urlDirecta);
             return redirect($urlDirecta);
