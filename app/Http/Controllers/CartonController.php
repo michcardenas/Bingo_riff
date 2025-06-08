@@ -205,10 +205,13 @@ public function descargar($numero, $bingoId = null) {
             ->where('eliminado', 0)
             ->first();
 
-        if (!$reservaEncontrada) {
-            Log::warning("Reserva no encontrada con ID: $numero");
-            return redirect()->back()->with('error', 'La reserva no existe o fue eliminada.');
-        }
+     if (!$reservaEncontrada) {
+    Log::warning("Reserva no encontrada con ID: $numero");
+    return redirect()->back()->with('error', 'La reserva no existe o fue eliminada.');
+}
+
+$numeroParaArchivo = intval($reservaEncontrada->numero);
+
 
         
         if (!$reservaEncontrada) {
@@ -228,6 +231,7 @@ public function descargar($numero, $bingoId = null) {
                 return redirect()->back()->with('error', 'Este cartón pertenece a un bingo archivado y no puede ser descargado.');
             }
         }
+
         
         // Definir rutas de archivos con directorio absoluto
         $directorioBingo = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/TablasbingoRIFFY';
