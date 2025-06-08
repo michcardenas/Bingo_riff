@@ -497,11 +497,7 @@
                 </thead>
                 <tbody>
                     @foreach($cartones as $carton)
-                    @foreach ($cartones as $carton)
-    @php
-        dd($carton); // esto detendrá la ejecución y mostrará todos los datos de ese cartón
-    @endphp
-@endforeach
+                    dd($carton);
                     <tr class="carton-row {{ $carton['estado'] }}">
                         <td>{{ $carton['nombre'] ?? 'Usuario' }}</td>
                         <td data-bingo-id="{{ $carton['bingo_id'] ?? '' }}" data-bingo-estado="{{ $carton['bingo_estado'] ?? '' }}">{{ $carton['bingo_nombre'] ?? 'Sin asignar' }}</td>
