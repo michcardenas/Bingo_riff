@@ -680,8 +680,7 @@ public function descargar($reservaId, $numeroCarton = null) {
     return view('buscar_cartones_series');
 }
 
-public function buscarSeriesPorCelular(Request $request)
-{
+public function buscarSeriesPorCelular(Request $request) {
     $request->validate([
         'celular' => 'required|string',
     ]);
@@ -698,19 +697,48 @@ public function buscarSeriesPorCelular(Request $request)
         ]);
     }
 
+    // Filtrar reservas excluyendo las rechazadas y eliminadas
     $reservas = Reserva::where('celular', $celular)
         ->where('bingo_id', $bingoAbierto->id)
+        ->where('eliminado', 0) // Excluir reservas eliminadas
+        ->where(function($query) {
+            $query->where('estado', '!=', 'rechazado')
+                  ->orWhereNull('estado'); // Incluir reservas sin estado definido
+        })
         ->get();
 
-    // Recolectar todos los números de cartón de las reservas
+    // Log para debug
+    Log::info("Búsqueda de reservas para celular: $celular");
+    Log::info("Bingo abierto ID: " . $bingoAbierto->id);
+    Log::info("Reservas encontradas (sin rechazadas): " . count($reservas));
+
+    // Recolectar todos los números de cartón de las reservas válidas
     $cartonesComprados = [];
     foreach ($reservas as $reserva) {
-        $seriesCartones = is_array($reserva->series) ? $reserva->series : json_decode($reserva->series, true);
-        $cartonesComprados = array_merge($cartonesComprados, $seriesCartones);
+        // Verificar que la reserva tenga series
+        if (!empty($reserva->series)) {
+            $seriesCartones = is_array($reserva->series) ? $reserva->series : json_decode($reserva->series, true);
+            
+            // Verificar que la decodificación fue exitosa
+            if (is_array($seriesCartones)) {
+                $cartonesComprados = array_merge($cartonesComprados, $seriesCartones);
+                Log::info("Reserva ID {$reserva->id} - Estado: {$reserva->estado} - Cartones: " . json_encode($seriesCartones));
+            } else {
+                Log::warning("No se pudo decodificar las series de la reserva ID: {$reserva->id}");
+            }
+        }
     }
 
+    // Eliminar duplicados y limpiar
+    $cartonesComprados = array_unique($cartonesComprados);
+    Log::info("Total de cartones únicos comprados: " . count($cartonesComprados));
+
     // Buscar series asociadas a esos cartones
-    $seriesDetalladas = Serie::whereIn('carton', $cartonesComprados)->get();
+    $seriesDetalladas = [];
+    if (!empty($cartonesComprados)) {
+        $seriesDetalladas = Serie::whereIn('carton', $cartonesComprados)->get();
+        Log::info("Series detalladas encontradas: " . count($seriesDetalladas));
+    }
 
     return view('buscar_cartones_series', compact('reservas', 'celular', 'bingoAbierto', 'seriesDetalladas'));
 }
