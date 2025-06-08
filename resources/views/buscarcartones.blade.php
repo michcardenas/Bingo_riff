@@ -483,7 +483,7 @@
                 <a href="#" class="contactar-admin" data-carton="{{ $carton['numero'] }}" data-whatsapp="{{ $numeroContacto }}" style="text-decoration: none;">
                     <i class="fab fa-whatsapp text-success"></i>
                 </a>
-                Su {{ $cartonesRechazados == 1 ? 'cartón ha' : 'cartones han' }} sido {{ $cartonesRechazados == 1 ? 'rechazado' : 'rechazados' }}, contacta al administrador por medio del botón de Whatsapp.
+                <!-- Su {{ $cartonesRechazados == 1 ? 'cartón ha' : 'cartones han' }} sido {{ $cartonesRechazados == 1 ? 'rechazado' : 'rechazados' }}, contacta al administrador por medio del botón de Whatsapp. -->
             </div>
             @endif
 
