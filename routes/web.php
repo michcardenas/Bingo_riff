@@ -27,8 +27,7 @@ Route::get('/descargarcartones', [App\Http\Controllers\CartonController::class, 
 Route::post('/cartones/buscar', [App\Http\Controllers\CartonController::class, 'buscar'])->name('cartones.buscar');
 
 // Ruta para descargar cartones
-Route::get('/cartones/descargar/{numero}', [App\Http\Controllers\CartonController::class, 'descargar'])->name('cartones.descargar');
-
+Route::get('/cartones/descargar/{reservaId}/{numeroCarton?}', [App\Http\Controllers\CartonController::class, 'descargar'])->name('cartones.descargar');
 
 
 // Ruta del grupo de WhatsApp
