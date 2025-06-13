@@ -161,11 +161,11 @@ Log::info('Archivo subido correctamente', [
     
             session()->put('celular_comprador', $validated['celular']);
     
-            return redirect()->route('cartones.buscar')
+            return redirect()->route('buscarcartones')
                 ->with('success', '¡Reserva realizada correctamente!')
                 ->with('series', $series)
                 ->with('bingo', $bingo->nombre)
-                ->with('celular', $validated['celular'])
+                ->with('numeroContacto', $validated['celular'])
                 ->with('orden', $reservaCreada->orden_bingo);
     
         } catch (\Illuminate\Validation\ValidationException $e) {
