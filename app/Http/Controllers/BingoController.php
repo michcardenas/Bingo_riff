@@ -161,7 +161,7 @@ Log::info('Archivo subido correctamente', [
     
             session()->put('celular_comprador', $validated['celular']);
     
-            return redirect()->route('cartones.indexDescargar')
+            return redirect()->route('cartones.buscar')
                 ->with('success', '¡Reserva realizada correctamente!')
                 ->with('series', $series)
                 ->with('bingo', $bingo->nombre)
