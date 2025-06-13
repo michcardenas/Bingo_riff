@@ -529,7 +529,7 @@
             @endif
 
             {{-- Botón de descarga para ambos estados permitidos --}}
-            <a href="{{ route('cartones.descargar', $carton['id_reserva']) }}"
+            <a href="{{ route('cartones.descargar', ['id_reserva' => $carton['id_reserva'], 'serie' => $carton['numero']]) }}"
                class="btn btn-sm ms-2 btn-success"
                title="Descargar cartón">
                 Descargar
