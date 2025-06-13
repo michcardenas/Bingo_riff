@@ -63,7 +63,7 @@ public function buscar(Request $request) {
     if (!$vista) {
         $referer = $request->headers->get('referer', '');
         if (str_contains($referer, 'descargarcartones')) {
-            $vista = 'descargarcartones';
+            $vista = 'buscarcartones';
         } else {
             $vista = 'buscarcartones';
         }
