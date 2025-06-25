@@ -687,8 +687,7 @@ public function buscarSeriesPorCelular(Request $request) {
 
     $celular = $request->input('celular');
 
-    $bingoAbierto = Bingo::where('estado', 'abierto')->first();
-
+$bingoAbierto = Bingo::orderBy('created_at', 'desc')->first();
     if (!$bingoAbierto) {
         return view('buscar_cartones_series', [
             'reservas' => [],
