@@ -863,6 +863,26 @@ document.addEventListener('click', function(e) {
         const serie = e.target.dataset.serie;
         const bingoId = e.target.dataset.bingoId;
         
+        // Mostrar loading
+        Swal.fire({
+            title: 'Generando cartón...',
+            text: `Serie: ${serie}`,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+// JAVASCRIPT SÚPER SIMPLE - Solo redirigir como enlace normal
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('serie-numero')) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const serie = e.target.dataset.serie;
+        const bingoId = e.target.dataset.bingoId;
+        
         // Ir directo a la descarga sin complicaciones
         window.open(`/admin/bingos/${bingoId}/carton/${serie}/descargar`, '_blank');
     }
