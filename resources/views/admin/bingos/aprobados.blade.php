@@ -76,41 +76,6 @@
                                             </tr>
                                         @endforeach
                                     @endforeach
-                                    
-                                    <!-- Cartones aprobados individuales -->
-                                    @foreach($cartonesAprobados as $item)
-                                        @php
-                                            $totalRegistros++;
-                                        @endphp
-                                        <tr>
-                                            <td>
-                                                @if($item['reserva'])
-                                                    {{ $item['reserva']->nombre }}
-                                                @else
-                                                    N/A
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($item['reserva'])
-                                                    {{ $item['reserva']->celular }}
-                                                @else
-                                                    N/A
-                                                @endif
-                                            </td>
-                                            <td>{{ $item['carton']->serie_aprobada }}</td>
-                                            <td>
-                                                @if(isset($item['series']))
-                                                    @if(is_array($item['series']))
-                                                        {{ implode(', ', $item['series']) }}
-                                                    @else
-                                                        {{ $item['series'] }}
-                                                    @endif
-                                                @else
-                                                    No disponible
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
                                 </tbody>
                             </table>
                         </div>

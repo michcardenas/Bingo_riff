@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Serie;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RechazadosExport;
-
+use App\Exports\AprobadosExport;
 class BingoController extends Controller
 {
     public function store(Request $request)

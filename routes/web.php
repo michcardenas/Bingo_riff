@@ -117,6 +117,8 @@ Route::middleware('auth')->group(function () {
     ->name('bingos.reservas.rechazados.view');
     Route::get('admin/bingos/{bingo}/reservas-aprobados', [BingoController::class, 'verAprobados'])
     ->name('bingos.reservas.aprobados.view');
+    Route::get('admin/bingos/{bingo}/reservas-aprobados/excel', [BingoController::class, 'exportarAprobadosExcel'])
+    ->name('bingos.reservas.aprobados.excel');
 
 
     Route::post('/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');
