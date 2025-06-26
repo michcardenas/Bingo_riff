@@ -168,7 +168,6 @@
 </td>
 
 
-
                             <td><input type="number" class="form-control form-control-sm bg-dark text-light campo-total" value="{{ $reserva->total }}" data-id="{{ $reserva->id }}"></td>
                             <td>
     @php
@@ -836,7 +835,7 @@ document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
     });
 });
 
-document.addEventListener('click', function(e) {
+ocument.addEventListener('click', function(e) {
     if (e.target.classList.contains('serie-numero')) {
         e.preventDefault();
         e.stopPropagation();
@@ -891,6 +890,5 @@ document.addEventListener('mouseout', function(e) {
         }
     }
 });
-
 </script>
 @endsection
