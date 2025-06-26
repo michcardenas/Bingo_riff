@@ -115,6 +115,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante']);
     Route::get('admin/bingos/{bingo}/reservas-rechazados', [BingoController::class, 'verRechazados'])
     ->name('bingos.reservas.rechazados.view');
+    Route::get('admin/bingos/{bingo}/reservas-aprobados', [BingoController::class, 'verAprobados'])
+    ->name('bingos.reservas.aprobados.view');
 
 
     Route::post('/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');

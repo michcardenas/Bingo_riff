@@ -90,6 +90,9 @@
     <i class="bi bi-eye"></i> Ver Rechazados
 </a>
 
+<a href="{{ route('bingos.reservas.aprobados.view', $bingoId) }}" class="btn btn-sm btn-outline-success">
+    <i class="bi bi-eye"></i> Ver Aprobados
+</a>
 
 
 </div>

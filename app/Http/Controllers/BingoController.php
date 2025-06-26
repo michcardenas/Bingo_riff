@@ -1240,7 +1240,120 @@ public function pedidosDuplicados($bingoId)
             'cartonesRechazados' => $cartonesProcesados
         ]);
     }
+public function verAprobados($bingoId)
+{
+    // Verificar si el bingo existe
+    $bingo = Bingo::findOrFail($bingoId);
 
+    // Obtener las reservas aprobadas para este bingo
+    $reservasAprobadas = Reserva::where('bingo_id', $bingoId)
+        ->where('estado', 'aprobado')
+        ->get();
+
+    // Obtener los cartones aprobados individuales
+    $cartonesAprobados = DB::table('cartones_aprobados')
+        ->where('bingo_id', $bingoId)
+        ->orderBy('fecha_aprobacion', 'desc')
+        ->get();
+
+    // Procesar datos para la vista
+    $reservasProcesadas = [];
+    foreach ($reservasAprobadas as $reserva) {
+        $series = [];
+        
+        // Procesar las series (si es JSON, convertirlo a array)
+        if (!empty($reserva->series)) {
+            if (is_string($reserva->series)) {
+                $seriesArray = json_decode($reserva->series, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $series = $seriesArray;
+                }
+            } elseif (is_array($reserva->series)) {
+                $series = $reserva->series;
+            }
+        }
+        
+        // Procesar series para cada cartón si es necesario
+        $cartonesSeries = [];
+        foreach ($series as $carton) {
+            // Obtener información de la tabla series para este cartón
+            $infoSerie = DB::table('series')
+                ->where('carton', $carton)
+                ->orWhere('carton', ltrim($carton, '0'))
+                ->first();
+            
+            if ($infoSerie && isset($infoSerie->series)) {
+                $seriesInfo = $infoSerie->series;
+                
+                // Si es JSON, decodificarlo
+                if (is_string($seriesInfo)) {
+                    $seriesData = json_decode($seriesInfo, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesData)) {
+                        $cartonesSeries[$carton] = $seriesData;
+                    } else {
+                        $cartonesSeries[$carton] = $seriesInfo;
+                    }
+                } else {
+                    $cartonesSeries[$carton] = $seriesInfo;
+                }
+            } else {
+                $cartonesSeries[$carton] = "No encontrado";
+            }
+        }
+        
+        // Añadir a la lista procesada
+        $reservasProcesadas[] = [
+            'reserva' => $reserva,
+            'cartones' => $series,
+            'cartonesSeries' => $cartonesSeries
+        ];
+    }
+    
+    // Procesar datos de cartones individuales aprobados
+    $cartonesProcesados = [];
+    foreach ($cartonesAprobados as $carton) {
+        // Obtener información de la reserva
+        $reservaInfo = null;
+        if ($carton->reserva_id) {
+            $reservaInfo = Reserva::find($carton->reserva_id);
+        }
+        
+        // Obtener información de series para este cartón
+        $seriesInfo = null;
+        $info = DB::table('series')
+            ->where('carton', $carton->serie_aprobada)
+            ->orWhere('carton', ltrim($carton->serie_aprobada, '0'))
+            ->first();
+            
+        if ($info && isset($info->series)) {
+            $seriesData = $info->series;
+            
+            // Si es JSON, decodificarlo
+            if (is_string($seriesData)) {
+                $seriesArray = json_decode($seriesData, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $seriesInfo = $seriesArray;
+                } else {
+                    $seriesInfo = $seriesData;
+                }
+            } else {
+                $seriesInfo = $seriesData;
+            }
+        }
+        
+        $cartonesProcesados[] = [
+            'carton' => $carton,
+            'reserva' => $reservaInfo,
+            'series' => $seriesInfo
+        ];
+    }
+    
+    return view('admin.bingos.aprobados', [
+        'bingo' => $bingo,
+        'reservasAprobadas' => $reservasProcesadas,
+        'cartonesAprobados' => $cartonesProcesados
+    ]);
+}
 
     /**
      * Comando para actualizar el orden_bingo en reservas existentes
