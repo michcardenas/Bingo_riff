@@ -28,6 +28,8 @@ Route::post('/cartones/buscar', [App\Http\Controllers\CartonController::class, '
 
 // Ruta para descargar cartones
 Route::get('/cartones/descargar/{reservaId}/{numeroCarton?}', [App\Http\Controllers\CartonController::class, 'descargar'])->name('cartones.descargar');
+Route::get('admin/bingos/{bingo}/carton/{serie}/descargar', [BingoController::class, 'descargarCarton'])
+    ->name('bingos.carton.descargar');
 
 
 // Ruta del grupo de WhatsApp

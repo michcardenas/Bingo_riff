@@ -149,7 +149,12 @@
 <td title="{{ implode(', ', $seriesClean) }}">
     @foreach ($seriesClean as $serie)
         <div class="d-flex justify-content-between align-items-center mb-1 bg-secondary rounded px-2 py-1">
-            <span>{{ $serie }}</span>
+            <span class="serie-numero" 
+                  data-serie="{{ $serie }}" 
+                  data-bingo-id="{{ $bingoId }}"
+                  title="Clic para descargar cartón">
+                {{ $serie }}
+            </span>
             <button 
                 class="btn btn-sm btn-danger btn-eliminar-serie ms-2 py-0 px-2"
                 data-id="{{ $reserva->id }}"
