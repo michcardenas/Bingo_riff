@@ -835,7 +835,7 @@ document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
     });
 });
 
-ocument.addEventListener('click', function(e) {
+document.addEventListener('click', function(e) {
     if (e.target.classList.contains('serie-numero')) {
         e.preventDefault();
         e.stopPropagation();
