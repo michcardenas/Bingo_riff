@@ -1308,6 +1308,78 @@ public function verAprobados($bingoId)
         'reservasAprobadas' => $reservasProcesadas
     ]);
 }
+
+public function exportarAprobadosExcel($bingoId)
+{
+    // Verificar si el bingo existe
+    $bingo = Bingo::findOrFail($bingoId);
+
+    // Obtener las reservas aprobadas para este bingo
+    $reservasAprobadas = Reserva::where('bingo_id', $bingoId)
+        ->where('estado', 'aprobado')
+        ->get();
+
+    // Procesar datos para el Excel
+    $datosExcel = [];
+    
+    foreach ($reservasAprobadas as $reserva) {
+        $series = [];
+        
+        // Procesar las series (si es JSON, convertirlo a array)
+        if (!empty($reserva->series)) {
+            if (is_string($reserva->series)) {
+                $seriesArray = json_decode($reserva->series, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $series = $seriesArray;
+                }
+            } elseif (is_array($reserva->series)) {
+                $series = $reserva->series;
+            }
+        }
+        
+        // Para cada cartón, crear una fila en el Excel
+        foreach ($series as $carton) {
+            // Obtener información de series para este cartón
+            $seriesInfo = "No disponible";
+            $infoSerie = DB::table('series')
+                ->where('carton', $carton)
+                ->orWhere('carton', ltrim($carton, '0'))
+                ->first();
+            
+            if ($infoSerie && isset($infoSerie->series)) {
+                $seriesData = $infoSerie->series;
+                
+                // Si es JSON, decodificarlo
+                if (is_string($seriesData)) {
+                    $seriesArray = json_decode($seriesData, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                        $seriesInfo = implode(', ', $seriesArray);
+                    } else {
+                        $seriesInfo = $seriesData;
+                    }
+                } else {
+                    $seriesInfo = is_array($seriesData) ? implode(', ', $seriesData) : $seriesData;
+                }
+            }
+            
+            // Añadir fila al Excel
+            $datosExcel[] = [
+                'nombre' => $reserva->nombre,
+                'celular' => $reserva->celular,
+                'carton' => $carton,
+                'series' => $seriesInfo,
+                'fecha_reserva' => $reserva->created_at ? $reserva->created_at->format('d/m/Y H:i:s') : '',
+                'estado' => $reserva->estado
+            ];
+        }
+    }
+
+    // Crear nombre del archivo
+    $nombreArchivo = 'aprobados_' . str_replace(' ', '_', $bingo->nombre) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+    // Exportar usando Laravel Excel
+    return Excel::download(new AprobadosExport($datosExcel, $bingo), $nombreArchivo);
+}
     /**
      * Comando para actualizar el orden_bingo en reservas existentes
      */
