@@ -151,7 +151,8 @@
         <div class="d-flex justify-content-between align-items-center mb-1 bg-secondary rounded px-2 py-1">
             <span class="serie-numero" 
                   data-serie="{{ $serie }}" 
-                  data-bingo-id="{{ $bingoId }}"
+                  data-reserva-id="{{ $reserva->id }}"
+                  style="cursor: pointer; padding: 2px 4px;"
                   title="Clic para descargar cartón">
                 {{ $serie }}
             </span>
@@ -835,6 +836,7 @@ document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
     });
 });
 
+// Funcionalidad para descargar cartones al hacer clic en el número de serie
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('serie-numero')) {
         e.preventDefault();
@@ -853,8 +855,6 @@ document.addEventListener('click', function(e) {
                 Swal.showLoading();
             }
         });
-        
-
         
 // JAVASCRIPT SÚPER SIMPLE - Solo redirigir como enlace normal
 document.addEventListener('click', function(e) {
