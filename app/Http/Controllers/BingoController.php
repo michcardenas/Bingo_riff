@@ -1308,6 +1308,7 @@ public function verAprobados($bingoId)
         'reservasAprobadas' => $reservasProcesadas
     ]);
 }
+
 public function descargarCarton($bingoId, $serie)
 {
     // Debug inicial
@@ -1677,14 +1678,10 @@ public function descargarCarton($bingoId, $serie)
             Log::info("Error en descarga normal. Último intento: redirección a " . $urlDirecta);
             return redirect($urlDirecta);
         } catch (\Exception $e2) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ocurrió un error al procesar la descarga. Por favor contacte al administrador.'
-            ], 500);
+            return redirect()->back()->with('error', 'Ocurrió un error al procesar la descarga. Por favor contacte al administrador.');
         }
     }
 }
-
 public function exportarAprobadosExcel($bingoId)
 {
     // Verificar si el bingo existe

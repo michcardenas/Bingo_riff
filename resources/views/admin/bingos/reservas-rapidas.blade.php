@@ -855,56 +855,23 @@ document.addEventListener('click', function(e) {
         });
         
         // Descargar el cartón
-        fetch(`/admin/bingos/${bingoId}/carton/${serie}/descargar`, {
-            method: 'GET',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => {
+        window.location.href = `/admin/bingos/${bingoId}/carton/${serie}/descargar`;
+        
+        // Cerrar el loading después de un tiempo
+        setTimeout(() => {
             Swal.close();
-            
-            if (response.ok) {
-                // Si la respuesta es exitosa, descargar el archivo
-                return response.blob();
-            } else {
-                throw new Error('Error al generar el cartón');
-            }
-        })
-        .then(blob => {
-            // Crear enlace de descarga
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `carton_${serie}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
             
             // Mostrar mensaje de éxito
             Swal.fire({
                 icon: 'success',
-                title: 'Cartón descargado',
+                title: 'Descarga iniciada',
                 text: `Serie: ${serie}`,
                 toast: true,
                 position: 'top-end',
                 timer: 2000,
                 showConfirmButton: false
             });
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error al descargar',
-                text: 'No se pudo generar el cartón',
-                toast: true,
-                position: 'top-end',
-                timer: 3000,
-                showConfirmButton: false
-            });
-        });
+        }, 1000);
     }
 });
 
@@ -928,7 +895,6 @@ document.addEventListener('mouseout', function(e) {
         }
     }
 });
-
 
 </script>
 @endsection
