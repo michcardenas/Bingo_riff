@@ -680,14 +680,15 @@ public function descargar($reservaId, $numeroCarton = null) {
     return view('buscar_cartones_series');
 }
 
-public function buscarSeriesPorCelular(Request $request) {
+public function buscarSeriesPorCelular(Request $request) 
+{
     $request->validate([
         'celular' => 'required|string',
     ]);
 
     $celular = $request->input('celular');
-
-$bingoAbierto = Bingo::orderBy('created_at', 'desc')->first();
+    $bingoAbierto = Bingo::orderBy('created_at', 'desc')->first();
+    
     if (!$bingoAbierto) {
         return view('buscar_cartones_series', [
             'reservas' => [],
@@ -711,17 +712,42 @@ $bingoAbierto = Bingo::orderBy('created_at', 'desc')->first();
     Log::info("Bingo abierto ID: " . $bingoAbierto->id);
     Log::info("Reservas encontradas (sin rechazadas): " . count($reservas));
 
+    // Buscar un nombre válido para el usuario
+    $nombreUsuario = '';
+    foreach ($reservas as $reserva) {
+        if (!empty($reserva->nombre) && trim($reserva->nombre) !== '') {
+            $nombreUsuario = trim($reserva->nombre);
+            Log::info("Nombre encontrado en reserva ID {$reserva->id}: '{$nombreUsuario}'");
+            break;
+        }
+    }
+
+    // Si no encontramos nombre en las reservas actuales, buscar en reservas anteriores del mismo celular
+    if (empty($nombreUsuario)) {
+        $reservaAnterior = Reserva::where('celular', $celular)
+            ->where('eliminado', 0)
+            ->whereNotNull('nombre')
+            ->where('nombre', '!=', '')
+            ->orderBy('id', 'desc')
+            ->first();
+            
+        if ($reservaAnterior) {
+            $nombreUsuario = trim($reservaAnterior->nombre);
+            Log::info("Nombre encontrado en reserva anterior ID {$reservaAnterior->id}: '{$nombreUsuario}'");
+        }
+    }
+
     // Recolectar todos los números de cartón de las reservas válidas
     $cartonesComprados = [];
     foreach ($reservas as $reserva) {
         // Verificar que la reserva tenga series
         if (!empty($reserva->series)) {
             $seriesCartones = is_array($reserva->series) ? $reserva->series : json_decode($reserva->series, true);
-            
+                        
             // Verificar que la decodificación fue exitosa
             if (is_array($seriesCartones)) {
                 $cartonesComprados = array_merge($cartonesComprados, $seriesCartones);
-                Log::info("Reserva ID {$reserva->id} - Estado: {$reserva->estado} - Cartones: " . json_encode($seriesCartones));
+                Log::info("Reserva ID {$reserva->id} - Estado: {$reserva->estado} - Nombre: '{$reserva->nombre}' - Cartones: " . json_encode($seriesCartones));
             } else {
                 Log::warning("No se pudo decodificar las series de la reserva ID: {$reserva->id}");
             }
@@ -731,6 +757,7 @@ $bingoAbierto = Bingo::orderBy('created_at', 'desc')->first();
     // Eliminar duplicados y limpiar
     $cartonesComprados = array_unique($cartonesComprados);
     Log::info("Total de cartones únicos comprados: " . count($cartonesComprados));
+    Log::info("Nombre final del usuario: '{$nombreUsuario}'");
 
     // Buscar series asociadas a esos cartones
     $seriesDetalladas = [];
@@ -739,8 +766,13 @@ $bingoAbierto = Bingo::orderBy('created_at', 'desc')->first();
         Log::info("Series detalladas encontradas: " . count($seriesDetalladas));
     }
 
-    return view('buscar_cartones_series', compact('reservas', 'celular', 'bingoAbierto', 'seriesDetalladas'));
+    return view('buscar_cartones_series', compact(
+        'reservas', 
+        'celular', 
+        'bingoAbierto', 
+        'seriesDetalladas',
+        'nombreUsuario'  // Agregar el nombre del usuario
+    ));
 }
-
 
 }

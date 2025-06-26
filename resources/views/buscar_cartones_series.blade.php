@@ -223,7 +223,7 @@
         <thead class="table-secondary">
             <tr>
                 <th>#</th>
-                <th>Número de Hoja</th>
+                <th>Nombre</th>
                 <th>Series</th>
             </tr>
         </thead>
@@ -231,7 +231,7 @@
             @foreach($seriesDetalladas as $serie)
                 <tr>
                     <td>{{ $loop->iteration }}</td>
-                    <td>{{ $serie->carton }}</td>
+                    <td>{{ $nombreUsuario ?? 'Sin nombre' }}</td>
                     <td>{{ implode(', ', $serie->series ?? []) }}</td>
                 </tr>
             @endforeach
