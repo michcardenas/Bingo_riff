@@ -151,8 +151,7 @@
         <div class="d-flex justify-content-between align-items-center mb-1 bg-secondary rounded px-2 py-1">
             <span class="serie-numero" 
                   data-serie="{{ $serie }}" 
-                  data-reserva-id="{{ $reserva->id }}"
-                  style="cursor: pointer; padding: 2px 4px;"
+                  data-bingo-id="{{ $bingoId }}"
                   title="Clic para descargar cartón">
                 {{ $serie }}
             </span>
@@ -167,6 +166,7 @@
         </div>
     @endforeach
 </td>
+
 
 
                             <td><input type="number" class="form-control form-control-sm bg-dark text-light campo-total" value="{{ $reserva->total }}" data-id="{{ $reserva->id }}"></td>
@@ -835,7 +835,6 @@ document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
         });
     });
 });
-
 // Funcionalidad para descargar cartones al hacer clic en el número de serie
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('serie-numero')) {
@@ -892,5 +891,6 @@ document.addEventListener('mouseout', function(e) {
         }
     }
 });
+
 </script>
 @endsection
