@@ -69,7 +69,7 @@ class ReservasRechazadasSheet implements FromCollection, WithHeadings, WithMappi
             'Celular',
             'Cantidad Cartones',
             'Total',
-            'Cartones',
+            'Números de Cartón',
             'Series por Cartón',
             'Estado',
             'Fecha de Registro'
@@ -78,11 +78,9 @@ class ReservasRechazadasSheet implements FromCollection, WithHeadings, WithMappi
 
     public function map($reserva): array
     {
-        // Formatear la columna series (convertir JSON a texto legible)
-        $cartonesFormateados = $this->formatearCartones($reserva->series);
-        
-        // Obtener información adicional de la tabla series
-        $infoSeries = $this->obtenerInfoSeries($reserva->series);
+        // Separar números de cartón y series
+        $numerosCartones = $this->formatearNumerosCartones($reserva->series);
+        $seriesPorCarton = $this->obtenerInfoSeries($reserva->series);
         
         // Formatear fecha
         $fechaFormateada = $reserva->created_at ? date('d/m/Y H:i', strtotime($reserva->created_at)) : "N/A";
@@ -93,14 +91,14 @@ class ReservasRechazadasSheet implements FromCollection, WithHeadings, WithMappi
             $reserva->celular,
             $reserva->cantidad,
             $reserva->total,
-            $cartonesFormateados,
-            $infoSeries,
+            $numerosCartones,      // Solo los números de cartón
+            $seriesPorCarton,      // Las series detalladas
             $reserva->estado,
             $fechaFormateada
         ];
     }
 
-    private function formatearCartones($seriesJson)
+    private function formatearNumerosCartones($seriesJson)
     {
         if (empty($seriesJson)) {
             return "No hay cartones";
@@ -123,7 +121,7 @@ class ReservasRechazadasSheet implements FromCollection, WithHeadings, WithMappi
             // Si falla la decodificación, mostrar el string tal cual
             return $seriesJson;
         } catch (\Exception $e) {
-            Log::error("Error al formatear cartones: " . $e->getMessage());
+            Log::error("Error al formatear números de cartones: " . $e->getMessage());
             return "Error: " . substr($e->getMessage(), 0, 50);
         }
     }
@@ -195,7 +193,8 @@ class ReservasRechazadasSheet implements FromCollection, WithHeadings, WithMappi
             ],
             // Ajustar la altura de filas para mostrar múltiples líneas
             'A' => ['alignment' => ['wrapText' => true]],
-            'G' => ['alignment' => ['wrapText' => true]],
+            'F' => ['alignment' => ['wrapText' => true]], // Números de cartón
+            'G' => ['alignment' => ['wrapText' => true]], // Series por cartón
         ];
     }
 }
@@ -227,7 +226,7 @@ class CartonesRechazadosSheet implements FromCollection, WithHeadings, WithMappi
     {
         return [
             'ID',
-            'Cartón',
+            'Número de Cartón',
             'Series del Cartón',
             'Nombre Titular',
             'Celular',
@@ -283,8 +282,8 @@ class CartonesRechazadosSheet implements FromCollection, WithHeadings, WithMappi
         
         return [
             $carton->id,
-            $carton->serie_rechazada,
-            $seriesInfo,
+            $carton->serie_rechazada,  // Número del cartón
+            $seriesInfo,               // Series del cartón
             $nombreTitular,
             $celular,
             $carton->reserva_id,
@@ -340,7 +339,7 @@ class CartonesRechazadosSheet implements FromCollection, WithHeadings, WithMappi
                 ],
             ],
             // Ajustar la altura de filas para mostrar múltiples líneas
-            'C' => ['alignment' => ['wrapText' => true]],
+            'C' => ['alignment' => ['wrapText' => true]], // Series del cartón
         ];
     }
 }
