@@ -854,25 +854,7 @@ document.addEventListener('click', function(e) {
             }
         });
         
-// JAVASCRIPT SÚPER SIMPLE - Solo redirigir como enlace normal
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('serie-numero')) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const serie = e.target.dataset.serie;
-        const bingoId = e.target.dataset.bingoId;
-        
-        // Mostrar loading
-        Swal.fire({
-            title: 'Generando cartón...',
-            text: `Serie: ${serie}`,
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
+
         
 // JAVASCRIPT SÚPER SIMPLE - Solo redirigir como enlace normal
 document.addEventListener('click', function(e) {
