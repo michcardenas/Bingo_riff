@@ -222,7 +222,6 @@
     <table class="table table-bordered">
         <thead class="table-secondary">
             <tr>
-                <th>#</th>
                 <th>Nombre</th>
                 <th>Series</th>
             </tr>
@@ -230,7 +229,6 @@
         <tbody>
             @foreach($seriesDetalladas as $serie)
                 <tr>
-                    <td>{{ $loop->iteration }}</td>
                     <td>{{ $nombreUsuario ?? 'Sin nombre' }}</td>
                     <td>{{ implode(', ', $serie->series ?? []) }}</td>
                 </tr>
