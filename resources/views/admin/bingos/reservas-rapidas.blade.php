@@ -167,6 +167,7 @@
     @endforeach
 </td>
 
+
                             <td><input type="number" class="form-control form-control-sm bg-dark text-light campo-total" value="{{ $reserva->total }}" data-id="{{ $reserva->id }}"></td>
                             <td>
     @php
@@ -833,6 +834,101 @@ document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
         });
     });
 });
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('serie-numero')) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const serie = e.target.dataset.serie;
+        const bingoId = e.target.dataset.bingoId;
+        
+        // Mostrar loading
+        Swal.fire({
+            title: 'Generando cartón...',
+            text: `Serie: ${serie}`,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Descargar el cartón
+        fetch(`/admin/bingos/${bingoId}/carton/${serie}/descargar`, {
+            method: 'GET',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => {
+            Swal.close();
+            
+            if (response.ok) {
+                // Si la respuesta es exitosa, descargar el archivo
+                return response.blob();
+            } else {
+                throw new Error('Error al generar el cartón');
+            }
+        })
+        .then(blob => {
+            // Crear enlace de descarga
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `carton_${serie}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            
+            // Mostrar mensaje de éxito
+            Swal.fire({
+                icon: 'success',
+                title: 'Cartón descargado',
+                text: `Serie: ${serie}`,
+                toast: true,
+                position: 'top-end',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al descargar',
+                text: 'No se pudo generar el cartón',
+                toast: true,
+                position: 'top-end',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        });
+    }
+});
+
+// Prevenir que el hover del número interfiera con el botón X
+document.addEventListener('mouseover', function(e) {
+    if (e.target.classList.contains('btn-eliminar-serie')) {
+        // Remover temporalmente el hover del número cuando se hace hover en X
+        const serieSpan = e.target.parentElement.querySelector('.serie-numero');
+        if (serieSpan) {
+            serieSpan.style.pointerEvents = 'none';
+        }
+    }
+});
+
+document.addEventListener('mouseout', function(e) {
+    if (e.target.classList.contains('btn-eliminar-serie')) {
+        // Restaurar el hover del número
+        const serieSpan = e.target.parentElement.querySelector('.serie-numero');
+        if (serieSpan) {
+            serieSpan.style.pointerEvents = 'auto';
+        }
+    }
+});
+
 
 </script>
 @endsection
