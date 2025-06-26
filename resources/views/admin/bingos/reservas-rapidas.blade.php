@@ -168,6 +168,7 @@
 </td>
 
 
+
                             <td><input type="number" class="form-control form-control-sm bg-dark text-light campo-total" value="{{ $reserva->total }}" data-id="{{ $reserva->id }}"></td>
                             <td>
     @php
@@ -854,24 +855,19 @@ document.addEventListener('click', function(e) {
             }
         });
         
-        // Descargar el cartón
-        window.location.href = `/admin/bingos/${bingoId}/carton/${serie}/descargar`;
+// JAVASCRIPT SÚPER SIMPLE - Solo redirigir como enlace normal
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('serie-numero')) {
+        e.preventDefault();
+        e.stopPropagation();
         
-        // Cerrar el loading después de un tiempo
-        setTimeout(() => {
-            Swal.close();
-            
-            // Mostrar mensaje de éxito
-            Swal.fire({
-                icon: 'success',
-                title: 'Descarga iniciada',
-                text: `Serie: ${serie}`,
-                toast: true,
-                position: 'top-end',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        }, 1000);
+        const serie = e.target.dataset.serie;
+        const bingoId = e.target.dataset.bingoId;
+        
+        // Ir directo a la descarga sin complicaciones
+        window.open(`/admin/bingos/${bingoId}/carton/${serie}/descargar`, '_blank');
+    }
+});
     }
 });
 
