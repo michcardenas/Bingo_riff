@@ -142,8 +142,8 @@ class ReservasRechazadasSheet implements FromCollection, WithHeadings, WithMappi
                 }
             }
             
-            // Información de cada serie
-            $infoDetalles = [];
+            // Recolectar todas las series sin prefijos
+            $todasLasSeries = [];
             
             foreach ($seriesArray as $carton) {
                 // Buscar el cartón en la tabla series
@@ -156,24 +156,22 @@ class ReservasRechazadasSheet implements FromCollection, WithHeadings, WithMappi
                     // Obtener y formatear las series de la tabla series
                     $seriesInfo = $info->series;
                     
-                    // Si es JSON, decodificarlo y formatearlo como una lista separada por comas
+                    // Si es JSON, decodificarlo y agregarlo al array
                     if (is_string($seriesInfo)) {
                         $seriesData = json_decode($seriesInfo, true);
                         if (json_last_error() === JSON_ERROR_NONE && is_array($seriesData)) {
-                            $infoDetalles[] = "Cartón " . $carton . ": " . implode(", ", $seriesData);
+                            $todasLasSeries = array_merge($todasLasSeries, $seriesData);
                         } else {
-                            $infoDetalles[] = "Cartón " . $carton . ": " . $seriesInfo;
+                            $todasLasSeries[] = $seriesInfo;
                         }
                     } else {
-                        $infoDetalles[] = "Cartón " . $carton . ": " . $seriesInfo;
+                        $todasLasSeries[] = $seriesInfo;
                     }
-                } else {
-                    $infoDetalles[] = "Cartón " . $carton . ": No encontrado";
                 }
             }
             
-            // Combinar toda la información en un solo string con saltos de línea
-            return implode("\n", $infoDetalles);
+            // Devolver todas las series separadas por comas
+            return !empty($todasLasSeries) ? implode(", ", $todasLasSeries) : "No encontrado";
         } catch (\Exception $e) {
             Log::error("Error al obtener info series: " . $e->getMessage());
             return "Error al procesar información de series";
