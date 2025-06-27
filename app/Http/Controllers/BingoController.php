@@ -66,10 +66,10 @@ class BingoController extends Controller
                     }
     
                   // Ruta de destino para comprobantes en producción
-$pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+$pathProduccion = '/home/u861598707/domains/https://mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
 
 // Verificar si estamos en producción o local con base en el path base real
-$isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
+$isProduccion = strpos(base_path(), '/home/u861598707/domains/https://mediumspringgreen-chamois-657776.hostingersite.com') !== false;
 
 $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
 
@@ -1376,7 +1376,7 @@ public function descargarCarton($bingoId, $serie)
         }
         
         // Definir rutas de archivos con directorio absoluto
-        $directorioBingo = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/TablasbingoRIFFY';
+        $directorioBingo = '/home/u861598707/domains/https://mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY';
         $rutaJpg = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.jpg';
         $rutaPdf = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.pdf';
         
@@ -1434,7 +1434,7 @@ public function descargarCarton($bingoId, $serie)
                     Log::warning("No se encontró ningún archivo que coincida con el patrón: " . $patronBusqueda);
                     
                     // Plan B: Usar URL directa en caso de que no se encuentre
-                    $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.jpg';
+                    $urlDirecta = 'https://https://mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.jpg';
                     Log::info("Redirigiendo a URL directa: " . $urlDirecta);
                     return redirect($urlDirecta);
                 }
@@ -1455,7 +1455,7 @@ public function descargarCarton($bingoId, $serie)
             Log::error("El archivo existe pero no es legible: " . $rutaCompleta);
             
             // Plan B: Usar URL directa en caso de que el archivo no sea legible
-            $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.' . $extension;
+            $urlDirecta = 'https://https://mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.' . $extension;
             Log::info("Redirigiendo a URL directa: " . $urlDirecta);
             return redirect($urlDirecta);
         }
@@ -1463,7 +1463,7 @@ public function descargarCarton($bingoId, $serie)
         // Plan B: usar URL directa si la descarga falla
         if (!file_exists($rutaCompleta) || filesize($rutaCompleta) == 0) {
             Log::warning("Archivo no disponible o vacío, redirigiendo a URL directa");
-            $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.' . $extension;
+            $urlDirecta = 'https://https://mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.' . $extension;
             return redirect($urlDirecta);
         }
         
@@ -1674,7 +1674,7 @@ public function descargarCarton($bingoId, $serie)
         // Plan B final: intentar redireccionar directamente como último recurso
         try {
             $numeroParaArchivo = intval(preg_replace('/[^0-9]/', '', $serie));
-            $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
+            $urlDirecta = 'https://https://mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
             Log::info("Error en descarga normal. Último intento: redirección a " . $urlDirecta);
             return redirect($urlDirecta);
         } catch (\Exception $e2) {
