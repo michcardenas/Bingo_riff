@@ -535,8 +535,8 @@ class BingoAdminController extends Controller
         }
 
         // Ruta destino
-        $pathProduccion = '/home/u861598707/domains/https://mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
-        $isProduccion = strpos(base_path(), '/home/u861598707/domains/https://mediumspringgreen-chamois-657776.hostingersite.com') !== false;
+        $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+        $isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
         $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
 
         if (!file_exists($destino)) {
