@@ -1375,8 +1375,30 @@ public function descargarCarton($bingoId, $serie)
             }
         }
         
-        // Definir rutas de archivos con directorio absoluto
-        $directorioBingo = '/home/u861598707/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY';
+        // ✅ SECCIÓN CORREGIDA - Detectar automáticamente la ruta correcta del directorio
+        $directorioBingo = public_path('TablasbingoRIFFY');
+        
+        // Si no existe, probar rutas alternativas comunes en hosting compartido
+        if (!is_dir($directorioBingo)) {
+            $alternativas = [
+                base_path('public/TablasbingoRIFFY'),
+                base_path('../public_html/TablasbingoRIFFY'),
+                $_SERVER['DOCUMENT_ROOT'] . '/TablasbingoRIFFY',
+                dirname($_SERVER['SCRIPT_FILENAME']) . '/TablasbingoRIFFY'
+            ];
+            
+            foreach ($alternativas as $ruta) {
+                if (is_dir($ruta)) {
+                    $directorioBingo = $ruta;
+                    Log::info("Directorio encontrado en ruta alternativa: " . $ruta);
+                    break;
+                }
+            }
+        }
+        
+        Log::info("Directorio de bingo configurado: " . $directorioBingo);
+        // ✅ FIN SECCIÓN CORREGIDA
+        
         $rutaJpg = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.jpg';
         $rutaPdf = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.pdf';
         
