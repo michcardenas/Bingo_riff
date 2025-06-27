@@ -194,6 +194,7 @@ public function buscar(Request $request) {
     ]);
 }
 
+
 public function descargar($reservaId, $numeroCarton = null) {
     // Debug inicial
     Log::info("=== INICIO PROCESO DESCARGA ===");
@@ -266,30 +267,8 @@ public function descargar($reservaId, $numeroCarton = null) {
             return redirect()->back()->with('error', 'No se pudo determinar el cartón a descargar.');
         }
         
-        // ✅ SECCIÓN CORREGIDA - Detectar automáticamente la ruta correcta del directorio
-        $directorioBingo = public_path('TablasbingoRIFFY');
-        
-        // Si no existe, probar rutas alternativas comunes en hosting compartido
-        if (!is_dir($directorioBingo)) {
-            $alternativas = [
-                base_path('public/TablasbingoRIFFY'),
-                base_path('../public_html/TablasbingoRIFFY'),
-                $_SERVER['DOCUMENT_ROOT'] . '/TablasbingoRIFFY',
-                dirname($_SERVER['SCRIPT_FILENAME']) . '/TablasbingoRIFFY'
-            ];
-            
-            foreach ($alternativas as $ruta) {
-                if (is_dir($ruta)) {
-                    $directorioBingo = $ruta;
-                    Log::info("Directorio encontrado en ruta alternativa: " . $ruta);
-                    break;
-                }
-            }
-        }
-        
-        Log::info("Directorio de bingo configurado: " . $directorioBingo);
-        // ✅ FIN SECCIÓN CORREGIDA
-        
+        // Definir rutas de archivos con directorio absoluto
+        $directorioBingo = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/TablasbingoRIFFY';
         $rutaJpg = $directorioBingo . '/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
         $rutaPdf = $directorioBingo . '/Carton-RIFFY-' . $numeroParaArchivo . '.pdf';
         
@@ -347,7 +326,7 @@ public function descargar($reservaId, $numeroCarton = null) {
                     Log::warning("No se encontró ningún archivo que coincida con el patrón: " . $patronBusqueda);
                     
                     // Plan B: Usar URL directa en caso de que no se encuentre
-                    $urlDirecta = 'mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
+                    $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
                     Log::info("Redirigiendo a URL directa: " . $urlDirecta);
                     return redirect($urlDirecta);
                 }
@@ -365,7 +344,7 @@ public function descargar($reservaId, $numeroCarton = null) {
             Log::error("El archivo existe pero no es legible: " . $rutaCompleta);
             
             // Plan B: Usar URL directa en caso de que el archivo no sea legible
-            $urlDirecta = 'mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
+            $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
             Log::info("Redirigiendo a URL directa: " . $urlDirecta);
             return redirect($urlDirecta);
         }
@@ -373,12 +352,11 @@ public function descargar($reservaId, $numeroCarton = null) {
         // Plan B: usar URL directa si la descarga falla
         if (!file_exists($rutaCompleta) || filesize($rutaCompleta) == 0) {
             Log::warning("Archivo no disponible o vacío, redirigiendo a URL directa");
-            $urlDirecta = 'mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
+            $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
             return redirect($urlDirecta);
         }
         
-        // ✅ APLICAR MARCA DE AGUA (LÓGICA CORREGIDA COMO EL MÉTODO descargarCarton)
-        if ($extension === 'jpg' && $reservaEncontrada) {
+        if ($extension === 'jpg' && isset($reservaEncontrada)) {
             try {
                 Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
         
@@ -400,13 +378,20 @@ public function descargar($reservaId, $numeroCarton = null) {
                                                         ->where('eliminado', 0)
                                                         ->whereNotNull('nombre')
                                                         ->where('nombre', '!=', '')
-                                                        ->orderBy('id', 'desc')
+                                                        ->orderBy('id', 'desc') // Ordenar por ID descendente para tomar la más reciente
                                                         ->get();
                             
                             Log::info("Buscando nombre por celular como fallback: " . $reservaEncontrada->celular);
                             Log::info("Reservas encontradas con mismo celular que tienen nombre: " . count($reservasPorCelular));
                             
                             if ($reservasPorCelular->isNotEmpty()) {
+                                // Loggear las reservas encontradas para diagnóstico
+                                foreach ($reservasPorCelular as $index => $reserva) {
+                                    Log::info("Reserva fallback #" . ($index + 1) . " - ID: " . $reserva->id . 
+                                             ", Nombre: '" . $reserva->nombre . "'" .
+                                             ", Fecha creación: " . $reserva->created_at);
+                                }
+                                
                                 // Buscar nombres completos (que contengan al menos un espacio)
                                 $nombreCompleto = null;
                                 foreach ($reservasPorCelular as $reserva) {
@@ -440,22 +425,89 @@ public function descargar($reservaId, $numeroCarton = null) {
                     Log::info("No se encontró nombre, usando identificador por defecto: '" . $nombrePropietario . "'");
                 }
                 
-                // Obtener nombre del bingo de forma similar al método descargarCarton
-                $nombreBingo = "";
-                if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
-                    $nombreBingo = $reservaEncontrada->bingo->nombre;
-                } else {
-                    $nombreBingo = "Bingo RIFFY";
-                }
-                Log::info("Nombre del bingo: " . $nombreBingo);
+                // Truncar el nombre si es demasiado largo para evitar que se salga
+                $maxLongitudNombre = 500; // Ajustar según sea necesario
                 
-                // Truncar textos si son muy largos
-                $maxLongitudNombre = 50;
-                if (mb_strlen($nombrePropietario) > $maxLongitudNombre) {
-                    $nombrePropietario = mb_substr($nombrePropietario, 0, $maxLongitudNombre) . '...';
+                // En la parte donde se determina el nombre del bingo
+                Log::info("Intentando obtener el nombre del bingo correcto para la ID: " . $reservaEncontrada->bingo_id);
+
+                // Primero, veamos si la reserva tiene un bingo_id
+                if (!empty($reservaEncontrada->bingo_id)) {
+                    // Consulta detallada que busca bingos activos o cerrados, ordenados por fecha
+                    $bingoQuery = "
+                        SELECT id, nombre, estado, created_at 
+                        FROM bingos 
+                        WHERE id = ? 
+                        AND (estado = 'abierto' OR estado = 'cerrado')
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                    ";
+                    
+                    // Registramos la consulta
+                    Log::info("Consulta SQL para bingo: " . $bingoQuery);
+                    Log::info("Buscando bingo con ID: " . $reservaEncontrada->bingo_id);
+                    
+                    $bingoResultado = DB::select($bingoQuery, [$reservaEncontrada->bingo_id]);
+                    
+                    if (!empty($bingoResultado)) {
+                        $bingoEncontrado = $bingoResultado[0];
+                        $nombreBingo = $bingoEncontrado->nombre;
+                        
+                        Log::info("Bingo encontrado - ID: " . $bingoEncontrado->id . 
+                                ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                                ", Estado: " . $bingoEncontrado->estado . 
+                                ", Fecha: " . $bingoEncontrado->created_at);
+                    } else {
+                        // Si no hay resultados, buscamos cualquier bingo con esa ID
+                        $bingoQuery2 = "SELECT id, nombre, estado, created_at FROM bingos WHERE id = ? LIMIT 1";
+                        $bingoResultado2 = DB::select($bingoQuery2, [$reservaEncontrada->bingo_id]);
+                        
+                        if (!empty($bingoResultado2)) {
+                            $bingoEncontrado = $bingoResultado2[0];
+                            $nombreBingo = $bingoEncontrado->nombre;
+                            
+                            Log::info("Bingo encontrado (segunda búsqueda) - ID: " . $bingoEncontrado->id . 
+                                    ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                                    ", Estado: " . $bingoEncontrado->estado . 
+                                    ", Fecha: " . $bingoEncontrado->created_at);
+                        } else {
+                            $nombreBingo = "Bingo RIFFY";
+                            Log::info("No se encontró ningún bingo con ID: " . $reservaEncontrada->bingo_id . ". Usando nombre por defecto.");
+                        }
+                    }
+                } else {
+                    // Si no hay bingo_id, intentamos buscar el bingo más reciente
+                    $bingoQuery = "
+                        SELECT id, nombre, estado, created_at 
+                        FROM bingos 
+                        WHERE estado = 'abierto' OR estado = 'cerrado'
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                    ";
+                    
+                    $bingoResultado = DB::select($bingoQuery);
+                    
+                    if (!empty($bingoResultado)) {
+                        $bingoEncontrado = $bingoResultado[0];
+                        $nombreBingo = $bingoEncontrado->nombre;
+                        
+                        Log::info("Usando bingo más reciente - ID: " . $bingoEncontrado->id . 
+                                ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
+                                ", Estado: " . $bingoEncontrado->estado . 
+                                ", Fecha: " . $bingoEncontrado->created_at);
+                    } else {
+                        $nombreBingo = "Bingo RIFFY";
+                        Log::info("No se encontraron bingos activos o cerrados. Usando nombre por defecto.");
+                    }
                 }
+
+                // Verificar el valor final
+                Log::info("Nombre del bingo final: " . $nombreBingo);
+                
+                // Truncar el nombre del bingo si es demasiado largo
                 if (mb_strlen($nombreBingo) > $maxLongitudNombre) {
                     $nombreBingo = mb_substr($nombreBingo, 0, $maxLongitudNombre) . '...';
+                    Log::info("Nombre del bingo truncado por longitud excesiva: " . $nombreBingo);
                 }
                 
                 // Formatear textos para la marca de agua
@@ -490,16 +542,18 @@ public function descargar($reservaId, $numeroCarton = null) {
                 
                 // Márgenes y posiciones
                 $margenDerecho = 200;
-                $margenIzquierdo = 20;
+                $margenIzquierdo = 20; // Para asegurar que el texto no se salga por la izquierda
                 
                 // Calcular el ancho máximo disponible para el texto
                 $maxTextWidth = $width - $margenDerecho - $margenIzquierdo;
                 
-                // Ajustar texto del bingo si es muy largo
+                // Asegurarnos de que el texto no se salga por la izquierda
                 $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
                 $textWidth1 = $bbox1[2] - $bbox1[0];
                 
+                // Si el texto es más ancho que el espacio disponible, lo reducimos
                 if ($textWidth1 > $maxTextWidth) {
+                    // Reducir el texto gradualmente hasta que quepa
                     $tempTextoBingo = $textoBingo;
                     while ($textWidth1 > $maxTextWidth && mb_strlen($tempTextoBingo) > 10) {
                         $tempTextoBingo = mb_substr($tempTextoBingo, 0, mb_strlen($tempTextoBingo) - 1);
@@ -507,9 +561,10 @@ public function descargar($reservaId, $numeroCarton = null) {
                         $textWidth1 = $bbox1[2] - $bbox1[0];
                     }
                     $textoBingo = $tempTextoBingo . "...";
+                    Log::info("Texto bingo ajustado para caber: " . $textoBingo);
                 }
                 
-                // Ajustar texto del nombre si es muy largo
+                // Lo mismo para el nombre
                 $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
                 $textWidth2 = $bbox2[2] - $bbox2[0];
                 
@@ -521,6 +576,7 @@ public function descargar($reservaId, $numeroCarton = null) {
                         $textWidth2 = $bbox2[2] - $bbox2[0];
                     }
                     $textoNombre = $tempTextoNombre . "...";
+                    Log::info("Texto nombre ajustado para caber: " . $textoNombre);
                 }
                 
                 // Calcular posiciones finales
@@ -589,7 +645,7 @@ public function descargar($reservaId, $numeroCarton = null) {
         // Plan B final: intentar redireccionar directamente como último recurso
         try {
             $numeroParaArchivo = $numeroCarton ? intval($numeroCarton) : 1; // valor por defecto si no hay número
-            $urlDirecta = 'mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
+            $urlDirecta = 'https://white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
             Log::info("Error en descarga normal. Último intento: redirección a " . $urlDirecta);
             return redirect($urlDirecta);
         } catch (\Exception $e2) {
