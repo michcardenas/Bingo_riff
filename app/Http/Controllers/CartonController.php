@@ -377,7 +377,8 @@ public function descargar($reservaId, $numeroCarton = null) {
             return redirect($urlDirecta);
         }
         
-        if ($extension === 'jpg' && isset($reservaEncontrada)) {
+        // ✅ APLICAR MARCA DE AGUA (LÓGICA CORREGIDA COMO EL MÉTODO descargarCarton)
+        if ($extension === 'jpg' && $reservaEncontrada) {
             try {
                 Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
         
@@ -399,20 +400,13 @@ public function descargar($reservaId, $numeroCarton = null) {
                                                         ->where('eliminado', 0)
                                                         ->whereNotNull('nombre')
                                                         ->where('nombre', '!=', '')
-                                                        ->orderBy('id', 'desc') // Ordenar por ID descendente para tomar la más reciente
+                                                        ->orderBy('id', 'desc')
                                                         ->get();
                             
                             Log::info("Buscando nombre por celular como fallback: " . $reservaEncontrada->celular);
                             Log::info("Reservas encontradas con mismo celular que tienen nombre: " . count($reservasPorCelular));
                             
                             if ($reservasPorCelular->isNotEmpty()) {
-                                // Loggear las reservas encontradas para diagnóstico
-                                foreach ($reservasPorCelular as $index => $reserva) {
-                                    Log::info("Reserva fallback #" . ($index + 1) . " - ID: " . $reserva->id . 
-                                             ", Nombre: '" . $reserva->nombre . "'" .
-                                             ", Fecha creación: " . $reserva->created_at);
-                                }
-                                
                                 // Buscar nombres completos (que contengan al menos un espacio)
                                 $nombreCompleto = null;
                                 foreach ($reservasPorCelular as $reserva) {
@@ -446,89 +440,22 @@ public function descargar($reservaId, $numeroCarton = null) {
                     Log::info("No se encontró nombre, usando identificador por defecto: '" . $nombrePropietario . "'");
                 }
                 
-                // Truncar el nombre si es demasiado largo para evitar que se salga
-                $maxLongitudNombre = 500; // Ajustar según sea necesario
-                
-                // En la parte donde se determina el nombre del bingo
-                Log::info("Intentando obtener el nombre del bingo correcto para la ID: " . $reservaEncontrada->bingo_id);
-
-                // Primero, veamos si la reserva tiene un bingo_id
-                if (!empty($reservaEncontrada->bingo_id)) {
-                    // Consulta detallada que busca bingos activos o cerrados, ordenados por fecha
-                    $bingoQuery = "
-                        SELECT id, nombre, estado, created_at 
-                        FROM bingos 
-                        WHERE id = ? 
-                        AND (estado = 'abierto' OR estado = 'cerrado')
-                        ORDER BY created_at DESC
-                        LIMIT 1
-                    ";
-                    
-                    // Registramos la consulta
-                    Log::info("Consulta SQL para bingo: " . $bingoQuery);
-                    Log::info("Buscando bingo con ID: " . $reservaEncontrada->bingo_id);
-                    
-                    $bingoResultado = DB::select($bingoQuery, [$reservaEncontrada->bingo_id]);
-                    
-                    if (!empty($bingoResultado)) {
-                        $bingoEncontrado = $bingoResultado[0];
-                        $nombreBingo = $bingoEncontrado->nombre;
-                        
-                        Log::info("Bingo encontrado - ID: " . $bingoEncontrado->id . 
-                                ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
-                                ", Estado: " . $bingoEncontrado->estado . 
-                                ", Fecha: " . $bingoEncontrado->created_at);
-                    } else {
-                        // Si no hay resultados, buscamos cualquier bingo con esa ID
-                        $bingoQuery2 = "SELECT id, nombre, estado, created_at FROM bingos WHERE id = ? LIMIT 1";
-                        $bingoResultado2 = DB::select($bingoQuery2, [$reservaEncontrada->bingo_id]);
-                        
-                        if (!empty($bingoResultado2)) {
-                            $bingoEncontrado = $bingoResultado2[0];
-                            $nombreBingo = $bingoEncontrado->nombre;
-                            
-                            Log::info("Bingo encontrado (segunda búsqueda) - ID: " . $bingoEncontrado->id . 
-                                    ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
-                                    ", Estado: " . $bingoEncontrado->estado . 
-                                    ", Fecha: " . $bingoEncontrado->created_at);
-                        } else {
-                            $nombreBingo = "Bingo RIFFY";
-                            Log::info("No se encontró ningún bingo con ID: " . $reservaEncontrada->bingo_id . ". Usando nombre por defecto.");
-                        }
-                    }
+                // Obtener nombre del bingo de forma similar al método descargarCarton
+                $nombreBingo = "";
+                if ($reservaEncontrada->bingo_id && $reservaEncontrada->bingo) {
+                    $nombreBingo = $reservaEncontrada->bingo->nombre;
                 } else {
-                    // Si no hay bingo_id, intentamos buscar el bingo más reciente
-                    $bingoQuery = "
-                        SELECT id, nombre, estado, created_at 
-                        FROM bingos 
-                        WHERE estado = 'abierto' OR estado = 'cerrado'
-                        ORDER BY created_at DESC
-                        LIMIT 1
-                    ";
-                    
-                    $bingoResultado = DB::select($bingoQuery);
-                    
-                    if (!empty($bingoResultado)) {
-                        $bingoEncontrado = $bingoResultado[0];
-                        $nombreBingo = $bingoEncontrado->nombre;
-                        
-                        Log::info("Usando bingo más reciente - ID: " . $bingoEncontrado->id . 
-                                ", Nombre: '" . $bingoEncontrado->nombre . "'" . 
-                                ", Estado: " . $bingoEncontrado->estado . 
-                                ", Fecha: " . $bingoEncontrado->created_at);
-                    } else {
-                        $nombreBingo = "Bingo RIFFY";
-                        Log::info("No se encontraron bingos activos o cerrados. Usando nombre por defecto.");
-                    }
+                    $nombreBingo = "Bingo RIFFY";
                 }
-
-                // Verificar el valor final
-                Log::info("Nombre del bingo final: " . $nombreBingo);
+                Log::info("Nombre del bingo: " . $nombreBingo);
                 
-                // Truncar el nombre del bingo si es demasiado largo
+                // Truncar textos si son muy largos
+                $maxLongitudNombre = 50;
+                if (mb_strlen($nombrePropietario) > $maxLongitudNombre) {
+                    $nombrePropietario = mb_substr($nombrePropietario, 0, $maxLongitudNombre) . '...';
+                }
                 if (mb_strlen($nombreBingo) > $maxLongitudNombre) {
                     $nombreBingo = mb_substr($nombreBingo, 0, $maxLongitudNombre) . '...';
-                    Log::info("Nombre del bingo truncado por longitud excesiva: " . $nombreBingo);
                 }
                 
                 // Formatear textos para la marca de agua
@@ -563,18 +490,16 @@ public function descargar($reservaId, $numeroCarton = null) {
                 
                 // Márgenes y posiciones
                 $margenDerecho = 200;
-                $margenIzquierdo = 20; // Para asegurar que el texto no se salga por la izquierda
+                $margenIzquierdo = 20;
                 
                 // Calcular el ancho máximo disponible para el texto
                 $maxTextWidth = $width - $margenDerecho - $margenIzquierdo;
                 
-                // Asegurarnos de que el texto no se salga por la izquierda
+                // Ajustar texto del bingo si es muy largo
                 $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
                 $textWidth1 = $bbox1[2] - $bbox1[0];
                 
-                // Si el texto es más ancho que el espacio disponible, lo reducimos
                 if ($textWidth1 > $maxTextWidth) {
-                    // Reducir el texto gradualmente hasta que quepa
                     $tempTextoBingo = $textoBingo;
                     while ($textWidth1 > $maxTextWidth && mb_strlen($tempTextoBingo) > 10) {
                         $tempTextoBingo = mb_substr($tempTextoBingo, 0, mb_strlen($tempTextoBingo) - 1);
@@ -582,10 +507,9 @@ public function descargar($reservaId, $numeroCarton = null) {
                         $textWidth1 = $bbox1[2] - $bbox1[0];
                     }
                     $textoBingo = $tempTextoBingo . "...";
-                    Log::info("Texto bingo ajustado para caber: " . $textoBingo);
                 }
                 
-                // Lo mismo para el nombre
+                // Ajustar texto del nombre si es muy largo
                 $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
                 $textWidth2 = $bbox2[2] - $bbox2[0];
                 
@@ -597,7 +521,6 @@ public function descargar($reservaId, $numeroCarton = null) {
                         $textWidth2 = $bbox2[2] - $bbox2[0];
                     }
                     $textoNombre = $tempTextoNombre . "...";
-                    Log::info("Texto nombre ajustado para caber: " . $textoNombre);
                 }
                 
                 // Calcular posiciones finales
