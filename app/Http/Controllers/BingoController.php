@@ -199,140 +199,195 @@ Log::info('Archivo subido correctamente', [
         return back()->with('status', 'Reserva rechazada correctamente.');
     }
 
-    public function buscarGanador(Request $request, $bingoId) 
-    { 
-        $serie = $request->input('serie'); 
-        $datos = null; 
+  public function buscarGanador(Request $request, $bingoId) 
+{ 
+    $serie = $request->input('serie'); 
+    $datos = null; 
+    $infoSerie = null; // Nueva variable para información de la serie
+    $infoCarton = null; // Nueva variable para información del cartón
+    
+    Log::info('--------- INICIO BÚSQUEDA DE GANADOR ---------');
+    Log::info('Buscando serie: ' . $serie . ' en bingo ID: ' . $bingoId);
+    
+    if ($serie) { 
+        // Normalizar la serie (quitar ceros iniciales para comparaciones adicionales)
+        $serieNormalizada = ltrim($serie, '0');
+        Log::info('Serie normalizada (sin ceros iniciales): ' . $serieNormalizada);
         
-        Log::info('--------- INICIO BÚSQUEDA DE GANADOR ---------');
-        Log::info('Buscando serie: ' . $serie . ' en bingo ID: ' . $bingoId);
+        // 1. Buscar en la tabla Series para obtener el cartón correspondiente
+        Log::info('Buscando serie en la tabla Series');
         
-        if ($serie) { 
-            // Normalizar la serie (quitar ceros iniciales para comparaciones adicionales)
-            $serieNormalizada = ltrim($serie, '0');
-            Log::info('Serie normalizada (sin ceros iniciales): ' . $serieNormalizada);
+        $serieQuery1 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serie . "\"') LIMIT 1";
+        Log::info('Consulta SQL 1: ' . $serieQuery1);
+        $serieResultado1 = DB::select($serieQuery1);
+        
+        if (empty($serieResultado1)) {
+            $serieQuery2 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieNormalizada . "\"') LIMIT 1";
+            Log::info('Consulta SQL 2: ' . $serieQuery2);
+            $serieResultado2 = DB::select($serieQuery2);
             
-            // 1. Buscar en la tabla Series para obtener el cartón correspondiente
-            Log::info('Buscando serie en la tabla Series');
-            
-            $serieQuery1 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serie . "\"') LIMIT 1";
-            Log::info('Consulta SQL 1: ' . $serieQuery1);
-            $serieResultado1 = DB::select($serieQuery1);
-            
-            if (empty($serieResultado1)) {
-                $serieQuery2 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieNormalizada . "\"') LIMIT 1";
-                Log::info('Consulta SQL 2: ' . $serieQuery2);
-                $serieResultado2 = DB::select($serieQuery2);
-                
-                if (!empty($serieResultado2)) {
-                    $serieResultado = $serieResultado2[0];
-                    Log::info('Serie encontrada con búsqueda normalizada (sin ceros iniciales)');
-                } else {
-                    $seriesQuery = "SELECT id, series, carton FROM series LIMIT 10";
-                    $ejemploSeries = DB::select($seriesQuery);
-                    Log::info('No se encontró la serie. Mostrando ejemplos de series en la BD:');
-                    foreach ($ejemploSeries as $s) {
-                        Log::info('Serie ID: ' . $s->id . ', Series: ' . $s->series . ', Cartón: ' . $s->carton);
-                    }
-                    
-                    Log::info('No se encontró la serie: ' . $serie);
-                    $serieResultado = null;
-                }
+            if (!empty($serieResultado2)) {
+                $serieResultado = $serieResultado2[0];
+                Log::info('Serie encontrada con búsqueda normalizada (sin ceros iniciales)');
             } else {
-                $serieResultado = $serieResultado1[0];
-                Log::info('Serie encontrada con búsqueda exacta');
+                $seriesQuery = "SELECT id, series, carton FROM series LIMIT 10";
+                $ejemploSeries = DB::select($seriesQuery);
+                Log::info('No se encontró la serie. Mostrando ejemplos de series en la BD:');
+                foreach ($ejemploSeries as $s) {
+                    Log::info('Serie ID: ' . $s->id . ', Series: ' . $s->series . ', Cartón: ' . $s->carton);
+                }
+                
+                Log::info('No se encontró la serie: ' . $serie);
+                $serieResultado = null;
+            }
+        } else {
+            $serieResultado = $serieResultado1[0];
+            Log::info('Serie encontrada con búsqueda exacta');
+        }
+        
+        if ($serieResultado) {
+            $carton = $serieResultado->carton;
+            Log::info('Cartón encontrado: ' . $carton);
+            
+            // ✅ PREPARAR INFORMACIÓN DE LA SERIE Y CARTÓN
+            $infoSerie = [
+                'serie_buscada' => $serie,
+                'serie_encontrada' => $serieResultado->series,
+                'carton_numero' => $carton,
+                'todas_las_series' => json_decode($serieResultado->series, true) ?: []
+            ];
+            
+            // ✅ OBTENER INFORMACIÓN DETALLADA DEL CARTÓN SI EXISTE TABLA DE CARTONES
+            try {
+                // Buscar información del cartón en una tabla de cartones (si existe)
+                $cartonQuery = "SELECT * FROM cartones WHERE numero = ? LIMIT 1";
+                $cartonResultado = DB::select($cartonQuery, [$carton]);
+                
+                if (!empty($cartonResultado)) {
+                    $cartonInfo = $cartonResultado[0];
+                    $infoCarton = [
+                        'numero' => $carton,
+                        'numeros_b' => isset($cartonInfo->numeros_b) ? json_decode($cartonInfo->numeros_b, true) : [],
+                        'numeros_i' => isset($cartonInfo->numeros_i) ? json_decode($cartonInfo->numeros_i, true) : [],
+                        'numeros_n' => isset($cartonInfo->numeros_n) ? json_decode($cartonInfo->numeros_n, true) : [],
+                        'numeros_g' => isset($cartonInfo->numeros_g) ? json_decode($cartonInfo->numeros_g, true) : [],
+                        'numeros_o' => isset($cartonInfo->numeros_o) ? json_decode($cartonInfo->numeros_o, true) : [],
+                    ];
+                    Log::info('Información del cartón obtenida exitosamente');
+                } else {
+                    Log::info('No se encontró información detallada del cartón en tabla cartones');
+                    $infoCarton = [
+                        'numero' => $carton,
+                        'mensaje' => 'Cartón encontrado pero sin información detallada de números'
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::info('No existe tabla de cartones o error al consultar: ' . $e->getMessage());
+                $infoCarton = [
+                    'numero' => $carton,
+                    'mensaje' => 'Información de números no disponible'
+                ];
             }
             
-            if ($serieResultado) {
-                $carton = $serieResultado->carton;
-                Log::info('Cartón encontrado: ' . $carton);
+            // Buscar en reservas que tengan el cartón EN ESTE BINGO
+            // SOLUCIÓN: Usar LIKE en vez de JSON_CONTAINS debido al formato especial
+            $reservaQuery = "SELECT * FROM reservas WHERE bingo_id = ? AND series LIKE ? LIMIT 1";
+            Log::info('Consulta SQL Reserva: ' . $reservaQuery);
+            $reservaResultado = DB::select($reservaQuery, [$bingoId, '%' . $carton . '%']);
+            
+            if (empty($reservaResultado)) {
+                // Intentar con la versión normalizada
+                $cartonNormalizado = ltrim($carton, '0');
+                $reservaQuery2 = "SELECT * FROM reservas WHERE bingo_id = ? AND series LIKE ? LIMIT 1";
+                Log::info('Consulta SQL Reserva 2: ' . $reservaQuery2);
+                $reservaResultado = DB::select($reservaQuery2, [$bingoId, '%' . $cartonNormalizado . '%']);
+            }
+            
+            // Nueva alternativa: Probar extrayendo el primer valor del array
+            if (empty($reservaResultado)) {
+                // Buscar todas las reservas para este bingo y hacer un filtrado manual
+                $reservasQuery = "SELECT * FROM reservas WHERE bingo_id = ?";
+                $todasReservas = DB::select($reservasQuery, [$bingoId]);
                 
-                // Buscar en reservas que tengan el cartón EN ESTE BINGO
-                // SOLUCIÓN: Usar LIKE en vez de JSON_CONTAINS debido al formato especial
-                $reservaQuery = "SELECT * FROM reservas WHERE bingo_id = ? AND series LIKE ? LIMIT 1";
-                Log::info('Consulta SQL Reserva: ' . $reservaQuery);
-                $reservaResultado = DB::select($reservaQuery, [$bingoId, '%' . $carton . '%']);
-                
-                if (empty($reservaResultado)) {
-                    // Intentar con la versión normalizada
-                    $cartonNormalizado = ltrim($carton, '0');
-                    $reservaQuery2 = "SELECT * FROM reservas WHERE bingo_id = ? AND series LIKE ? LIMIT 1";
-                    Log::info('Consulta SQL Reserva 2: ' . $reservaQuery2);
-                    $reservaResultado = DB::select($reservaQuery2, [$bingoId, '%' . $cartonNormalizado . '%']);
-                }
-                
-                // Nueva alternativa: Probar extrayendo el primer valor del array
-                if (empty($reservaResultado)) {
-                    // Buscar todas las reservas para este bingo y hacer un filtrado manual
-                    $reservasQuery = "SELECT * FROM reservas WHERE bingo_id = ?";
-                    $todasReservas = DB::select($reservasQuery, [$bingoId]);
+                foreach ($todasReservas as $r) {
+                    Log::info('Analizando reserva ID: ' . $r->id . ', Series: ' . $r->series);
                     
-                    foreach ($todasReservas as $r) {
-                        Log::info('Analizando reserva ID: ' . $r->id . ', Series: ' . $r->series);
-                        
-                        // Intentar decodificar el JSON, considerando que puede estar doblemente codificado
-                        $seriesStr = $r->series;
-                        
-                        // Intento 1: Decodificar una vez
-                        $decodedOnce = json_decode($seriesStr, true);
-                        
-                        // Intento 2: Decodificar dos veces si es necesario
-                        $decodedTwice = null;
-                        if (is_string($decodedOnce)) {
-                            $decodedTwice = json_decode($decodedOnce, true);
-                        }
-                        
-                        $seriesArray = is_array($decodedOnce) ? $decodedOnce : 
-                                     (is_array($decodedTwice) ? $decodedTwice : []);
-                        
-                        Log::info('Series decodificadas: ' . json_encode($seriesArray));
-                        
-                        // Buscar si contiene el cartón
-                        if (in_array($carton, $seriesArray) || in_array($cartonNormalizado, $seriesArray)) {
-                            Log::info('¡Reserva encontrada manualmente! ID: ' . $r->id);
-                            $reservaResultado = [$r];
-                            break;
-                        }
-                    }
-                }
-                
-                if (!empty($reservaResultado)) {
-                    Log::info('Reserva encontrada');
-                    $reservaEncontrada = $reservaResultado[0];
+                    // Intentar decodificar el JSON, considerando que puede estar doblemente codificado
+                    $seriesStr = $r->series;
                     
-                    // Convertir el objeto StdClass a un modelo Reserva
-                    $datos = new Reserva();
-                    foreach ((array)$reservaEncontrada as $key => $value) {
-                        $datos->$key = $value;
+                    // Intento 1: Decodificar una vez
+                    $decodedOnce = json_decode($seriesStr, true);
+                    
+                    // Intento 2: Decodificar dos veces si es necesario
+                    $decodedTwice = null;
+                    if (is_string($decodedOnce)) {
+                        $decodedTwice = json_decode($decodedOnce, true);
                     }
-                } else {
-                    // Diagnóstico: Listar todas las reservas para este bingo
-                    $reservasQuery = "SELECT id, series, nombre FROM reservas WHERE bingo_id = ? LIMIT 10";
-                    $todasReservas = DB::select($reservasQuery, [$bingoId]);
-                    Log::info('No se encontró reserva. Mostrando reservas en el bingo ' . $bingoId . ':');
-                    foreach ($todasReservas as $r) {
-                        Log::info('Reserva ID: ' . $r->id . ', Series: ' . $r->series . ', Nombre: ' . $r->nombre);
+                    
+                    $seriesArray = is_array($decodedOnce) ? $decodedOnce : 
+                                 (is_array($decodedTwice) ? $decodedTwice : []);
+                    
+                    Log::info('Series decodificadas: ' . json_encode($seriesArray));
+                    
+                    // Buscar si contiene el cartón
+                    if (in_array($carton, $seriesArray) || in_array($cartonNormalizado, $seriesArray)) {
+                        Log::info('¡Reserva encontrada manualmente! ID: ' . $r->id);
+                        $reservaResultado = [$r];
+                        break;
                     }
                 }
             }
-        } 
-        
-        // Obtener ganadores de este bingo para mostrar en tabla 
-        $ganadores = Reserva::where('bingo_id', $bingoId) 
-            ->where('ganador', 1) 
-            ->orderByDesc('fecha_ganador') 
-            ->get(); 
-        
-        Log::info('Total de ganadores encontrados: ' . $ganadores->count());
-        Log::info('--------- FIN BÚSQUEDA DE GANADOR ---------');
-        
-        return view('admin.bingos.buscar-ganador', [ 
-            'datos' => $datos, 
-            'serieBuscada' => $serie, 
-            'bingoId' => $bingoId, 
-            'ganadores' => $ganadores,
-        ]); 
-    }
+            
+            if (!empty($reservaResultado)) {
+                Log::info('Reserva encontrada');
+                $reservaEncontrada = $reservaResultado[0];
+                
+                // Convertir el objeto StdClass a un modelo Reserva
+                $datos = new Reserva();
+                foreach ((array)$reservaEncontrada as $key => $value) {
+                    $datos->$key = $value;
+                }
+                
+                // ✅ AGREGAR INFORMACIÓN DE PROPIEDAD A LA INFO DE SERIE
+                $infoSerie['propietario'] = [
+                    'nombre' => $datos->nombre,
+                    'celular' => $datos->celular,
+                    'es_ganador' => $datos->ganador == 1,
+                    'premio' => $datos->premio
+                ];
+            } else {
+                // Diagnóstico: Listar todas las reservas para este bingo
+                $reservasQuery = "SELECT id, series, nombre FROM reservas WHERE bingo_id = ? LIMIT 10";
+                $todasReservas = DB::select($reservasQuery, [$bingoId]);
+                Log::info('No se encontró reserva. Mostrando reservas en el bingo ' . $bingoId . ':');
+                foreach ($todasReservas as $r) {
+                    Log::info('Reserva ID: ' . $r->id . ', Series: ' . $r->series . ', Nombre: ' . $r->nombre);
+                }
+                
+                // ✅ MARCAR QUE NO SE ENCONTRÓ PROPIETARIO
+                $infoSerie['propietario'] = null;
+            }
+        }
+    } 
+    
+    // Obtener ganadores de este bingo para mostrar en tabla 
+    $ganadores = Reserva::where('bingo_id', $bingoId) 
+        ->where('ganador', 1) 
+        ->orderByDesc('fecha_ganador') 
+        ->get(); 
+    
+    Log::info('Total de ganadores encontrados: ' . $ganadores->count());
+    Log::info('--------- FIN BÚSQUEDA DE GANADOR ---------');
+    
+    return view('admin.bingos.buscar-ganador', [ 
+        'datos' => $datos, 
+        'infoSerie' => $infoSerie, // ✅ Nueva variable
+        'infoCarton' => $infoCarton, // ✅ Nueva variable
+        'serieBuscada' => $serie, 
+        'bingoId' => $bingoId, 
+        'ganadores' => $ganadores,
+    ]); 
+}
     
 
     public function buscarGanadorConBingo(Request $request, $bingoId)
