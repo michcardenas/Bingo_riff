@@ -277,7 +277,7 @@ public function descargar($reservaId, $numeroCarton = null) {
                 base_path('../public_html/TablasbingoRIFFY'),
                 $_SERVER['DOCUMENT_ROOT'] . '/TablasbingoRIFFY',
                 dirname($_SERVER['SCRIPT_FILENAME']) . '/TablasbingoRIFFY',
-                '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY'
+                '/home/u690165375/domains/white-dragonfly-473649.hostingersite.com/public_html/TablasbingoRIFFY'
             ];
             
             foreach ($alternativas as $ruta) {
@@ -350,7 +350,7 @@ public function descargar($reservaId, $numeroCarton = null) {
                     Log::warning("No se encontró ningún archivo que coincida con el patrón: " . $patronBusqueda);
                     
                     // Plan B: Usar URL directa en caso de que no se encuentre
-                    $urlDirecta = 'mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
+                    $urlDirecta = 'white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
                     Log::info("Redirigiendo a URL directa: " . $urlDirecta);
                     return redirect($urlDirecta);
                 }
@@ -368,7 +368,7 @@ public function descargar($reservaId, $numeroCarton = null) {
             Log::error("El archivo existe pero no es legible: " . $rutaCompleta);
             
             // Plan B: Usar URL directa en caso de que el archivo no sea legible
-            $urlDirecta = 'mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
+            $urlDirecta = 'white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
             Log::info("Redirigiendo a URL directa: " . $urlDirecta);
             return redirect($urlDirecta);
         }
@@ -376,7 +376,7 @@ public function descargar($reservaId, $numeroCarton = null) {
         // Plan B: usar URL directa si la descarga falla
         if (!file_exists($rutaCompleta) || filesize($rutaCompleta) == 0) {
             Log::warning("Archivo no disponible o vacío, redirigiendo a URL directa");
-            $urlDirecta = 'mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
+            $urlDirecta = 'white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.' . $extension;
             return redirect($urlDirecta);
         }
         
@@ -589,7 +589,7 @@ public function descargar($reservaId, $numeroCarton = null) {
         // Plan B final: intentar redireccionar directamente como último recurso
         try {
             $numeroParaArchivo = $numeroCarton ? intval($numeroCarton) : 1; // valor por defecto si no hay número
-            $urlDirecta = 'mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
+            $urlDirecta = 'white-dragonfly-473649.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
             Log::info("Error en descarga normal. Último intento: redirección a " . $urlDirecta);
             return redirect($urlDirecta);
         } catch (\Exception $e2) {
