@@ -1824,7 +1824,7 @@ public function descargarCarton($bingoId, $serie)
                 $fontSize = 16;
                 
                 // Márgenes y posiciones
-                $margenDerecho = 900;
+                $margenDerecho = 200;
                 $margenIzquierdo = 20;
                 
                 // Calcular el ancho máximo disponible para el texto
