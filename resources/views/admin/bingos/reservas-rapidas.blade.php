@@ -68,11 +68,11 @@
 </div>
 <div class="mt-3 d-flex justify-content-end gap-2">
 
-@if(strtolower($bingo->estado) !== 'archivado' && strtolower($bingo->estado) !== 'cerrado')
-    <a href="{{ route('bingos.reservas.create', $bingoId) }}" class="btn btn-sm btn-outline-success">
-        <i class="bi bi-plus-circle"></i> Crear Nuevo
-    </a>
-@endif
+    @if(strtolower($bingo->estado) !== 'archivado' && strtolower($bingo->estado) !== 'cerrado')
+        <a href="{{ route('bingos.reservas.create', $bingoId) }}" class="btn btn-sm btn-outline-success">
+            <i class="bi bi-plus-circle"></i> Crear Nuevo
+        </a>
+    @endif
 
     <a href="{{ route('bingos.reservas.duplicadas', $bingoId) }}" class="btn btn-sm btn-outline-warning">
         <i class="bi bi-exclamation-triangle"></i> Comprobantes Duplicados
