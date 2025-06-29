@@ -15,7 +15,7 @@ use App\Exports\AprobadosExport;
 class BingoController extends Controller
 {
     public function store(Request $request)
-    {
+ {
         Log::info('Iniciando proceso de reserva', ['request' => $request->all()]);
     
         try {
@@ -66,10 +66,10 @@ class BingoController extends Controller
                     }
     
                   // Ruta de destino para comprobantes en producción
-            $pathProduccion = '/home/u690165375/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+$pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
 
             // Verificar si estamos en producción o local con base en el path base real
-            $isProduccion = strpos(base_path(), '/home/u690165375/domains/white-dragonfly-473649.hostingersite.com') !== false;
+$isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
             $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
 
             Log::info("Destino para guardar imagen", [
@@ -178,7 +178,7 @@ class BingoController extends Controller
                 ->withInput()
                 ->with('error', 'Ocurrió un error al procesar tu reserva. ' . $e->getMessage());
         }
-    }
+}
     
 public function exportarRechazadosExcel($bingoId) 
 {
