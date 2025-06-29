@@ -66,11 +66,10 @@ class BingoController extends Controller
                     }
     
                   // Ruta de destino para comprobantes en producción
-$pathProduccion = '/home/u861598707/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
+$pathProduccion = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
 
 // Verificar si estamos en producción o local con base en el path base real
-$isProduccion = strpos(base_path(), '/home/u861598707/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
-
+$isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
 $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
 
 Log::info("Destino para guardar imagen", [
