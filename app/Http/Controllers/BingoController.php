@@ -66,25 +66,25 @@ class BingoController extends Controller
                     }
     
                   // Ruta de destino para comprobantes en producción
-$pathProduccion = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
+            $pathProduccion = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
 
-// Verificar si estamos en producción o local con base en el path base real
-$isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
-$destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+            // Verificar si estamos en producción o local con base en el path base real
+            $isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
+            $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
 
-Log::info("Destino para guardar imagen", [
-    'isProduccion' => $isProduccion,
-    'destino' => $destino
-]);
+            Log::info("Destino para guardar imagen", [
+                'isProduccion' => $isProduccion,
+                'destino' => $destino
+            ]);
 
-$filename = time() . '_' . $file->getClientOriginalName();
-$file->move($destino, $filename);
-$rutaRelativa = 'comprobantes/' . $filename;
-$rutasArchivos[] = $rutaRelativa;
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move($destino, $filename);
+            $rutaRelativa = 'comprobantes/' . $filename;
+            $rutasArchivos[] = $rutaRelativa;
 
-Log::info('Archivo subido correctamente', [
-    'archivo' => $rutaRelativa
-]);
+            Log::info('Archivo subido correctamente', [
+                'archivo' => $rutaRelativa
+            ]);
 
                 }
             } else {
@@ -1625,7 +1625,7 @@ public function descargarCarton($bingoId, $serie)
             }
         }
         
-        // Definir rutas de archivos con directorio absoluto
+        // Definir rutas de archivos con directorio absoluto - USER ID CORREGIDO
         $directorioBingo = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY';
         $rutaJpg = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.jpg';
         $rutaPdf = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.pdf';
@@ -1820,55 +1820,78 @@ public function descargarCarton($bingoId, $serie)
                     throw new \Exception("No se encontró la fuente en $fuente");
                 }
                 
-                // Tamaño de la fuente
-                $fontSize = 16;
+                // Tamaño de la fuente (reducir si es necesario)
+                $fontSize = 14; // Reducido de 16 a 14
                 
-                // Márgenes y posiciones
-                $margenDerecho = 300;
-                $margenIzquierdo = 50;
+                // Márgenes mejorados para mover hacia la IZQUIERDA
+                $margenDerecho = 400;  // AUMENTADO para mover texto hacia la izquierda
+                $margenIzquierdo = 50; // Más margen izquierdo
+                $margenSuperior = 170; // Posición Y inicial
+                $espacioEntreLineas = 25; // Espacio entre líneas
                 
                 // Calcular el ancho máximo disponible para el texto
                 $maxTextWidth = $width - $margenDerecho - $margenIzquierdo;
                 
-                // Ajustar texto del bingo si es muy largo
+                // Si el texto es muy largo, reducir el tamaño de fuente
                 $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
                 $textWidth1 = $bbox1[2] - $bbox1[0];
                 
+                $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
+                $textWidth2 = $bbox2[2] - $bbox2[0];
+                
+                // Si cualquier texto es muy largo, reducir fuente
+                if ($textWidth1 > $maxTextWidth || $textWidth2 > $maxTextWidth) {
+                    $fontSize = 12; // Reducir aún más
+                    Log::info("Texto muy largo, reduciendo fuente a {$fontSize}");
+                    
+                    // Recalcular con nueva fuente
+                    $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
+                    $textWidth1 = $bbox1[2] - $bbox1[0];
+                    
+                    $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
+                    $textWidth2 = $bbox2[2] - $bbox2[0];
+                }
+                
+                // Ajustar texto del bingo si sigue siendo muy largo
                 if ($textWidth1 > $maxTextWidth) {
                     $tempTextoBingo = $textoBingo;
-                    while ($textWidth1 > $maxTextWidth && mb_strlen($tempTextoBingo) > 10) {
-                        $tempTextoBingo = mb_substr($tempTextoBingo, 0, mb_strlen($tempTextoBingo) - 1);
+                    while ($textWidth1 > $maxTextWidth && mb_strlen($tempTextoBingo) > 15) {
+                        $tempTextoBingo = mb_substr($tempTextoBingo, 0, mb_strlen($tempTextoBingo) - 4);
                         $bbox1 = imagettfbbox($fontSize, 0, $fuente, $tempTextoBingo . "...");
                         $textWidth1 = $bbox1[2] - $bbox1[0];
                     }
                     $textoBingo = $tempTextoBingo . "...";
+                    Log::info("Texto bingo truncado: " . $textoBingo);
                 }
                 
-                // Ajustar texto del nombre si es muy largo
-                $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
-                $textWidth2 = $bbox2[2] - $bbox2[0];
-                
+                // Ajustar texto del nombre si sigue siendo muy largo
                 if ($textWidth2 > $maxTextWidth) {
                     $tempTextoNombre = $textoNombre;
-                    while ($textWidth2 > $maxTextWidth && mb_strlen($tempTextoNombre) > 10) {
-                        $tempTextoNombre = mb_substr($tempTextoNombre, 0, mb_strlen($tempTextoNombre) - 1);
+                    while ($textWidth2 > $maxTextWidth && mb_strlen($tempTextoNombre) > 15) {
+                        $tempTextoNombre = mb_substr($tempTextoNombre, 0, mb_strlen($tempTextoNombre) - 4);
                         $bbox2 = imagettfbbox($fontSize, 0, $fuente, $tempTextoNombre . "...");
                         $textWidth2 = $bbox2[2] - $bbox2[0];
                     }
                     $textoNombre = $tempTextoNombre . "...";
+                    Log::info("Texto nombre truncado: " . $textoNombre);
                 }
                 
-                // Calcular posiciones finales
-                $textX1 = $width - $textWidth1 - $margenDerecho;
-                $textX2 = $width - $textWidth2 - $margenDerecho;
+                // Calcular posiciones finales centradas en el área disponible
+                $areaDisponible = $width - $margenIzquierdo - $margenDerecho;
+                $textX1 = $margenIzquierdo + ($areaDisponible - $textWidth1) / 2;
+                $textX2 = $margenIzquierdo + ($areaDisponible - $textWidth2) / 2;
                 
-                // Asegurarse de que el texto no se salga de la imagen
-                $textX1 = max($margenIzquierdo, $textX1);
-                $textX2 = max($margenIzquierdo, $textX2);
+                // Asegurarse de que el texto esté dentro de los límites
+                $textX1 = max($margenIzquierdo, min($textX1, $width - $textWidth1 - 20));
+                $textX2 = max($margenIzquierdo, min($textX2, $width - $textWidth2 - 20));
                 
-                // Posición Y para cada línea
-                $textY1 = 170;
-                $textY2 = 200;
+                // Posiciones Y
+                $textY1 = $margenSuperior;
+                $textY2 = $margenSuperior + $espacioEntreLineas;
+                
+                Log::info("Posiciones finales - Texto1: X={$textX1}, Y={$textY1}, Ancho={$textWidth1}");
+                Log::info("Posiciones finales - Texto2: X={$textX2}, Y={$textY2}, Ancho={$textWidth2}");
+                Log::info("Dimensiones imagen: {$width}x{$height}");
                 
                 // Añadir sombreado para mejor visibilidad (1px offset)
                 imagettftext($sourceImage, $fontSize, 0, $textX1+1, $textY1+1, $shadowColor, $fuente, $textoBingo);
