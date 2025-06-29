@@ -1626,7 +1626,7 @@ public function descargarCarton($bingoId, $serie)
         }
         
         // Definir rutas de archivos con directorio absoluto
-        $directorioBingo = '/home/u861598707/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY';
+        $directorioBingo = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY';
         $rutaJpg = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.jpg';
         $rutaPdf = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.pdf';
         
@@ -1824,8 +1824,8 @@ public function descargarCarton($bingoId, $serie)
                 $fontSize = 16;
                 
                 // Márgenes y posiciones
-                $margenDerecho = 200;
-                $margenIzquierdo = 20;
+                $margenDerecho = 300;
+                $margenIzquierdo = 50;
                 
                 // Calcular el ancho máximo disponible para el texto
                 $maxTextWidth = $width - $margenDerecho - $margenIzquierdo;
