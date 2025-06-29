@@ -181,9 +181,125 @@ Log::info('Archivo subido correctamente', [
         }
     }
     
-    public function exportarRechazadosExcel($bingoId)
+public function exportarRechazadosExcel($bingoId) 
 {
-    return Excel::download(new RechazadosExport($bingoId), 'reservas_rechazadas.xlsx');
+    // Verificar si el bingo existe
+    $bingo = Bingo::findOrFail($bingoId);
+
+    // Obtener las reservas rechazadas para este bingo
+    $reservasRechazadas = Reserva::where('bingo_id', $bingoId)
+        ->where('estado', 'rechazado')
+        ->get();
+
+    // Obtener los cartones rechazados individuales
+    $cartonesRechazados = DB::table('cartones_rechazados')
+        ->where('bingo_id', $bingoId)
+        ->orderBy('fecha_rechazo', 'desc')
+        ->get();
+
+    // Procesar datos para el Excel - usando la misma lógica unificada
+    $datosExcel = [];
+    
+    // 1. Procesar reservas rechazadas completas
+    foreach ($reservasRechazadas as $reserva) {
+        $series = [];
+        
+        // Procesar las series (si es JSON, convertirlo a array)
+        if (!empty($reserva->series)) {
+            if (is_string($reserva->series)) {
+                $seriesArray = json_decode($reserva->series, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $series = $seriesArray;
+                }
+            } elseif (is_array($reserva->series)) {
+                $series = $reserva->series;
+            }
+        }
+        
+        // Para cada cartón, crear una fila en el Excel
+        foreach ($series as $carton) {
+            // Obtener información de series para este cartón
+            $seriesInfo = "No disponible";
+            $infoSerie = DB::table('series')
+                ->where('carton', $carton)
+                ->orWhere('carton', ltrim($carton, '0'))
+                ->first();
+                
+            if ($infoSerie && isset($infoSerie->series)) {
+                $seriesData = $infoSerie->series;
+                
+                // Si es JSON, decodificarlo
+                if (is_string($seriesData)) {
+                    $seriesArray = json_decode($seriesData, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                        $seriesInfo = implode(', ', $seriesArray);
+                    } else {
+                        $seriesInfo = $seriesData;
+                    }
+                } else {
+                    $seriesInfo = is_array($seriesData) ? implode(', ', $seriesData) : $seriesData;
+                }
+            }
+            
+            // Añadir fila al Excel
+            $datosExcel[] = [
+                'nombre' => $reserva->nombre,
+                'celular' => $reserva->celular,
+                'carton' => $carton,
+                'series' => $seriesInfo,
+                'fecha_reserva' => $reserva->created_at ? $reserva->created_at->format('d/m/Y H:i:s') : '',
+                'estado' => $reserva->estado
+            ];
+        }
+    }
+
+    // 2. Procesar cartones individuales rechazados
+    foreach ($cartonesRechazados as $carton) {
+        // Obtener información de la reserva
+        $reservaInfo = null;
+        if ($carton->reserva_id) {
+            $reservaInfo = Reserva::find($carton->reserva_id);
+        }
+        
+        // Obtener información de series para este cartón
+        $seriesInfo = "No disponible";
+        $info = DB::table('series')
+            ->where('carton', $carton->serie_rechazada)
+            ->orWhere('carton', ltrim($carton->serie_rechazada, '0'))
+            ->first();
+            
+        if ($info && isset($info->series)) {
+            $seriesData = $info->series;
+            
+            // Si es JSON, decodificarlo
+            if (is_string($seriesData)) {
+                $seriesArray = json_decode($seriesData, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $seriesInfo = implode(', ', $seriesArray);
+                } else {
+                    $seriesInfo = $seriesData;
+                }
+            } else {
+                $seriesInfo = is_array($seriesData) ? implode(', ', $seriesData) : $seriesData;
+            }
+        }
+        
+        // Añadir fila al Excel
+        $datosExcel[] = [
+            'nombre' => $reservaInfo ? $reservaInfo->nombre : 'N/A',
+            'celular' => $reservaInfo ? $reservaInfo->celular : 'N/A',
+            'carton' => $carton->serie_rechazada,
+            'series' => $seriesInfo,
+            'fecha_reserva' => $reservaInfo && $reservaInfo->created_at ? $reservaInfo->created_at->format('d/m/Y H:i:s') : 'N/A',
+            'estado' => 'rechazado'
+        ];
+    }
+
+    // Crear nombre del archivo
+    $nombreArchivo = 'rechazados_' . str_replace(' ', '_', $bingo->nombre) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+    // Exportar usando Laravel Excel
+    return Excel::download(new RechazadosExport($datosExcel, $bingo), $nombreArchivo);
 }
 
 
@@ -199,7 +315,7 @@ Log::info('Archivo subido correctamente', [
         return back()->with('status', 'Reserva rechazada correctamente.');
     }
 
-  public function buscarGanador(Request $request, $bingoId) 
+public function buscarGanador(Request $request, $bingoId) 
 { 
     $serie = $request->input('serie'); 
     $datos = null; 
@@ -370,11 +486,91 @@ Log::info('Archivo subido correctamente', [
         }
     } 
     
-    // Obtener ganadores de este bingo para mostrar en tabla 
+    // ✅ OBTENER GANADORES CON INFORMACIÓN DE CARTONES Y SERIES
     $ganadores = Reserva::where('bingo_id', $bingoId) 
         ->where('ganador', 1) 
         ->orderByDesc('fecha_ganador') 
         ->get(); 
+    
+    // ✅ PROCESAR INFORMACIÓN DEL CARTÓN GANADOR ESPECÍFICO PARA CADA GANADOR
+    $ganadoresConCartones = [];
+    foreach ($ganadores as $ganador) {
+        $ganadorData = [
+            'ganador' => $ganador,
+            'carton_ganador' => null
+        ];
+        
+        // Si el ganador tiene serie_ganadora específica, usar esa
+        // Si no, usar la primera serie de su reserva como cartón ganador
+        $serieGanadora = $ganador->serie_ganadora ?? null;
+        
+        if (!$serieGanadora) {
+            // Obtener la primera serie como cartón ganador por defecto
+            $series = [];
+            if (!empty($ganador->series)) {
+                if (is_string($ganador->series)) {
+                    $seriesArray = json_decode($ganador->series, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                        $series = $seriesArray;
+                    }
+                } elseif (is_array($ganador->series)) {
+                    $series = $ganador->series;
+                }
+            }
+            
+            if (!empty($series)) {
+                $serieGanadora = $series[0]; // Tomar la primera como ganadora
+            }
+        }
+        
+        // Buscar información del cartón ganador específico
+        if ($serieGanadora) {
+            // Buscar el cartón que contiene esta serie ganadora
+            $serieQuery = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieGanadora . "\"') LIMIT 1";
+            $serieResultado = DB::select($serieQuery);
+            
+            if (empty($serieResultado)) {
+                // Intentar con la versión normalizada
+                $serieNormalizada = ltrim($serieGanadora, '0');
+                $serieQuery2 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieNormalizada . "\"') LIMIT 1";
+                $serieResultado = DB::select($serieQuery2);
+            }
+            
+            if (!empty($serieResultado)) {
+                $cartonGanador = $serieResultado[0];
+                
+                $cartonInfo = [
+                    'numero' => $cartonGanador->carton,
+                    'serie_ganadora' => $serieGanadora,
+                    'todas_las_series' => json_decode($cartonGanador->series, true) ?: [],
+                    'numeros_detalle' => null
+                ];
+                
+                // Obtener información detallada del cartón ganador
+                try {
+                    $cartonQuery = "SELECT * FROM cartones WHERE numero = ? LIMIT 1";
+                    $cartonResultado = DB::select($cartonQuery, [$cartonGanador->carton]);
+                    
+                    if (!empty($cartonResultado)) {
+                        $cartonDetalle = $cartonResultado[0];
+                        $cartonInfo['numeros_detalle'] = [
+                            'numeros_b' => isset($cartonDetalle->numeros_b) ? json_decode($cartonDetalle->numeros_b, true) : [],
+                            'numeros_i' => isset($cartonDetalle->numeros_i) ? json_decode($cartonDetalle->numeros_i, true) : [],
+                            'numeros_n' => isset($cartonDetalle->numeros_n) ? json_decode($cartonDetalle->numeros_n, true) : [],
+                            'numeros_g' => isset($cartonDetalle->numeros_g) ? json_decode($cartonDetalle->numeros_g, true) : [],
+                            'numeros_o' => isset($cartonDetalle->numeros_o) ? json_decode($cartonDetalle->numeros_o, true) : [],
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // No hay información detallada disponible
+                }
+                
+                $ganadorData['carton_ganador'] = $cartonInfo;
+            }
+        }
+        
+        $ganadoresConCartones[] = $ganadorData;
+    }
     
     Log::info('Total de ganadores encontrados: ' . $ganadores->count());
     Log::info('--------- FIN BÚSQUEDA DE GANADOR ---------');
@@ -385,7 +581,7 @@ Log::info('Archivo subido correctamente', [
         'infoCarton' => $infoCarton, // ✅ Nueva variable
         'serieBuscada' => $serie, 
         'bingoId' => $bingoId, 
-        'ganadores' => $ganadores,
+        'ganadores' => $ganadoresConCartones, // ✅ Ahora con información de cartones
     ]); 
 }
     

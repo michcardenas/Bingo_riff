@@ -136,7 +136,7 @@
     @endif
 
     <h4 class="mt-5 text-secondary"><i class="bi bi-trophy"></i> Ganadores del Bingo</h4>
-    @if($ganadores->count() > 0)
+    @if(count($ganadores) > 0)
         <div class="table-responsive">
             <table class="table table-striped table-hover mt-3 bg-white">
                 <thead class="table-dark">
@@ -145,15 +145,98 @@
                         <th>Celular</th>
                         <th>Premio</th>
                         <th>Fecha</th>
+                        <th>Cartón Ganador</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($ganadores as $ganador)
+                    @foreach ($ganadores as $ganadorData)
                         <tr>
-                            <td>{{ $ganador->nombre }}</td>
-                            <td>{{ $ganador->celular }}</td>
-                            <td><span class="badge bg-success">{{ $ganador->premio }}</span></td>
-                            <td>{{ $ganador->fecha_ganador ? $ganador->fecha_ganador->format('d/m/Y H:i') : '-' }}</td>
+                            <td>{{ $ganadorData['ganador']->nombre }}</td>
+                            <td>{{ $ganadorData['ganador']->celular }}</td>
+                            <td><span class="badge bg-success">{{ $ganadorData['ganador']->premio }}</span></td>
+                            <td>{{ $ganadorData['ganador']->fecha_ganador ? $ganadorData['ganador']->fecha_ganador->format('d/m/Y H:i') : '-' }}</td>
+                            <td>
+                                @if($ganadorData['carton_ganador'])
+                                    <div class="accordion" id="accordion-{{ $ganadorData['ganador']->id }}">
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ $ganadorData['ganador']->id }}" aria-expanded="false">
+                                                    <strong>Cartón #{{ $ganadorData['carton_ganador']['numero'] }}</strong>
+                                                    <span class="ms-2 badge bg-warning">Serie: {{ $ganadorData['carton_ganador']['serie_ganadora'] }}</span>
+                                                </button>
+                                            </h2>
+                                            <div id="collapse-{{ $ganadorData['ganador']->id }}" class="accordion-collapse collapse" data-bs-parent="#accordion-{{ $ganadorData['ganador']->id }}">
+                                                <div class="accordion-body p-3">
+                                                    
+                                                    <!-- Series del cartón ganador -->
+                                                    @if(count($ganadorData['carton_ganador']['todas_las_series']) > 0)
+                                                        <div class="mb-3">
+                                                            <strong class="text-primary">Todas las series del cartón:</strong>
+                                                            <div class="d-flex flex-wrap gap-1 mt-2">
+                                                                @foreach($ganadorData['carton_ganador']['todas_las_series'] as $serie)
+                                                                    <span class="badge {{ $serie == $ganadorData['carton_ganador']['serie_ganadora'] ? 'bg-success' : 'bg-secondary' }}">
+                                                                        {{ $serie }}
+                                                                        @if($serie == $ganadorData['carton_ganador']['serie_ganadora'])
+                                                                            <i class="bi bi-trophy ms-1"></i>
+                                                                        @endif
+                                                                    </span>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                    
+                                                    <!-- Cartón BINGO -->
+                                                    @if($ganadorData['carton_ganador']['numeros_detalle'])
+                                                        <div class="table-responsive">
+                                                            <table class="table table-bordered table-sm text-center" style="font-size: 0.85em;">
+                                                                <thead class="table-secondary">
+                                                                    <tr>
+                                                                        <th style="width: 20%;">B</th>
+                                                                        <th style="width: 20%;">I</th>
+                                                                        <th style="width: 20%;">N</th>
+                                                                        <th style="width: 20%;">G</th>
+                                                                        <th style="width: 20%;">O</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    @for($fila = 0; $fila < 5; $fila++)
+                                                                        <tr>
+                                                                            <td class="py-1 fw-bold">
+                                                                                {{ $ganadorData['carton_ganador']['numeros_detalle']['numeros_b'][$fila] ?? '-' }}
+                                                                            </td>
+                                                                            <td class="py-1 fw-bold">
+                                                                                {{ $ganadorData['carton_ganador']['numeros_detalle']['numeros_i'][$fila] ?? '-' }}
+                                                                            </td>
+                                                                            <td class="py-1 fw-bold">
+                                                                                @if($fila == 2)
+                                                                                    <span class="text-danger">★</span>
+                                                                                @else
+                                                                                    {{ $ganadorData['carton_ganador']['numeros_detalle']['numeros_n'][$fila] ?? '-' }}
+                                                                                @endif
+                                                                            </td>
+                                                                            <td class="py-1 fw-bold">
+                                                                                {{ $ganadorData['carton_ganador']['numeros_detalle']['numeros_g'][$fila] ?? '-' }}
+                                                                            </td>
+                                                                            <td class="py-1 fw-bold">
+                                                                                {{ $ganadorData['carton_ganador']['numeros_detalle']['numeros_o'][$fila] ?? '-' }}
+                                                                            </td>
+                                                                        </tr>
+                                                                    @endfor
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    @else
+                                                    
+                                                    @endif
+                                                    
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="text-muted">Cartón ganador no identificado</span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

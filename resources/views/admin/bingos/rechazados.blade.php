@@ -25,7 +25,7 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
-                    <div class="card-header bg-primary text-white">
+                    <div class="card-header bg-danger text-white">
                         <h5 class="mb-0">
                             Rechazados - Bingo: {{ $bingo->nombre }}
                             <a href="{{ route('bingos.reservas.rechazados.excel', $bingo->id) }}" class="btn btn-sm btn-light float-end">
@@ -52,7 +52,7 @@
                                         $totalRegistros = 0;
                                     @endphp
                                     
-                                    <!-- Cartones de reservas rechazadas -->
+                                    <!-- Cartones rechazados (ahora unificados) -->
                                     @foreach($reservasRechazadas as $reserva)
                                         @foreach($reserva['cartones'] as $carton)
                                             @php
@@ -76,50 +76,21 @@
                                             </tr>
                                         @endforeach
                                     @endforeach
-                                    
-                                    <!-- Cartones rechazados individuales -->
-                                    @foreach($cartonesRechazados as $item)
-                                        @php
-                                            $totalRegistros++;
-                                        @endphp
-                                        <tr>
-                                            <td>
-                                                @if($item['reserva'])
-                                                    {{ $item['reserva']->nombre }}
-                                                @else
-                                                    N/A
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($item['reserva'])
-                                                    {{ $item['reserva']->celular }}
-                                                @else
-                                                    N/A
-                                                @endif
-                                            </td>
-                                            <td>{{ $item['carton']->serie_rechazada }}</td>
-                                            <td>
-                                                @if(isset($item['series']))
-                                                    @if(is_array($item['series']))
-                                                        {{ implode(', ', $item['series']) }}
-                                                    @else
-                                                        {{ $item['series'] }}
-                                                    @endif
-                                                @else
-                                                    No disponible
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
                                 </tbody>
                             </table>
                         </div>
                         
                         @if($totalRegistros == 0)
-                            <div class="alert alert-info">
+                            <div class="alert alert-danger">
                                 No hay cartones rechazados para este bingo.
                             </div>
                         @endif
+                        
+                        <div class="mt-3">
+                            <div class="alert alert-info">
+                                <strong>Total de cartones rechazados:</strong> {{ $totalRegistros }}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
