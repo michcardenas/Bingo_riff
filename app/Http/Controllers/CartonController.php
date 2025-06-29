@@ -499,7 +499,7 @@ public function descargar($reservaId, $numeroCarton = null) {
                 
                 // ✅ USAR FUENTE INCORPORADA (NO TTF) - MÁS COMPATIBLE
                 $fontSize = 5; // Tamaño de fuente incorporada (1-5)
-                $textX = max(10, $width - 300);
+               $textX = max(10, $width - 500); 
                 $textY1 = 170;
                 $textY2 = 200;
                 
