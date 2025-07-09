@@ -684,7 +684,7 @@ public function marcarGanador(Request $request, $id)
         'bingo' => $bingo,
     ]);
 }
-public function comprobantesDuplicados($bingoId)
+public function comprobantesDuplicados($bingoId) 
 {
     $bingo = Bingo::findOrFail($bingoId);
 
@@ -729,13 +729,25 @@ public function comprobantesDuplicados($bingoId)
         return $grupo->count() > 0;
     });
 
-    // ---- 📌 PAGINACIÓN DE GRUPOS ----
-    $page = request()->get('page', 1);  // Página actual
+    // ---- 📌 PAGINACIÓN DE GRUPOS CORREGIDA ----
+    $page = max(1, (int) request()->get('page', 1));  // Página actual validada
     $perPage = 3; // Grupos por página
 
-    // Crear paginator manual
+    // 🔧 FIX: Agregar ->values() y validar estructura
+    $gruposParaPagina = $agrupados->slice(($page - 1) * $perPage, $perPage)->values();
+    
+    // 🔧 FIX: Asegurar que todos los elementos sean colecciones válidas
+    $gruposValidados = $gruposParaPagina->map(function ($grupo) {
+        if ($grupo instanceof \Illuminate\Support\Collection) {
+            return $grupo;
+        }
+        // Si no es una colección, convertir a colección vacía
+        return collect([]);
+    });
+
+    // Crear paginator manual con datos validados
     $paginador = new \Illuminate\Pagination\LengthAwarePaginator(
-        $agrupados->slice(($page - 1) * $perPage, $perPage),
+        $gruposValidados,
         $agrupados->count(),
         $perPage,
         $page,
@@ -746,8 +758,13 @@ public function comprobantesDuplicados($bingoId)
 }
 
 // 📌 Este método compara que dos histogramas sean IGUALES valor a valor
-protected function histogramEquals($histA, $histB)
+protected function histogramEquals($histA, $histB) 
 {
+    // 🔧 FIX: Validar que ambos sean arrays
+    if (!is_array($histA) || !is_array($histB)) {
+        return false;
+    }
+    
     if (count($histA) !== count($histB)) {
         return false;
     }
