@@ -101,4 +101,10 @@ class Reserva extends Model
         // Formatea el número de cartón con ceros a la izquierda (formato 000001)
         return str_pad($indice + 1, 6, '0', STR_PAD_LEFT);
     }
+
+    // Relación con ReservaSerie
+    public function reservaSeries()
+    {
+        return $this->hasMany(ReservaSerie::class);
+    }
 }

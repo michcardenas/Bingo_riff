@@ -113,7 +113,7 @@ class BingoAdminController extends Controller
 
     public function reservasIndex(Request $request)
     {
-        $reservas = Reserva::orderBy('id', 'desc')->get();
+        $reservas = Reserva::orderBy('id', 'desc')->limit(100)->orderBy('id', 'desc')->get();
 
         // Si la solicitud es AJAX, solo devolver la tabla
         if ($request->ajax()) {
