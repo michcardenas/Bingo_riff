@@ -12,8 +12,19 @@ use App\Models\Serie;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RechazadosExport;
 use App\Exports\AprobadosExport;
+use App\Models\ReservaSerie;
+use App\Services\ReservaService;
+
 class BingoController extends Controller
 {
+
+    protected $reservaService;
+
+    public function __construct(ReservaService $reservaService)
+    {
+        $this->reservaService = $reservaService;
+    }
+
     public function store(Request $request)
     {
         Log::info('Iniciando proceso de reserva', ['request' => $request->all()]);
@@ -66,25 +77,25 @@ class BingoController extends Controller
                     }
     
                   // Ruta de destino para comprobantes en producción
-            $pathProduccion = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
+                    $pathProduccion = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
 
-            // Verificar si estamos en producción o local con base en el path base real
-            $isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
-            $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+                    // Verificar si estamos en producción o local con base en el path base real
+                    $isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
+                    $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
 
-            Log::info("Destino para guardar imagen", [
-                'isProduccion' => $isProduccion,
-                'destino' => $destino
-            ]);
+                    Log::info("Destino para guardar imagen", [
+                        'isProduccion' => $isProduccion,
+                        'destino' => $destino
+                    ]);
 
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move($destino, $filename);
-            $rutaRelativa = 'comprobantes/' . $filename;
-            $rutasArchivos[] = $rutaRelativa;
+                    $filename = time() . '_' . $file->getClientOriginalName();
+                    $file->move($destino, $filename);
+                    $rutaRelativa = 'comprobantes/' . $filename;
+                    $rutasArchivos[] = $rutaRelativa;
 
-            Log::info('Archivo subido correctamente', [
-                'archivo' => $rutaRelativa
-            ]);
+                    Log::info('Archivo subido correctamente', [
+                        'archivo' => $rutaRelativa
+                    ]);
 
                 }
             } else {
@@ -99,56 +110,31 @@ class BingoController extends Controller
                     Log::warning('Usuario normal subió un comprobante posiblemente duplicado');
                 }
             }
-    
-            // Guardar reserva en la base de datos
-            $comprobanteStr = json_encode($rutasArchivos);
-            $metadatosStr = json_encode($metadatosArchivos);
-    
-            DB::transaction(function () use ($validated, &$series, $totalPagar, $comprobanteStr, $metadatosStr, $bingo, &$reservaCreada, $request) {
-    
-                $cantidad = $validated['cartones'];
-                $series = $this->asignarSeries($bingo->id, $cantidad);
-    
-                $maxOrdenBingo = Reserva::where('bingo_id', $bingo->id)->max('orden_bingo') ?? 0;
-                $nuevoOrdenBingo = $maxOrdenBingo + 1;
-    
-                $estadoInicial = 'revision';
-                $numeroComprobante = null;
-    
-                if ($request->has('desde_admin') && $request->desde_admin == 1 && $request->has('auto_approve')) {
-                    $estadoInicial = 'aprobado';
-                    $numeroComprobante = 'AUTO-' . time();
-                }
-    
-                $reservaData = [
-                    'nombre'             => $validated['nombre'],
-                    'celular'            => $validated['celular'],
-                    'cantidad'           => $cantidad,
-                    'comprobante'        => $comprobanteStr,
-                    'comprobante_metadata' => $metadatosStr,
-                    'total'              => $totalPagar,
-                    'series'             => $series,
-                    'estado'             => $estadoInicial,
-                    'numero_comprobante' => $numeroComprobante,
-                    'bingo_id'           => $bingo->id,
-                    'orden_bingo'        => $nuevoOrdenBingo,
-                ];
-    
-                $reservaCreada = Reserva::create($reservaData);
-    
-                Log::info('Reserva creada', [
-                    'id' => $reservaCreada->id,
-                    'orden_bingo' => $reservaCreada->orden_bingo
-                ]);
-            });
+
+            $dataReserva = [
+                'bingo_id'              => $validated['bingo_id'],
+                'cartones'              => $validated['cartones'],
+                'nombre'                => $validated['nombre'],
+                'celular'               => $validated['celular'],
+                'comprobante'           => json_encode($rutasArchivos),
+                'comprobante_metadata'  => json_encode($metadatosArchivos),
+                'auto_approve'          => $request->has('desde_admin') && $request->desde_admin == 1 && $request->has('auto_approve')
+            ];
+            $resultado = $this->reservaService->crearReserva($dataReserva);
+
+            if (!$resultado['success']) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', $resultado['message']);
+            }
     
             // Respuesta AJAX
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => '¡Participante añadido correctamente!',
-                    'reserva_id' => $reservaCreada->id,
-                    'series' => $series
+                    'reserva_id' => $resultado['reserva']->id,
+                    'series' => $resultado['series']
                 ]);
             }
     
@@ -160,12 +146,12 @@ class BingoController extends Controller
     
             session()->put('celular_comprador', $validated['celular']);
                     
-                    return redirect()->route('cartones.index')
-                    ->with('success', '¡Reserva realizada correctamente!')
-                    ->with('series', $series)
-                    ->with('bingo', $bingo->nombre)
-                    ->with('numeroContacto', $validated['celular'])
-                    ->with('orden', $reservaCreada->orden_bingo);
+            return redirect()->route('cartones.index')
+                ->with('success', '¡Reserva realizada correctamente!')
+                ->with('series', $resultado['series'])
+                ->with('bingo', $resultado['bingo']->nombre)
+                ->with('numeroContacto', $validated['celular'])
+                ->with('orden', $resultado['reserva']->orden_bingo);
     
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Error de validación', ['errors' => $e->errors()]);
@@ -1185,83 +1171,31 @@ public function pedidosDuplicados($bingoId)
         $bingo = Bingo::findOrFail($bingoId);
         $seriesAsignadas = [];
 
-        // Obtener todas las series ya asignadas para este bingo
-        $seriesExistentes = $this->getSeriesAsignadas($bingoId);
-
-        // Verificar si hay series liberadas disponibles
+        // 🔹 Obtener series liberadas disponibles más rápido
+        $seriesLiberadasDisponibles = [];
         if ($bingo->series_liberadas) {
             $seriesLiberadas = json_decode($bingo->series_liberadas, true) ?: [];
+            $seriesLiberadasDisponibles = array_slice($seriesLiberadas, 0, $cantidad);
 
-            // Filtrar series liberadas que no estén ya asignadas
-            $seriesLiberadasDisponibles = array_filter($seriesLiberadas, function ($serie) use ($seriesExistentes) {
-                return !in_array($serie, $seriesExistentes);
-            });
+            $seriesAsignadas = $seriesLiberadasDisponibles;
 
-            // Tomar las series liberadas que necesitamos
-            $seriesNecesarias = min($cantidad, count($seriesLiberadasDisponibles));
-
-            for ($i = 0; $i < $seriesNecesarias; $i++) {
-                $seriesAsignadas[] = array_shift($seriesLiberadasDisponibles);
-            }
-
-            // Actualizar el campo series_liberadas del bingo
-            $seriesLiberadasRestantes = array_diff($seriesLiberadas, $seriesAsignadas);
-            $bingo->series_liberadas = !empty($seriesLiberadasRestantes) ? json_encode(array_values($seriesLiberadasRestantes)) : null;
+            // Actualizar las que quedan
+            $seriesRestantes = array_slice($seriesLiberadas, $cantidad);
+            $bingo->series_liberadas = $seriesRestantes ? json_encode($seriesRestantes) : null;
             $bingo->save();
-
-            \Log::info("Series liberadas asignadas", [
-                'bingo_id' => $bingoId,
-                'series_asignadas' => $seriesAsignadas,
-                'series_liberadas_restantes' => $seriesLiberadasRestantes
-            ]);
         }
 
-        // Si aún necesitamos más series, generar nuevas
-        $seriesFaltantes = $cantidad - count($seriesAsignadas);
+        // 🔹 Faltan más series → generar nuevas
+        $faltantes = $cantidad - count($seriesAsignadas);
+        if ($faltantes > 0) {
+            $maxNumero = ReservaSerie::where('bingo_id', $bingoId)
+                ->max(DB::raw('CAST(serie AS UNSIGNED)')) ?? 0;
 
-        if ($seriesFaltantes > 0) {
-            // Encontrar el número más alto utilizado
-            $maxNumero = 0;
-            foreach ($seriesExistentes as $serie) {
-                $numeroSerie = (int)$serie;
-                if ($numeroSerie > $maxNumero) {
-                    $maxNumero = $numeroSerie;
-                }
-            }
-
-            // Generar nuevas series únicas consecutivas
-            $nuevosNumeros = [];
-            $numero = $maxNumero + 1;
-
-            while (count($nuevosNumeros) < $seriesFaltantes) {
-                // Cambiar el padding a 6 cifras en lugar de 4
-                $seriePadded = str_pad($numero, 6, '0', STR_PAD_LEFT);
-
-                // Verificar si esta serie ya existe o ya fue asignada
-                if (!in_array($seriePadded, $seriesExistentes) && !in_array($seriePadded, $seriesAsignadas)) {
-                    $nuevosNumeros[] = $seriePadded;
-                }
-
-                $numero++;
-            }
+            $nuevosNumeros = array_map(function($num) {
+                return str_pad($num, 6, '0', STR_PAD_LEFT);
+            }, range($maxNumero + 1, $maxNumero + $faltantes));
 
             $seriesAsignadas = array_merge($seriesAsignadas, $nuevosNumeros);
-
-            \Log::info("Nuevas series generadas", [
-                'bingo_id' => $bingoId,
-                'nuevas_series' => $nuevosNumeros
-            ]);
-        }
-
-        // Verificación final para evitar duplicados
-        $verificacionFinal = array_unique($seriesAsignadas);
-        if (count($verificacionFinal) != count($seriesAsignadas)) {
-            \Log::warning("Se detectaron series duplicadas antes de la asignación final", [
-                'bingo_id' => $bingoId,
-                'series_con_duplicados' => $seriesAsignadas,
-                'series_sin_duplicados' => $verificacionFinal
-            ]);
-            $seriesAsignadas = $verificacionFinal;
         }
 
         return $seriesAsignadas;
@@ -1272,6 +1206,7 @@ public function pedidosDuplicados($bingoId)
         // Obtener todas las reservas para este bingo que tienen series asignadas
         $reservas = Reserva::where('bingo_id', $bingoId)
             ->whereNotNull('series')
+            ->lockForUpdate()
             ->get();
 
         $todasLasSeries = [];

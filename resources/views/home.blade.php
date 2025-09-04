@@ -452,7 +452,7 @@ body {
         <div class="container d-flex justify-content-between align-items-center">
             <!-- Logo -->
             <div class="logo-container">
-            <a href="https://bingoriffy.com">
+            <a href="{{ env('APP_URL', 'https://bingoriffy.com') }}">
                 <img src="{{ asset('images/RiffyLogo.png') }}" alt="RIFFY Bingo" id="riffy-logo" style="height: 70px;">
             </a>
             </div>

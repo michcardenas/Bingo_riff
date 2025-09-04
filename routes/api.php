@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ReservaApiController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CartonController;
@@ -15,6 +16,12 @@ use App\Models\Bingo;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
+Route::prefix('v1')->group(function () {
+    Route::post('reservas', [ReservaApiController::class, 'store']);
+    Route::get('reservas/{id}', [ReservaApiController::class, 'show']);
+    Route::get('reservas', [ReservaApiController::class, 'index']);
+});
 
 // Ruta para el bingo por nombre (sintaxis moderna de Laravel)
 Route::get('/bingos/by-name', [CartonController::class, 'getBingoByName']);

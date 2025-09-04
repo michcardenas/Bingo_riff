@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bingo-app-php83
+    container_name: bingo-app
+    restart: unless-stopped
+    volumes:
+      - .:/var/www
+    depends_on:
+      - mysql
+    networks:
+      - bingo
+
+  web:
+    image: nginx:stable
+    container_name: bingo-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - bingo
+
+  mysql:
+    image: mysql:8.0
+    container_name: bingo-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: secretroot
+      MYSQL_DATABASE: bingo
+      MYSQL_USER: bingo
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+    networks:
+      - bingo
+
+volumes:
+  mysqldata:
+
+networks:
+  bingo:
