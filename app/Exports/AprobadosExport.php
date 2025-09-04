@@ -8,7 +8,7 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class RechazadosExport implements FromArray, WithHeadings, WithStyles, WithTitle
+class AprobadosExport implements FromArray, WithHeadings, WithStyles, WithTitle
 {
     protected $datos;
     protected $bingo;
@@ -47,7 +47,7 @@ class RechazadosExport implements FromArray, WithHeadings, WithStyles, WithTitle
                 ],
                 'fill' => [
                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'DC3545'] // Rojo para rechazados
+                    'startColor' => ['rgb' => '28A745'] // Verde para aprobados
                 ]
             ],
         ];
@@ -55,6 +55,6 @@ class RechazadosExport implements FromArray, WithHeadings, WithStyles, WithTitle
 
     public function title(): string
     {
-        return 'Rechazados - ' . $this->bingo->nombre;
+        return 'Aprobados - ' . $this->bingo->nombre;
     }
 }

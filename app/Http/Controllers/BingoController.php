@@ -11,9 +11,20 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Serie;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RechazadosExport;
+use App\Exports\AprobadosExport;
+use App\Models\ReservaSerie;
+use App\Services\ReservaService;
 
 class BingoController extends Controller
 {
+
+    protected $reservaService;
+
+    public function __construct(ReservaService $reservaService)
+    {
+        $this->reservaService = $reservaService;
+    }
+
     public function store(Request $request)
     {
         Log::info('Iniciando proceso de reserva', ['request' => $request->all()]);
@@ -66,26 +77,25 @@ class BingoController extends Controller
                     }
     
                   // Ruta de destino para comprobantes en producción
-$pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
+                    $pathProduccion = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
 
-// Verificar si estamos en producción o local con base en el path base real
-$isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
+                    // Verificar si estamos en producción o local con base en el path base real
+                    $isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
+                    $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
 
-$destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+                    Log::info("Destino para guardar imagen", [
+                        'isProduccion' => $isProduccion,
+                        'destino' => $destino
+                    ]);
 
-Log::info("Destino para guardar imagen", [
-    'isProduccion' => $isProduccion,
-    'destino' => $destino
-]);
+                    $filename = time() . '_' . $file->getClientOriginalName();
+                    $file->move($destino, $filename);
+                    $rutaRelativa = 'comprobantes/' . $filename;
+                    $rutasArchivos[] = $rutaRelativa;
 
-$filename = time() . '_' . $file->getClientOriginalName();
-$file->move($destino, $filename);
-$rutaRelativa = 'comprobantes/' . $filename;
-$rutasArchivos[] = $rutaRelativa;
-
-Log::info('Archivo subido correctamente', [
-    'archivo' => $rutaRelativa
-]);
+                    Log::info('Archivo subido correctamente', [
+                        'archivo' => $rutaRelativa
+                    ]);
 
                 }
             } else {
@@ -100,56 +110,31 @@ Log::info('Archivo subido correctamente', [
                     Log::warning('Usuario normal subió un comprobante posiblemente duplicado');
                 }
             }
-    
-            // Guardar reserva en la base de datos
-            $comprobanteStr = json_encode($rutasArchivos);
-            $metadatosStr = json_encode($metadatosArchivos);
-    
-            DB::transaction(function () use ($validated, &$series, $totalPagar, $comprobanteStr, $metadatosStr, $bingo, &$reservaCreada, $request) {
-    
-                $cantidad = $validated['cartones'];
-                $series = $this->asignarSeries($bingo->id, $cantidad);
-    
-                $maxOrdenBingo = Reserva::where('bingo_id', $bingo->id)->max('orden_bingo') ?? 0;
-                $nuevoOrdenBingo = $maxOrdenBingo + 1;
-    
-                $estadoInicial = 'revision';
-                $numeroComprobante = null;
-    
-                if ($request->has('desde_admin') && $request->desde_admin == 1 && $request->has('auto_approve')) {
-                    $estadoInicial = 'aprobado';
-                    $numeroComprobante = 'AUTO-' . time();
-                }
-    
-                $reservaData = [
-                    'nombre'             => $validated['nombre'],
-                    'celular'            => $validated['celular'],
-                    'cantidad'           => $cantidad,
-                    'comprobante'        => $comprobanteStr,
-                    'comprobante_metadata' => $metadatosStr,
-                    'total'              => $totalPagar,
-                    'series'             => $series,
-                    'estado'             => $estadoInicial,
-                    'numero_comprobante' => $numeroComprobante,
-                    'bingo_id'           => $bingo->id,
-                    'orden_bingo'        => $nuevoOrdenBingo,
-                ];
-    
-                $reservaCreada = Reserva::create($reservaData);
-    
-                Log::info('Reserva creada', [
-                    'id' => $reservaCreada->id,
-                    'orden_bingo' => $reservaCreada->orden_bingo
-                ]);
-            });
+
+            $dataReserva = [
+                'bingo_id'              => $validated['bingo_id'],
+                'cartones'              => $validated['cartones'],
+                'nombre'                => $validated['nombre'],
+                'celular'               => $validated['celular'],
+                'comprobante'           => json_encode($rutasArchivos),
+                'comprobante_metadata'  => json_encode($metadatosArchivos),
+                'auto_approve'          => $request->has('desde_admin') && $request->desde_admin == 1 && $request->has('auto_approve')
+            ];
+            $resultado = $this->reservaService->crearReserva($dataReserva);
+
+            if (!$resultado['success']) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', $resultado['message']);
+            }
     
             // Respuesta AJAX
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => '¡Participante añadido correctamente!',
-                    'reserva_id' => $reservaCreada->id,
-                    'series' => $series
+                    'reserva_id' => $resultado['reserva']->id,
+                    'series' => $resultado['series']
                 ]);
             }
     
@@ -161,12 +146,12 @@ Log::info('Archivo subido correctamente', [
     
             session()->put('celular_comprador', $validated['celular']);
                     
-                    return redirect()->route('cartones.index')
-                    ->with('success', '¡Reserva realizada correctamente!')
-                    ->with('series', $series)
-                    ->with('bingo', $bingo->nombre)
-                    ->with('numeroContacto', $validated['celular'])
-                    ->with('orden', $reservaCreada->orden_bingo);
+            return redirect()->route('cartones.index')
+                ->with('success', '¡Reserva realizada correctamente!')
+                ->with('series', $resultado['series'])
+                ->with('bingo', $resultado['bingo']->nombre)
+                ->with('numeroContacto', $validated['celular'])
+                ->with('orden', $resultado['reserva']->orden_bingo);
     
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Error de validación', ['errors' => $e->errors()]);
@@ -181,9 +166,125 @@ Log::info('Archivo subido correctamente', [
         }
     }
     
-    public function exportarRechazadosExcel($bingoId)
+public function exportarRechazadosExcel($bingoId) 
 {
-    return Excel::download(new RechazadosExport($bingoId), 'reservas_rechazadas.xlsx');
+    // Verificar si el bingo existe
+    $bingo = Bingo::findOrFail($bingoId);
+
+    // Obtener las reservas rechazadas para este bingo
+    $reservasRechazadas = Reserva::where('bingo_id', $bingoId)
+        ->where('estado', 'rechazado')
+        ->get();
+
+    // Obtener los cartones rechazados individuales
+    $cartonesRechazados = DB::table('cartones_rechazados')
+        ->where('bingo_id', $bingoId)
+        ->orderBy('fecha_rechazo', 'desc')
+        ->get();
+
+    // Procesar datos para el Excel - usando la misma lógica unificada
+    $datosExcel = [];
+    
+    // 1. Procesar reservas rechazadas completas
+    foreach ($reservasRechazadas as $reserva) {
+        $series = [];
+        
+        // Procesar las series (si es JSON, convertirlo a array)
+        if (!empty($reserva->series)) {
+            if (is_string($reserva->series)) {
+                $seriesArray = json_decode($reserva->series, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $series = $seriesArray;
+                }
+            } elseif (is_array($reserva->series)) {
+                $series = $reserva->series;
+            }
+        }
+        
+        // Para cada cartón, crear una fila en el Excel
+        foreach ($series as $carton) {
+            // Obtener información de series para este cartón
+            $seriesInfo = "No disponible";
+            $infoSerie = DB::table('series')
+                ->where('carton', $carton)
+                ->orWhere('carton', ltrim($carton, '0'))
+                ->first();
+                
+            if ($infoSerie && isset($infoSerie->series)) {
+                $seriesData = $infoSerie->series;
+                
+                // Si es JSON, decodificarlo
+                if (is_string($seriesData)) {
+                    $seriesArray = json_decode($seriesData, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                        $seriesInfo = implode(', ', $seriesArray);
+                    } else {
+                        $seriesInfo = $seriesData;
+                    }
+                } else {
+                    $seriesInfo = is_array($seriesData) ? implode(', ', $seriesData) : $seriesData;
+                }
+            }
+            
+            // Añadir fila al Excel
+            $datosExcel[] = [
+                'nombre' => $reserva->nombre,
+                'celular' => $reserva->celular,
+                'carton' => $carton,
+                'series' => $seriesInfo,
+                'fecha_reserva' => $reserva->created_at ? $reserva->created_at->format('d/m/Y H:i:s') : '',
+                'estado' => $reserva->estado
+            ];
+        }
+    }
+
+    // 2. Procesar cartones individuales rechazados
+    foreach ($cartonesRechazados as $carton) {
+        // Obtener información de la reserva
+        $reservaInfo = null;
+        if ($carton->reserva_id) {
+            $reservaInfo = Reserva::find($carton->reserva_id);
+        }
+        
+        // Obtener información de series para este cartón
+        $seriesInfo = "No disponible";
+        $info = DB::table('series')
+            ->where('carton', $carton->serie_rechazada)
+            ->orWhere('carton', ltrim($carton->serie_rechazada, '0'))
+            ->first();
+            
+        if ($info && isset($info->series)) {
+            $seriesData = $info->series;
+            
+            // Si es JSON, decodificarlo
+            if (is_string($seriesData)) {
+                $seriesArray = json_decode($seriesData, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $seriesInfo = implode(', ', $seriesArray);
+                } else {
+                    $seriesInfo = $seriesData;
+                }
+            } else {
+                $seriesInfo = is_array($seriesData) ? implode(', ', $seriesData) : $seriesData;
+            }
+        }
+        
+        // Añadir fila al Excel
+        $datosExcel[] = [
+            'nombre' => $reservaInfo ? $reservaInfo->nombre : 'N/A',
+            'celular' => $reservaInfo ? $reservaInfo->celular : 'N/A',
+            'carton' => $carton->serie_rechazada,
+            'series' => $seriesInfo,
+            'fecha_reserva' => $reservaInfo && $reservaInfo->created_at ? $reservaInfo->created_at->format('d/m/Y H:i:s') : 'N/A',
+            'estado' => 'rechazado'
+        ];
+    }
+
+    // Crear nombre del archivo
+    $nombreArchivo = 'rechazados_' . str_replace(' ', '_', $bingo->nombre) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+    // Exportar usando Laravel Excel
+    return Excel::download(new RechazadosExport($datosExcel, $bingo), $nombreArchivo);
 }
 
 
@@ -199,140 +300,275 @@ Log::info('Archivo subido correctamente', [
         return back()->with('status', 'Reserva rechazada correctamente.');
     }
 
-    public function buscarGanador(Request $request, $bingoId) 
-    { 
-        $serie = $request->input('serie'); 
-        $datos = null; 
+public function buscarGanador(Request $request, $bingoId) 
+{ 
+    $serie = $request->input('serie'); 
+    $datos = null; 
+    $infoSerie = null; // Nueva variable para información de la serie
+    $infoCarton = null; // Nueva variable para información del cartón
+    
+    Log::info('--------- INICIO BÚSQUEDA DE GANADOR ---------');
+    Log::info('Buscando serie: ' . $serie . ' en bingo ID: ' . $bingoId);
+    
+    if ($serie) { 
+        // Normalizar la serie (quitar ceros iniciales para comparaciones adicionales)
+        $serieNormalizada = ltrim($serie, '0');
+        Log::info('Serie normalizada (sin ceros iniciales): ' . $serieNormalizada);
         
-        Log::info('--------- INICIO BÚSQUEDA DE GANADOR ---------');
-        Log::info('Buscando serie: ' . $serie . ' en bingo ID: ' . $bingoId);
+        // 1. Buscar en la tabla Series para obtener el cartón correspondiente
+        Log::info('Buscando serie en la tabla Series');
         
-        if ($serie) { 
-            // Normalizar la serie (quitar ceros iniciales para comparaciones adicionales)
-            $serieNormalizada = ltrim($serie, '0');
-            Log::info('Serie normalizada (sin ceros iniciales): ' . $serieNormalizada);
+        $serieQuery1 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serie . "\"') LIMIT 1";
+        Log::info('Consulta SQL 1: ' . $serieQuery1);
+        $serieResultado1 = DB::select($serieQuery1);
+        
+        if (empty($serieResultado1)) {
+            $serieQuery2 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieNormalizada . "\"') LIMIT 1";
+            Log::info('Consulta SQL 2: ' . $serieQuery2);
+            $serieResultado2 = DB::select($serieQuery2);
             
-            // 1. Buscar en la tabla Series para obtener el cartón correspondiente
-            Log::info('Buscando serie en la tabla Series');
-            
-            $serieQuery1 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serie . "\"') LIMIT 1";
-            Log::info('Consulta SQL 1: ' . $serieQuery1);
-            $serieResultado1 = DB::select($serieQuery1);
-            
-            if (empty($serieResultado1)) {
-                $serieQuery2 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieNormalizada . "\"') LIMIT 1";
-                Log::info('Consulta SQL 2: ' . $serieQuery2);
-                $serieResultado2 = DB::select($serieQuery2);
-                
-                if (!empty($serieResultado2)) {
-                    $serieResultado = $serieResultado2[0];
-                    Log::info('Serie encontrada con búsqueda normalizada (sin ceros iniciales)');
-                } else {
-                    $seriesQuery = "SELECT id, series, carton FROM series LIMIT 10";
-                    $ejemploSeries = DB::select($seriesQuery);
-                    Log::info('No se encontró la serie. Mostrando ejemplos de series en la BD:');
-                    foreach ($ejemploSeries as $s) {
-                        Log::info('Serie ID: ' . $s->id . ', Series: ' . $s->series . ', Cartón: ' . $s->carton);
-                    }
-                    
-                    Log::info('No se encontró la serie: ' . $serie);
-                    $serieResultado = null;
-                }
+            if (!empty($serieResultado2)) {
+                $serieResultado = $serieResultado2[0];
+                Log::info('Serie encontrada con búsqueda normalizada (sin ceros iniciales)');
             } else {
-                $serieResultado = $serieResultado1[0];
-                Log::info('Serie encontrada con búsqueda exacta');
+                $seriesQuery = "SELECT id, series, carton FROM series LIMIT 10";
+                $ejemploSeries = DB::select($seriesQuery);
+                Log::info('No se encontró la serie. Mostrando ejemplos de series en la BD:');
+                foreach ($ejemploSeries as $s) {
+                    Log::info('Serie ID: ' . $s->id . ', Series: ' . $s->series . ', Cartón: ' . $s->carton);
+                }
+                
+                Log::info('No se encontró la serie: ' . $serie);
+                $serieResultado = null;
+            }
+        } else {
+            $serieResultado = $serieResultado1[0];
+            Log::info('Serie encontrada con búsqueda exacta');
+        }
+        
+        if ($serieResultado) {
+            $carton = $serieResultado->carton;
+            Log::info('Cartón encontrado: ' . $carton);
+            
+            // ✅ PREPARAR INFORMACIÓN DE LA SERIE Y CARTÓN
+            $infoSerie = [
+                'serie_buscada' => $serie,
+                'serie_encontrada' => $serieResultado->series,
+                'carton_numero' => $carton,
+                'todas_las_series' => json_decode($serieResultado->series, true) ?: []
+            ];
+            
+            // ✅ OBTENER INFORMACIÓN DETALLADA DEL CARTÓN SI EXISTE TABLA DE CARTONES
+            try {
+                // Buscar información del cartón en una tabla de cartones (si existe)
+                $cartonQuery = "SELECT * FROM cartones WHERE numero = ? LIMIT 1";
+                $cartonResultado = DB::select($cartonQuery, [$carton]);
+                
+                if (!empty($cartonResultado)) {
+                    $cartonInfo = $cartonResultado[0];
+                    $infoCarton = [
+                        'numero' => $carton,
+                        'numeros_b' => isset($cartonInfo->numeros_b) ? json_decode($cartonInfo->numeros_b, true) : [],
+                        'numeros_i' => isset($cartonInfo->numeros_i) ? json_decode($cartonInfo->numeros_i, true) : [],
+                        'numeros_n' => isset($cartonInfo->numeros_n) ? json_decode($cartonInfo->numeros_n, true) : [],
+                        'numeros_g' => isset($cartonInfo->numeros_g) ? json_decode($cartonInfo->numeros_g, true) : [],
+                        'numeros_o' => isset($cartonInfo->numeros_o) ? json_decode($cartonInfo->numeros_o, true) : [],
+                    ];
+                    Log::info('Información del cartón obtenida exitosamente');
+                } else {
+                    Log::info('No se encontró información detallada del cartón en tabla cartones');
+                    $infoCarton = [
+                        'numero' => $carton,
+                        'mensaje' => 'Cartón encontrado pero sin información detallada de números'
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::info('No existe tabla de cartones o error al consultar: ' . $e->getMessage());
+                $infoCarton = [
+                    'numero' => $carton,
+                    'mensaje' => 'Información de números no disponible'
+                ];
             }
             
-            if ($serieResultado) {
-                $carton = $serieResultado->carton;
-                Log::info('Cartón encontrado: ' . $carton);
+            // Buscar en reservas que tengan el cartón EN ESTE BINGO
+            // SOLUCIÓN: Usar LIKE en vez de JSON_CONTAINS debido al formato especial
+            $reservaQuery = "SELECT * FROM reservas WHERE bingo_id = ? AND series LIKE ? LIMIT 1";
+            Log::info('Consulta SQL Reserva: ' . $reservaQuery);
+            $reservaResultado = DB::select($reservaQuery, [$bingoId, '%' . $carton . '%']);
+            
+            if (empty($reservaResultado)) {
+                // Intentar con la versión normalizada
+                $cartonNormalizado = ltrim($carton, '0');
+                $reservaQuery2 = "SELECT * FROM reservas WHERE bingo_id = ? AND series LIKE ? LIMIT 1";
+                Log::info('Consulta SQL Reserva 2: ' . $reservaQuery2);
+                $reservaResultado = DB::select($reservaQuery2, [$bingoId, '%' . $cartonNormalizado . '%']);
+            }
+            
+            // Nueva alternativa: Probar extrayendo el primer valor del array
+            if (empty($reservaResultado)) {
+                // Buscar todas las reservas para este bingo y hacer un filtrado manual
+                $reservasQuery = "SELECT * FROM reservas WHERE bingo_id = ?";
+                $todasReservas = DB::select($reservasQuery, [$bingoId]);
                 
-                // Buscar en reservas que tengan el cartón EN ESTE BINGO
-                // SOLUCIÓN: Usar LIKE en vez de JSON_CONTAINS debido al formato especial
-                $reservaQuery = "SELECT * FROM reservas WHERE bingo_id = ? AND series LIKE ? LIMIT 1";
-                Log::info('Consulta SQL Reserva: ' . $reservaQuery);
-                $reservaResultado = DB::select($reservaQuery, [$bingoId, '%' . $carton . '%']);
-                
-                if (empty($reservaResultado)) {
-                    // Intentar con la versión normalizada
-                    $cartonNormalizado = ltrim($carton, '0');
-                    $reservaQuery2 = "SELECT * FROM reservas WHERE bingo_id = ? AND series LIKE ? LIMIT 1";
-                    Log::info('Consulta SQL Reserva 2: ' . $reservaQuery2);
-                    $reservaResultado = DB::select($reservaQuery2, [$bingoId, '%' . $cartonNormalizado . '%']);
-                }
-                
-                // Nueva alternativa: Probar extrayendo el primer valor del array
-                if (empty($reservaResultado)) {
-                    // Buscar todas las reservas para este bingo y hacer un filtrado manual
-                    $reservasQuery = "SELECT * FROM reservas WHERE bingo_id = ?";
-                    $todasReservas = DB::select($reservasQuery, [$bingoId]);
+                foreach ($todasReservas as $r) {
+                    Log::info('Analizando reserva ID: ' . $r->id . ', Series: ' . $r->series);
                     
-                    foreach ($todasReservas as $r) {
-                        Log::info('Analizando reserva ID: ' . $r->id . ', Series: ' . $r->series);
-                        
-                        // Intentar decodificar el JSON, considerando que puede estar doblemente codificado
-                        $seriesStr = $r->series;
-                        
-                        // Intento 1: Decodificar una vez
-                        $decodedOnce = json_decode($seriesStr, true);
-                        
-                        // Intento 2: Decodificar dos veces si es necesario
-                        $decodedTwice = null;
-                        if (is_string($decodedOnce)) {
-                            $decodedTwice = json_decode($decodedOnce, true);
-                        }
-                        
-                        $seriesArray = is_array($decodedOnce) ? $decodedOnce : 
-                                     (is_array($decodedTwice) ? $decodedTwice : []);
-                        
-                        Log::info('Series decodificadas: ' . json_encode($seriesArray));
-                        
-                        // Buscar si contiene el cartón
-                        if (in_array($carton, $seriesArray) || in_array($cartonNormalizado, $seriesArray)) {
-                            Log::info('¡Reserva encontrada manualmente! ID: ' . $r->id);
-                            $reservaResultado = [$r];
-                            break;
-                        }
-                    }
-                }
-                
-                if (!empty($reservaResultado)) {
-                    Log::info('Reserva encontrada');
-                    $reservaEncontrada = $reservaResultado[0];
+                    // Intentar decodificar el JSON, considerando que puede estar doblemente codificado
+                    $seriesStr = $r->series;
                     
-                    // Convertir el objeto StdClass a un modelo Reserva
-                    $datos = new Reserva();
-                    foreach ((array)$reservaEncontrada as $key => $value) {
-                        $datos->$key = $value;
+                    // Intento 1: Decodificar una vez
+                    $decodedOnce = json_decode($seriesStr, true);
+                    
+                    // Intento 2: Decodificar dos veces si es necesario
+                    $decodedTwice = null;
+                    if (is_string($decodedOnce)) {
+                        $decodedTwice = json_decode($decodedOnce, true);
                     }
-                } else {
-                    // Diagnóstico: Listar todas las reservas para este bingo
-                    $reservasQuery = "SELECT id, series, nombre FROM reservas WHERE bingo_id = ? LIMIT 10";
-                    $todasReservas = DB::select($reservasQuery, [$bingoId]);
-                    Log::info('No se encontró reserva. Mostrando reservas en el bingo ' . $bingoId . ':');
-                    foreach ($todasReservas as $r) {
-                        Log::info('Reserva ID: ' . $r->id . ', Series: ' . $r->series . ', Nombre: ' . $r->nombre);
+                    
+                    $seriesArray = is_array($decodedOnce) ? $decodedOnce : 
+                                 (is_array($decodedTwice) ? $decodedTwice : []);
+                    
+                    Log::info('Series decodificadas: ' . json_encode($seriesArray));
+                    
+                    // Buscar si contiene el cartón
+                    if (in_array($carton, $seriesArray) || in_array($cartonNormalizado, $seriesArray)) {
+                        Log::info('¡Reserva encontrada manualmente! ID: ' . $r->id);
+                        $reservaResultado = [$r];
+                        break;
                     }
                 }
             }
-        } 
+            
+            if (!empty($reservaResultado)) {
+                Log::info('Reserva encontrada');
+                $reservaEncontrada = $reservaResultado[0];
+                
+                // Convertir el objeto StdClass a un modelo Reserva
+                $datos = new Reserva();
+                foreach ((array)$reservaEncontrada as $key => $value) {
+                    $datos->$key = $value;
+                }
+                
+                // ✅ AGREGAR INFORMACIÓN DE PROPIEDAD A LA INFO DE SERIE
+                $infoSerie['propietario'] = [
+                    'nombre' => $datos->nombre,
+                    'celular' => $datos->celular,
+                    'es_ganador' => $datos->ganador == 1,
+                    'premio' => $datos->premio
+                ];
+            } else {
+                // Diagnóstico: Listar todas las reservas para este bingo
+                $reservasQuery = "SELECT id, series, nombre FROM reservas WHERE bingo_id = ? LIMIT 10";
+                $todasReservas = DB::select($reservasQuery, [$bingoId]);
+                Log::info('No se encontró reserva. Mostrando reservas en el bingo ' . $bingoId . ':');
+                foreach ($todasReservas as $r) {
+                    Log::info('Reserva ID: ' . $r->id . ', Series: ' . $r->series . ', Nombre: ' . $r->nombre);
+                }
+                
+                // ✅ MARCAR QUE NO SE ENCONTRÓ PROPIETARIO
+                $infoSerie['propietario'] = null;
+            }
+        }
+    } 
+    
+    // ✅ OBTENER GANADORES CON INFORMACIÓN DE CARTONES Y SERIES
+    $ganadores = Reserva::where('bingo_id', $bingoId) 
+        ->where('ganador', 1) 
+        ->orderByDesc('fecha_ganador') 
+        ->get(); 
+    
+    // ✅ PROCESAR INFORMACIÓN DEL CARTÓN GANADOR ESPECÍFICO PARA CADA GANADOR
+    $ganadoresConCartones = [];
+    foreach ($ganadores as $ganador) {
+        $ganadorData = [
+            'ganador' => $ganador,
+            'carton_ganador' => null
+        ];
         
-        // Obtener ganadores de este bingo para mostrar en tabla 
-        $ganadores = Reserva::where('bingo_id', $bingoId) 
-            ->where('ganador', 1) 
-            ->orderByDesc('fecha_ganador') 
-            ->get(); 
+        // Si el ganador tiene serie_ganadora específica, usar esa
+        // Si no, usar la primera serie de su reserva como cartón ganador
+        $serieGanadora = $ganador->serie_ganadora ?? null;
         
-        Log::info('Total de ganadores encontrados: ' . $ganadores->count());
-        Log::info('--------- FIN BÚSQUEDA DE GANADOR ---------');
+        if (!$serieGanadora) {
+            // Obtener la primera serie como cartón ganador por defecto
+            $series = [];
+            if (!empty($ganador->series)) {
+                if (is_string($ganador->series)) {
+                    $seriesArray = json_decode($ganador->series, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                        $series = $seriesArray;
+                    }
+                } elseif (is_array($ganador->series)) {
+                    $series = $ganador->series;
+                }
+            }
+            
+            if (!empty($series)) {
+                $serieGanadora = $series[0]; // Tomar la primera como ganadora
+            }
+        }
         
-        return view('admin.bingos.buscar-ganador', [ 
-            'datos' => $datos, 
-            'serieBuscada' => $serie, 
-            'bingoId' => $bingoId, 
-            'ganadores' => $ganadores,
-        ]); 
+        // Buscar información del cartón ganador específico
+        if ($serieGanadora) {
+            // Buscar el cartón que contiene esta serie ganadora
+            $serieQuery = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieGanadora . "\"') LIMIT 1";
+            $serieResultado = DB::select($serieQuery);
+            
+            if (empty($serieResultado)) {
+                // Intentar con la versión normalizada
+                $serieNormalizada = ltrim($serieGanadora, '0');
+                $serieQuery2 = "SELECT * FROM series WHERE JSON_CONTAINS(series, '\"" . $serieNormalizada . "\"') LIMIT 1";
+                $serieResultado = DB::select($serieQuery2);
+            }
+            
+            if (!empty($serieResultado)) {
+                $cartonGanador = $serieResultado[0];
+                
+                $cartonInfo = [
+                    'numero' => $cartonGanador->carton,
+                    'serie_ganadora' => $serieGanadora,
+                    'todas_las_series' => json_decode($cartonGanador->series, true) ?: [],
+                    'numeros_detalle' => null
+                ];
+                
+                // Obtener información detallada del cartón ganador
+                try {
+                    $cartonQuery = "SELECT * FROM cartones WHERE numero = ? LIMIT 1";
+                    $cartonResultado = DB::select($cartonQuery, [$cartonGanador->carton]);
+                    
+                    if (!empty($cartonResultado)) {
+                        $cartonDetalle = $cartonResultado[0];
+                        $cartonInfo['numeros_detalle'] = [
+                            'numeros_b' => isset($cartonDetalle->numeros_b) ? json_decode($cartonDetalle->numeros_b, true) : [],
+                            'numeros_i' => isset($cartonDetalle->numeros_i) ? json_decode($cartonDetalle->numeros_i, true) : [],
+                            'numeros_n' => isset($cartonDetalle->numeros_n) ? json_decode($cartonDetalle->numeros_n, true) : [],
+                            'numeros_g' => isset($cartonDetalle->numeros_g) ? json_decode($cartonDetalle->numeros_g, true) : [],
+                            'numeros_o' => isset($cartonDetalle->numeros_o) ? json_decode($cartonDetalle->numeros_o, true) : [],
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // No hay información detallada disponible
+                }
+                
+                $ganadorData['carton_ganador'] = $cartonInfo;
+            }
+        }
+        
+        $ganadoresConCartones[] = $ganadorData;
     }
+    
+    Log::info('Total de ganadores encontrados: ' . $ganadores->count());
+    Log::info('--------- FIN BÚSQUEDA DE GANADOR ---------');
+    
+    return view('admin.bingos.buscar-ganador', [ 
+        'datos' => $datos, 
+        'infoSerie' => $infoSerie, // ✅ Nueva variable
+        'infoCarton' => $infoCarton, // ✅ Nueva variable
+        'serieBuscada' => $serie, 
+        'bingoId' => $bingoId, 
+        'ganadores' => $ganadoresConCartones, // ✅ Ahora con información de cartones
+    ]); 
+}
     
 
     public function buscarGanadorConBingo(Request $request, $bingoId)
@@ -935,83 +1171,31 @@ public function pedidosDuplicados($bingoId)
         $bingo = Bingo::findOrFail($bingoId);
         $seriesAsignadas = [];
 
-        // Obtener todas las series ya asignadas para este bingo
-        $seriesExistentes = $this->getSeriesAsignadas($bingoId);
-
-        // Verificar si hay series liberadas disponibles
+        // 🔹 Obtener series liberadas disponibles más rápido
+        $seriesLiberadasDisponibles = [];
         if ($bingo->series_liberadas) {
             $seriesLiberadas = json_decode($bingo->series_liberadas, true) ?: [];
+            $seriesLiberadasDisponibles = array_slice($seriesLiberadas, 0, $cantidad);
 
-            // Filtrar series liberadas que no estén ya asignadas
-            $seriesLiberadasDisponibles = array_filter($seriesLiberadas, function ($serie) use ($seriesExistentes) {
-                return !in_array($serie, $seriesExistentes);
-            });
+            $seriesAsignadas = $seriesLiberadasDisponibles;
 
-            // Tomar las series liberadas que necesitamos
-            $seriesNecesarias = min($cantidad, count($seriesLiberadasDisponibles));
-
-            for ($i = 0; $i < $seriesNecesarias; $i++) {
-                $seriesAsignadas[] = array_shift($seriesLiberadasDisponibles);
-            }
-
-            // Actualizar el campo series_liberadas del bingo
-            $seriesLiberadasRestantes = array_diff($seriesLiberadas, $seriesAsignadas);
-            $bingo->series_liberadas = !empty($seriesLiberadasRestantes) ? json_encode(array_values($seriesLiberadasRestantes)) : null;
+            // Actualizar las que quedan
+            $seriesRestantes = array_slice($seriesLiberadas, $cantidad);
+            $bingo->series_liberadas = $seriesRestantes ? json_encode($seriesRestantes) : null;
             $bingo->save();
-
-            \Log::info("Series liberadas asignadas", [
-                'bingo_id' => $bingoId,
-                'series_asignadas' => $seriesAsignadas,
-                'series_liberadas_restantes' => $seriesLiberadasRestantes
-            ]);
         }
 
-        // Si aún necesitamos más series, generar nuevas
-        $seriesFaltantes = $cantidad - count($seriesAsignadas);
+        // 🔹 Faltan más series → generar nuevas
+        $faltantes = $cantidad - count($seriesAsignadas);
+        if ($faltantes > 0) {
+            $maxNumero = ReservaSerie::where('bingo_id', $bingoId)
+                ->max(DB::raw('CAST(serie AS UNSIGNED)')) ?? 0;
 
-        if ($seriesFaltantes > 0) {
-            // Encontrar el número más alto utilizado
-            $maxNumero = 0;
-            foreach ($seriesExistentes as $serie) {
-                $numeroSerie = (int)$serie;
-                if ($numeroSerie > $maxNumero) {
-                    $maxNumero = $numeroSerie;
-                }
-            }
-
-            // Generar nuevas series únicas consecutivas
-            $nuevosNumeros = [];
-            $numero = $maxNumero + 1;
-
-            while (count($nuevosNumeros) < $seriesFaltantes) {
-                // Cambiar el padding a 6 cifras en lugar de 4
-                $seriePadded = str_pad($numero, 6, '0', STR_PAD_LEFT);
-
-                // Verificar si esta serie ya existe o ya fue asignada
-                if (!in_array($seriePadded, $seriesExistentes) && !in_array($seriePadded, $seriesAsignadas)) {
-                    $nuevosNumeros[] = $seriePadded;
-                }
-
-                $numero++;
-            }
+            $nuevosNumeros = array_map(function($num) {
+                return str_pad($num, 6, '0', STR_PAD_LEFT);
+            }, range($maxNumero + 1, $maxNumero + $faltantes));
 
             $seriesAsignadas = array_merge($seriesAsignadas, $nuevosNumeros);
-
-            \Log::info("Nuevas series generadas", [
-                'bingo_id' => $bingoId,
-                'nuevas_series' => $nuevosNumeros
-            ]);
-        }
-
-        // Verificación final para evitar duplicados
-        $verificacionFinal = array_unique($seriesAsignadas);
-        if (count($verificacionFinal) != count($seriesAsignadas)) {
-            \Log::warning("Se detectaron series duplicadas antes de la asignación final", [
-                'bingo_id' => $bingoId,
-                'series_con_duplicados' => $seriesAsignadas,
-                'series_sin_duplicados' => $verificacionFinal
-            ]);
-            $seriesAsignadas = $verificacionFinal;
         }
 
         return $seriesAsignadas;
@@ -1022,6 +1206,7 @@ public function pedidosDuplicados($bingoId)
         // Obtener todas las reservas para este bingo que tienen series asignadas
         $reservas = Reserva::where('bingo_id', $bingoId)
             ->whereNotNull('series')
+            ->lockForUpdate()
             ->get();
 
         $todasLasSeries = [];
@@ -1240,8 +1425,542 @@ public function pedidosDuplicados($bingoId)
             'cartonesRechazados' => $cartonesProcesados
         ]);
     }
+public function verAprobados($bingoId)
+{
+    // Verificar si el bingo existe
+    $bingo = Bingo::findOrFail($bingoId);
 
+    // Obtener las reservas aprobadas para este bingo
+    $reservasAprobadas = Reserva::where('bingo_id', $bingoId)
+        ->where('estado', 'aprobado')
+        ->get();
 
+    // Procesar datos para la vista
+    $reservasProcesadas = [];
+    foreach ($reservasAprobadas as $reserva) {
+        $series = [];
+        
+        // Procesar las series (si es JSON, convertirlo a array)
+        if (!empty($reserva->series)) {
+            if (is_string($reserva->series)) {
+                $seriesArray = json_decode($reserva->series, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $series = $seriesArray;
+                }
+            } elseif (is_array($reserva->series)) {
+                $series = $reserva->series;
+            }
+        }
+        
+        // Procesar series para cada cartón si es necesario
+        $cartonesSeries = [];
+        foreach ($series as $carton) {
+            // Obtener información de la tabla series para este cartón
+            $infoSerie = DB::table('series')
+                ->where('carton', $carton)
+                ->orWhere('carton', ltrim($carton, '0'))
+                ->first();
+            
+            if ($infoSerie && isset($infoSerie->series)) {
+                $seriesInfo = $infoSerie->series;
+                
+                // Si es JSON, decodificarlo
+                if (is_string($seriesInfo)) {
+                    $seriesData = json_decode($seriesInfo, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesData)) {
+                        $cartonesSeries[$carton] = $seriesData;
+                    } else {
+                        $cartonesSeries[$carton] = $seriesInfo;
+                    }
+                } else {
+                    $cartonesSeries[$carton] = $seriesInfo;
+                }
+            } else {
+                $cartonesSeries[$carton] = "No encontrado";
+            }
+        }
+        
+        // Añadir a la lista procesada
+        $reservasProcesadas[] = [
+            'reserva' => $reserva,
+            'cartones' => $series,
+            'cartonesSeries' => $cartonesSeries
+        ];
+    }
+    
+    return view('admin.bingos.aprobados', [
+        'bingo' => $bingo,
+        'reservasAprobadas' => $reservasProcesadas
+    ]);
+}
+
+public function descargarCarton($bingoId, $serie)
+{
+    // Debug inicial
+    Log::info("=== INICIO PROCESO DESCARGA CARTON ===");
+    Log::info("Parámetros recibidos - Bingo ID: $bingoId, Serie: $serie");
+    
+    try {
+        // Verificar si el bingo existe
+        $bingo = Bingo::findOrFail($bingoId);
+        Log::info("Bingo encontrado - ID: {$bingo->id}, Nombre: {$bingo->nombre}, Estado: {$bingo->estado}");
+        
+        // Verificar el estado del bingo
+        $bingoEstado = strtolower($bingo->estado);
+        if ($bingoEstado === 'archivado') {
+            Log::warning("Intento de descarga de cartón para bingo archivado");
+            return redirect()->back()->with('error', 'Este bingo está archivado y sus cartones no pueden ser descargados.');
+        }
+        
+        // Limpiar la serie de caracteres no numéricos
+        $numeroCarton = intval(preg_replace('/[^0-9]/', '', $serie));
+        Log::info("Número de cartón limpio: $numeroCarton");
+        
+        if (!$numeroCarton) {
+            Log::warning("No se pudo determinar el número del cartón de la serie: $serie");
+            return redirect()->back()->with('error', 'Serie de cartón inválida.');
+        }
+        
+        // Buscar una reserva que contenga esta serie para obtener información del propietario
+        $reservaEncontrada = null;
+        $reservas = Reserva::where('bingo_id', $bingoId)
+                          ->where('eliminado', 0)
+                          ->get();
+                          
+        foreach ($reservas as $reserva) {
+            if (!empty($reserva->series)) {
+                $seriesArray = $reserva->series;
+                
+                // Decodificar series si es JSON
+                if (is_string($seriesArray)) {
+                    try {
+                        $decodedArray = json_decode($seriesArray, true);
+                        if (is_string($decodedArray)) {
+                            $decodedArray = json_decode($decodedArray, true);
+                        }
+                        if (is_array($decodedArray)) {
+                            $seriesArray = $decodedArray;
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning("Error decodificando series: " . $e->getMessage());
+                    }
+                }
+                
+                // Verificar si esta reserva contiene la serie buscada
+                if (is_array($seriesArray)) {
+                    foreach ($seriesArray as $serieReserva) {
+                        $numeroSerieReserva = intval(preg_replace('/[^0-9]/', '', $serieReserva));
+                        if ($numeroSerieReserva == $numeroCarton) {
+                            $reservaEncontrada = $reserva;
+                            Log::info("Reserva encontrada para la serie - ID: {$reserva->id}, Nombre: {$reserva->nombre}");
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Definir rutas de archivos con directorio absoluto - USER ID CORREGIDO
+        $directorioBingo = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY';
+        $rutaJpg = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.jpg';
+        $rutaPdf = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.pdf';
+        
+        // Debug de rutas
+        Log::info("Verificando existencia de archivos:");
+        Log::info("Ruta JPG: " . $rutaJpg . " - Existe: " . (file_exists($rutaJpg) ? 'SÍ' : 'NO'));
+        Log::info("Ruta PDF: " . $rutaPdf . " - Existe: " . (file_exists($rutaPdf) ? 'SÍ' : 'NO'));
+        
+        // Comprobar permisos
+        if (file_exists($rutaJpg)) {
+            $permisos = substr(sprintf('%o', fileperms($rutaJpg)), -4);
+            Log::info("Permisos del archivo JPG: " . $permisos);
+        }
+        
+        if (file_exists($rutaPdf)) {
+            $permisos = substr(sprintf('%o', fileperms($rutaPdf)), -4);
+            Log::info("Permisos del archivo PDF: " . $permisos);
+        }
+        
+        Log::info("Verificando archivos en entorno de servidor compartido");
+        
+        // Determinar qué archivo existe y su extensión
+        if (file_exists($rutaJpg)) {
+            $rutaCompleta = $rutaJpg;
+            $extension = 'jpg';
+            Log::info("Usando archivo JPG para la descarga");
+        } elseif (file_exists($rutaPdf)) {
+            $rutaCompleta = $rutaPdf;
+            $extension = 'pdf';
+            Log::info("Usando archivo PDF para la descarga");
+        } else {
+            // Intentar con método alternativo para localizar el archivo
+            Log::warning("No se encontró el archivo con rutas directas. Intentando alternativa...");
+            
+            // Listar archivos en el directorio para depuración
+            if (is_dir($directorioBingo)) {
+                $archivosEnDir = scandir($directorioBingo);
+                Log::info("Archivos en el directorio: " . implode(", ", $archivosEnDir));
+                
+                // Buscar archivos que coincidan parcialmente
+                $patronBusqueda = "Carton-RIFFY-" . $numeroCarton;
+                $archivoCoincidente = null;
+                
+                foreach ($archivosEnDir as $archivo) {
+                    if (strpos($archivo, $patronBusqueda) !== false) {
+                        $archivoCoincidente = $archivo;
+                        $rutaCompleta = $directorioBingo . '/' . $archivo;
+                        $extension = pathinfo($archivo, PATHINFO_EXTENSION);
+                        Log::info("Archivo coincidente encontrado: " . $archivo);
+                        break;
+                    }
+                }
+                
+                if (!$archivoCoincidente) {
+                    Log::warning("No se encontró ningún archivo que coincida con el patrón: " . $patronBusqueda);
+                    
+                    // Plan B: Usar URL directa en caso de que no se encuentre
+                    $urlDirecta = 'https://mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.jpg';
+                    Log::info("Redirigiendo a URL directa: " . $urlDirecta);
+                    return redirect($urlDirecta);
+                }
+            } else {
+                Log::error("El directorio no existe o no es accesible: " . $directorioBingo);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error en la configuración del sistema de archivos.'
+                ], 500);
+            }
+        }
+        
+        // Preparar el nombre del archivo para descarga
+        $nombreArchivo = "Carton-RIFFY-{$numeroCarton}";
+        
+        // Verificar si el archivo es legible
+        if (!is_readable($rutaCompleta)) {
+            Log::error("El archivo existe pero no es legible: " . $rutaCompleta);
+            
+            // Plan B: Usar URL directa en caso de que el archivo no sea legible
+            $urlDirecta = 'https://mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.' . $extension;
+            Log::info("Redirigiendo a URL directa: " . $urlDirecta);
+            return redirect($urlDirecta);
+        }
+        
+        // Plan B: usar URL directa si la descarga falla
+        if (!file_exists($rutaCompleta) || filesize($rutaCompleta) == 0) {
+            Log::warning("Archivo no disponible o vacío, redirigiendo a URL directa");
+            $urlDirecta = 'https://mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroCarton . '.' . $extension;
+            return redirect($urlDirecta);
+        }
+        
+        // Aplicar marca de agua si es JPG y tenemos información de reserva
+        if ($extension === 'jpg' && $reservaEncontrada) {
+            try {
+                Log::info("🖼 Aplicando marca de agua personalizada en cartón JPG");
+        
+                // Intentamos obtener el nombre del propietario
+                $nombrePropietario = "";
+                
+                // PRIMERO: Verificar si la reserva específica tiene nombre
+                if (!empty($reservaEncontrada->nombre) && trim($reservaEncontrada->nombre) !== '') {
+                    $nombrePropietario = trim($reservaEncontrada->nombre);
+                    Log::info("Nombre encontrado en la reserva específica (ID: {$reservaEncontrada->id}): '" . $nombrePropietario . "'");
+                } else {
+                    Log::info("La reserva específica (ID: {$reservaEncontrada->id}) no tiene nombre, buscando por celular como fallback");
+                    
+                    // FALLBACK: Si la reserva específica no tiene nombre, buscar por número de celular
+                    if (!empty($reservaEncontrada->celular)) {
+                        try {
+                            // Buscar otras reservas con el mismo número de celular que tengan nombre
+                            $reservasPorCelular = Reserva::where('celular', $reservaEncontrada->celular)
+                                                        ->where('eliminado', 0)
+                                                        ->whereNotNull('nombre')
+                                                        ->where('nombre', '!=', '')
+                                                        ->orderBy('id', 'desc')
+                                                        ->get();
+                            
+                            Log::info("Buscando nombre por celular como fallback: " . $reservaEncontrada->celular);
+                            Log::info("Reservas encontradas con mismo celular que tienen nombre: " . count($reservasPorCelular));
+                            
+                            if ($reservasPorCelular->isNotEmpty()) {
+                                // Buscar nombres completos (que contengan al menos un espacio)
+                                $nombreCompleto = null;
+                                foreach ($reservasPorCelular as $reserva) {
+                                    if (strpos($reserva->nombre, ' ') !== false) {
+                                        $nombreCompleto = $reserva->nombre;
+                                        break;
+                                    }
+                                }
+                                
+                                // Si no encontramos nombre con espacio, usamos el primero disponible
+                                if ($nombreCompleto === null && !empty($reservasPorCelular[0]->nombre)) {
+                                    $nombreCompleto = $reservasPorCelular[0]->nombre;
+                                }
+                                
+                                if ($nombreCompleto !== null) {
+                                    $nombrePropietario = trim($nombreCompleto);
+                                    Log::info("Nombre completo encontrado por fallback: '" . $nombrePropietario . "'");
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            Log::warning("Error al buscar nombre por celular como fallback: " . $e->getMessage());
+                        }
+                    }
+                }
+                
+                // Si no encontramos un nombre válido, usamos el número de celular o ID de reserva
+                if (empty($nombrePropietario)) {
+                    $nombrePropietario = !empty($reservaEncontrada->celular) ? 
+                        $reservaEncontrada->celular : 
+                        "Reserva #" . $reservaEncontrada->id;
+                    Log::info("No se encontró nombre, usando identificador por defecto: '" . $nombrePropietario . "'");
+                }
+                
+                // Obtener nombre del bingo
+                $nombreBingo = $bingo->nombre;
+                Log::info("Nombre del bingo: " . $nombreBingo);
+                
+                // Truncar textos si son muy largos
+                $maxLongitudNombre = 50;
+                if (mb_strlen($nombrePropietario) > $maxLongitudNombre) {
+                    $nombrePropietario = mb_substr($nombrePropietario, 0, $maxLongitudNombre) . '...';
+                }
+                if (mb_strlen($nombreBingo) > $maxLongitudNombre) {
+                    $nombreBingo = mb_substr($nombreBingo, 0, $maxLongitudNombre) . '...';
+                }
+                
+                // Formatear textos para la marca de agua
+                $textoBingo = "Bingo: " . $nombreBingo;
+                $textoNombre = "Nombre: " . $nombrePropietario;
+                
+                Log::info("Línea 1 (Bingo): " . $textoBingo);
+                Log::info("Línea 2 (Nombre): " . $textoNombre);
+                
+                // Cargar la imagen con GD
+                $sourceImage = @imagecreatefromjpeg($rutaCompleta);
+                if (!$sourceImage) {
+                    throw new \Exception("No se pudo cargar la imagen con GD");
+                }
+                
+                // Obtener dimensiones
+                $width = imagesx($sourceImage);
+                $height = imagesy($sourceImage);
+                
+                // Color negro para el texto, con leve sombreado para mejor visibilidad
+                $textColor = imagecolorallocate($sourceImage, 0, 0, 0); // Negro
+                $shadowColor = imagecolorallocate($sourceImage, 255, 255, 255); // Blanco para sombreado
+                
+                // Verificar si la fuente existe
+                $fuente = base_path('public/fonts/arial.ttf');
+                if (!file_exists($fuente)) {
+                    throw new \Exception("No se encontró la fuente en $fuente");
+                }
+                
+                // Tamaño de la fuente (reducir si es necesario)
+                $fontSize = 14; // Reducido de 16 a 14
+                
+                // Márgenes mejorados para mover hacia la IZQUIERDA
+                $margenDerecho = 400;  // AUMENTADO para mover texto hacia la izquierda
+                $margenIzquierdo = 50; // Más margen izquierdo
+                $margenSuperior = 170; // Posición Y inicial
+                $espacioEntreLineas = 25; // Espacio entre líneas
+                
+                // Calcular el ancho máximo disponible para el texto
+                $maxTextWidth = $width - $margenDerecho - $margenIzquierdo;
+                
+                // Si el texto es muy largo, reducir el tamaño de fuente
+                $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
+                $textWidth1 = $bbox1[2] - $bbox1[0];
+                
+                $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
+                $textWidth2 = $bbox2[2] - $bbox2[0];
+                
+                // Si cualquier texto es muy largo, reducir fuente
+                if ($textWidth1 > $maxTextWidth || $textWidth2 > $maxTextWidth) {
+                    $fontSize = 12; // Reducir aún más
+                    Log::info("Texto muy largo, reduciendo fuente a {$fontSize}");
+                    
+                    // Recalcular con nueva fuente
+                    $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
+                    $textWidth1 = $bbox1[2] - $bbox1[0];
+                    
+                    $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
+                    $textWidth2 = $bbox2[2] - $bbox2[0];
+                }
+                
+                // Ajustar texto del bingo si sigue siendo muy largo
+                if ($textWidth1 > $maxTextWidth) {
+                    $tempTextoBingo = $textoBingo;
+                    while ($textWidth1 > $maxTextWidth && mb_strlen($tempTextoBingo) > 15) {
+                        $tempTextoBingo = mb_substr($tempTextoBingo, 0, mb_strlen($tempTextoBingo) - 4);
+                        $bbox1 = imagettfbbox($fontSize, 0, $fuente, $tempTextoBingo . "...");
+                        $textWidth1 = $bbox1[2] - $bbox1[0];
+                    }
+                    $textoBingo = $tempTextoBingo . "...";
+                    Log::info("Texto bingo truncado: " . $textoBingo);
+                }
+                
+                // Ajustar texto del nombre si sigue siendo muy largo
+                if ($textWidth2 > $maxTextWidth) {
+                    $tempTextoNombre = $textoNombre;
+                    while ($textWidth2 > $maxTextWidth && mb_strlen($tempTextoNombre) > 15) {
+                        $tempTextoNombre = mb_substr($tempTextoNombre, 0, mb_strlen($tempTextoNombre) - 4);
+                        $bbox2 = imagettfbbox($fontSize, 0, $fuente, $tempTextoNombre . "...");
+                        $textWidth2 = $bbox2[2] - $bbox2[0];
+                    }
+                    $textoNombre = $tempTextoNombre . "...";
+                    Log::info("Texto nombre truncado: " . $textoNombre);
+                }
+                
+                // Calcular posiciones finales centradas en el área disponible
+                $areaDisponible = $width - $margenIzquierdo - $margenDerecho;
+                $textX1 = $margenIzquierdo + ($areaDisponible - $textWidth1) / 2;
+                $textX2 = $margenIzquierdo + ($areaDisponible - $textWidth2) / 2;
+                
+                // Asegurarse de que el texto esté dentro de los límites
+                $textX1 = max($margenIzquierdo, min($textX1, $width - $textWidth1 - 20));
+                $textX2 = max($margenIzquierdo, min($textX2, $width - $textWidth2 - 20));
+                
+                // Posiciones Y
+                $textY1 = $margenSuperior;
+                $textY2 = $margenSuperior + $espacioEntreLineas;
+                
+                Log::info("Posiciones finales - Texto1: X={$textX1}, Y={$textY1}, Ancho={$textWidth1}");
+                Log::info("Posiciones finales - Texto2: X={$textX2}, Y={$textY2}, Ancho={$textWidth2}");
+                Log::info("Dimensiones imagen: {$width}x{$height}");
+                
+                // Añadir sombreado para mejor visibilidad (1px offset)
+                imagettftext($sourceImage, $fontSize, 0, $textX1+1, $textY1+1, $shadowColor, $fuente, $textoBingo);
+                imagettftext($sourceImage, $fontSize, 0, $textX2+1, $textY2+1, $shadowColor, $fuente, $textoNombre);
+                
+                // Añadir las dos líneas de texto
+                imagettftext($sourceImage, $fontSize, 0, $textX1, $textY1, $textColor, $fuente, $textoBingo);
+                imagettftext($sourceImage, $fontSize, 0, $textX2, $textY2, $textColor, $fuente, $textoNombre);
+                
+                // Guardar la imagen con marca de agua
+                $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroCarton . '-marca.jpg');
+                if (!file_exists(dirname($rutaTemporal))) {
+                    mkdir(dirname($rutaTemporal), 0775, true);
+                }
+                
+                // Guardar la imagen con alta calidad
+                imagejpeg($sourceImage, $rutaTemporal, 95);
+                Log::info("✅ Imagen con marca de agua guardada exitosamente: $rutaTemporal");
+                $rutaCompleta = $rutaTemporal;
+                
+                // Liberar recursos
+                imagedestroy($sourceImage);
+                    
+            } catch (\Exception $e) {
+                Log::error("❌ Error al aplicar marca de agua: " . $e->getMessage());
+                Log::error("Traza: " . $e->getTraceAsString());
+                
+                // Fallback: usar la imagen original sin marca de agua
+                Log::warning("⚠️ Usando imagen original sin marca de agua debido al error");
+            }
+        }
+        
+        // Intentar descarga directa
+        Log::info("Iniciando descarga del archivo: " . $rutaCompleta);
+        Log::info("=== FIN PROCESO DESCARGA CARTON ===");
+        
+        // Añadir headers adicionales para evitar problemas de caché
+        return response()->download($rutaCompleta, "{$nombreArchivo}.{$extension}", [
+            'Content-Type' => $extension == 'pdf' ? 'application/pdf' : 'image/jpeg',
+            'Content-Disposition' => 'attachment; filename="' . $nombreArchivo . '.' . $extension . '"',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0'
+        ]);
+        
+    } catch (\Exception $e) {
+        // Capturar cualquier excepción para evitar errores fatales
+        Log::error("Error en la descarga de cartón: " . $e->getMessage());
+        Log::error("Archivo: " . $e->getFile() . ", Línea: " . $e->getLine());
+        Log::error("Trace: " . $e->getTraceAsString());
+        Log::info("=== FIN PROCESO DESCARGA CARTON CON ERROR ===");
+        
+        // Plan B final: intentar redireccionar directamente como último recurso
+        try {
+            $numeroParaArchivo = intval(preg_replace('/[^0-9]/', '', $serie));
+            $urlDirecta = 'https://mediumspringgreen-chamois-657776.hostingersite.com/TablasbingoRIFFY/Carton-RIFFY-' . $numeroParaArchivo . '.jpg';
+            Log::info("Error en descarga normal. Último intento: redirección a " . $urlDirecta);
+            return redirect($urlDirecta);
+        } catch (\Exception $e2) {
+            return redirect()->back()->with('error', 'Ocurrió un error al procesar la descarga. Por favor contacte al administrador.');
+        }
+    }
+}
+public function exportarAprobadosExcel($bingoId)
+{
+    // Verificar si el bingo existe
+    $bingo = Bingo::findOrFail($bingoId);
+
+    // Obtener las reservas aprobadas para este bingo
+    $reservasAprobadas = Reserva::where('bingo_id', $bingoId)
+        ->where('estado', 'aprobado')
+        ->get();
+
+    // Procesar datos para el Excel
+    $datosExcel = [];
+    
+    foreach ($reservasAprobadas as $reserva) {
+        $series = [];
+        
+        // Procesar las series (si es JSON, convertirlo a array)
+        if (!empty($reserva->series)) {
+            if (is_string($reserva->series)) {
+                $seriesArray = json_decode($reserva->series, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                    $series = $seriesArray;
+                }
+            } elseif (is_array($reserva->series)) {
+                $series = $reserva->series;
+            }
+        }
+        
+        // Para cada cartón, crear una fila en el Excel
+        foreach ($series as $carton) {
+            // Obtener información de series para este cartón
+            $seriesInfo = "No disponible";
+            $infoSerie = DB::table('series')
+                ->where('carton', $carton)
+                ->orWhere('carton', ltrim($carton, '0'))
+                ->first();
+            
+            if ($infoSerie && isset($infoSerie->series)) {
+                $seriesData = $infoSerie->series;
+                
+                // Si es JSON, decodificarlo
+                if (is_string($seriesData)) {
+                    $seriesArray = json_decode($seriesData, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($seriesArray)) {
+                        $seriesInfo = implode(', ', $seriesArray);
+                    } else {
+                        $seriesInfo = $seriesData;
+                    }
+                } else {
+                    $seriesInfo = is_array($seriesData) ? implode(', ', $seriesData) : $seriesData;
+                }
+            }
+            
+            // Añadir fila al Excel
+            $datosExcel[] = [
+                'nombre' => $reserva->nombre,
+                'celular' => $reserva->celular,
+                'carton' => $carton,
+                'series' => $seriesInfo,
+                'fecha_reserva' => $reserva->created_at ? $reserva->created_at->format('d/m/Y H:i:s') : '',
+                'estado' => $reserva->estado
+            ];
+        }
+    }
+
+    // Crear nombre del archivo
+    $nombreArchivo = 'aprobados_' . str_replace(' ', '_', $bingo->nombre) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+    // Exportar usando Laravel Excel
+    return Excel::download(new AprobadosExport($datosExcel, $bingo), $nombreArchivo);
+}
     /**
      * Comando para actualizar el orden_bingo en reservas existentes
      */

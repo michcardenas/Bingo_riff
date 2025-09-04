@@ -28,6 +28,8 @@ Route::post('/cartones/buscar', [App\Http\Controllers\CartonController::class, '
 
 // Ruta para descargar cartones
 Route::get('/cartones/descargar/{reservaId}/{numeroCarton?}', [App\Http\Controllers\CartonController::class, 'descargar'])->name('cartones.descargar');
+Route::get('admin/bingos/{bingo}/carton/{serie}/descargar', [BingoController::class, 'descargarCarton'])
+    ->name('bingos.carton.descargar');
 
 
 // Ruta del grupo de WhatsApp
@@ -115,6 +117,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/reservas/{id}/update-comprobante', [BingoAdminController::class, 'updateComprobante']);
     Route::get('admin/bingos/{bingo}/reservas-rechazados', [BingoController::class, 'verRechazados'])
     ->name('bingos.reservas.rechazados.view');
+    Route::get('admin/bingos/{bingo}/reservas-aprobados', [BingoController::class, 'verAprobados'])
+    ->name('bingos.reservas.aprobados.view');
+    Route::get('admin/bingos/{bingo}/reservas-aprobados/excel', [BingoController::class, 'exportarAprobadosExcel'])
+    ->name('bingos.reservas.aprobados.excel');
 
 
     Route::post('/admin/reservas/{id}/actualizar', [BingoAdminController::class, 'actualizarDatos'])->name('reservas.actualizar');

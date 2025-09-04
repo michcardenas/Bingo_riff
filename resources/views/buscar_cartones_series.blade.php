@@ -179,7 +179,7 @@
         <div class="container d-flex justify-content-between align-items-center">
             <!-- Logo -->
             <div class="logo-container">
-                <a href="https://bingoriffy.com">
+                <a href="{{ env('APP_URL', 'https://bingoriffy.com') }}">
                     <img src="{{ asset('images/RiffyLogo.png') }}" alt="RIFFY Bingo" id="riffy-logo" style="height: 70px;">
                 </a>
             </div>
@@ -222,16 +222,14 @@
     <table class="table table-bordered">
         <thead class="table-secondary">
             <tr>
-                <th>#</th>
-                <th>Número de Hoja</th>
+                <th>Nombre</th>
                 <th>Series</th>
             </tr>
         </thead>
         <tbody>
             @foreach($seriesDetalladas as $serie)
                 <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $serie->carton }}</td>
+                    <td>{{ $nombreUsuario ?? 'Sin nombre' }}</td>
                     <td>{{ implode(', ', $serie->series ?? []) }}</td>
                 </tr>
             @endforeach

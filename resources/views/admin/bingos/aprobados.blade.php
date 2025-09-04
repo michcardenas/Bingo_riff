@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rechazados - Bingo: {{ $bingo->nombre }}</title>
+    <title>Aprobados - Bingo: {{ $bingo->nombre }}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -25,10 +25,10 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
-                    <div class="card-header bg-danger text-white">
+                    <div class="card-header bg-success text-white">
                         <h5 class="mb-0">
-                            Rechazados - Bingo: {{ $bingo->nombre }}
-                            <a href="{{ route('bingos.reservas.rechazados.excel', $bingo->id) }}" class="btn btn-sm btn-light float-end">
+                            Aprobados - Bingo: {{ $bingo->nombre }}
+                            <a href="{{ route('bingos.reservas.aprobados.excel', $bingo->id) }}" class="btn btn-sm btn-light float-end">
                                 <i class="bi bi-download"></i> Descargar Excel
                             </a>
                             <a href="{{ url()->previous() }}" class="btn btn-sm btn-light float-end me-2">
@@ -52,8 +52,8 @@
                                         $totalRegistros = 0;
                                     @endphp
                                     
-                                    <!-- Cartones rechazados (ahora unificados) -->
-                                    @foreach($reservasRechazadas as $reserva)
+                                    <!-- Cartones de reservas aprobadas -->
+                                    @foreach($reservasAprobadas as $reserva)
                                         @foreach($reserva['cartones'] as $carton)
                                             @php
                                                 $totalRegistros++;
@@ -81,14 +81,14 @@
                         </div>
                         
                         @if($totalRegistros == 0)
-                            <div class="alert alert-danger">
-                                No hay cartones rechazados para este bingo.
+                            <div class="alert alert-success">
+                                No hay cartones aprobados para este bingo.
                             </div>
                         @endif
                         
                         <div class="mt-3">
                             <div class="alert alert-info">
-                                <strong>Total de cartones rechazados:</strong> {{ $totalRegistros }}
+                                <strong>Total de cartones aprobados:</strong> {{ $totalRegistros }}
                             </div>
                         </div>
                     </div>

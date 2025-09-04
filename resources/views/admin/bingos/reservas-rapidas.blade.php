@@ -68,9 +68,11 @@
 </div>
 <div class="mt-3 d-flex justify-content-end gap-2">
 
-    <a href="{{ route('bingos.reservas.create', $bingoId) }}" class="btn btn-sm btn-outline-success">
-        <i class="bi bi-plus-circle"></i> Crear Nuevo
-    </a>
+    @if(strtolower($bingo->estado) !== 'archivado' && strtolower($bingo->estado) !== 'cerrado')
+        <a href="{{ route('bingos.reservas.create', $bingoId) }}" class="btn btn-sm btn-outline-success">
+            <i class="bi bi-plus-circle"></i> Crear Nuevo
+        </a>
+    @endif
 
     <a href="{{ route('bingos.reservas.duplicadas', $bingoId) }}" class="btn btn-sm btn-outline-warning">
         <i class="bi bi-exclamation-triangle"></i> Comprobantes Duplicados
@@ -90,6 +92,9 @@
     <i class="bi bi-eye"></i> Ver Rechazados
 </a>
 
+<a href="{{ route('bingos.reservas.aprobados.view', $bingoId) }}" class="btn btn-sm btn-outline-success">
+    <i class="bi bi-eye"></i> Ver Aprobados
+</a>
 
 
 </div>
@@ -146,7 +151,12 @@
 <td title="{{ implode(', ', $seriesClean) }}">
     @foreach ($seriesClean as $serie)
         <div class="d-flex justify-content-between align-items-center mb-1 bg-secondary rounded px-2 py-1">
-            <span>{{ $serie }}</span>
+            <span class="serie-numero" 
+                  data-serie="{{ $serie }}" 
+                  data-bingo-id="{{ $bingoId }}"
+                  title="Clic para descargar cartón">
+                {{ $serie }}
+            </span>
             <button 
                 class="btn btn-sm btn-danger btn-eliminar-serie ms-2 py-0 px-2"
                 data-id="{{ $reserva->id }}"
@@ -158,6 +168,8 @@
         </div>
     @endforeach
 </td>
+
+
 
                             <td><input type="number" class="form-control form-control-sm bg-dark text-light campo-total" value="{{ $reserva->total }}" data-id="{{ $reserva->id }}"></td>
                             <td>
@@ -826,5 +838,156 @@ document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
     });
 });
 
+
+
+// Funcionalidad para descargar cartones al hacer clic en el número de serie
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('serie-numero')) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const serie = e.target.dataset.serie;
+        const bingoId = e.target.dataset.bingoId;
+        
+        // Mostrar loading
+        Swal.fire({
+            title: 'Generando cartón...',
+            text: `Serie: ${serie}`,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+// JAVASCRIPT SÚPER SIMPLE - Solo redirigir como enlace normal
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('serie-numero')) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const serie = e.target.dataset.serie;
+        const bingoId = e.target.dataset.bingoId;
+        
+        // Ir directo a la descarga sin complicaciones
+        window.open(`/admin/bingos/${bingoId}/carton/${serie}/descargar`, '_blank');
+    }
+});
+    }
+});
+
+// Prevenir que el hover del número interfiera con el botón X
+document.addEventListener('mouseover', function(e) {
+    if (e.target.classList.contains('btn-eliminar-serie')) {
+        // Remover temporalmente el hover del número cuando se hace hover en X
+        const serieSpan = e.target.parentElement.querySelector('.serie-numero');
+        if (serieSpan) {
+            serieSpan.style.pointerEvents = 'none';
+        }
+    }
+});
+
+document.addEventListener('mouseout', function(e) {
+    if (e.target.classList.contains('btn-eliminar-serie')) {
+        // Restaurar el hover del número
+        const serieSpan = e.target.parentElement.querySelector('.serie-numero');
+        if (serieSpan) {
+            serieSpan.style.pointerEvents = 'auto';
+        }
+    }
+});
+
+
+
+// Funcionalidad para descargar cartones al hacer clic en el número de serie
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('serie-numero')) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const serie = e.target.dataset.serie;
+        // Obtener el reservaId del botón eliminar del mismo contenedor
+        const contenedor = e.target.closest('.d-flex');
+        const btnEliminar = contenedor.querySelector('.btn-eliminar-serie');
+        const reservaId = btnEliminar.dataset.id;
+        
+        if (reservaId && serie) {
+            // Mostrar loading
+            Swal.fire({
+                title: 'Generando cartón...',
+                text: `Serie: ${serie}`,
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Redirigir a la descarga
+            window.open(`/cartones/descargar/${reservaId}/${serie}`, '_blank');
+            
+            // Cerrar el loading después de un momento
+            setTimeout(() => {
+                Swal.close();
+            }, 1000);
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo obtener la información necesaria para la descarga',
+                toast: true,
+                position: 'top-end',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        }
+    }
+});
+
+// Mejorar el hover visual para el número de serie
+document.addEventListener('DOMContentLoaded', function() {
+    // Agregar estilos CSS dinámicamente para el hover
+    const style = document.createElement('style');
+    style.textContent = `
+        .serie-numero {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 3px;
+            padding: 2px 4px;
+        }
+        .serie-numero:hover {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            transform: scale(1.05);
+            text-decoration: underline;
+        }
+        .d-flex:hover .serie-numero {
+            color: #fff !important;
+        }
+    `;
+    document.head.appendChild(style);
+});
+
+// Prevenir que el hover del número interfiera con el botón X
+document.addEventListener('mouseover', function(e) {
+    if (e.target.classList.contains('btn-eliminar-serie')) {
+        // Remover temporalmente el hover del número cuando se hace hover en X
+        const serieSpan = e.target.parentElement.querySelector('.serie-numero');
+        if (serieSpan) {
+            serieSpan.style.pointerEvents = 'none';
+            serieSpan.style.opacity = '0.7';
+        }
+    }
+});
+
+document.addEventListener('mouseout', function(e) {
+    if (e.target.classList.contains('btn-eliminar-serie')) {
+        // Restaurar el hover del número
+        const serieSpan = e.target.parentElement.querySelector('.serie-numero');
+        if (serieSpan) {
+            serieSpan.style.pointerEvents = 'auto';
+            serieSpan.style.opacity = '1';
+        }
+    }
+});
 </script>
 @endsection

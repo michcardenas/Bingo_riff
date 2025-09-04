@@ -29,4 +29,9 @@ class Bingo extends Model
     {
         return $this->hasMany(Reserva::class);
     }
+
+    public function reservaSeries()
+    {
+        return $this->hasMany(ReservaSerie::class);
+    }
 }

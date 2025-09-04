@@ -113,7 +113,7 @@ class BingoAdminController extends Controller
 
     public function reservasIndex(Request $request)
     {
-        $reservas = Reserva::orderBy('id', 'desc')->get();
+        $reservas = Reserva::orderBy('id', 'desc')->limit(100)->orderBy('id', 'desc')->get();
 
         // Si la solicitud es AJAX, solo devolver la tabla
         if ($request->ajax()) {
@@ -535,8 +535,8 @@ class BingoAdminController extends Controller
         }
 
         // Ruta destino
-        $pathProduccion = '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com/public_html/comprobantes';
-        $isProduccion = strpos(base_path(), '/home/u861598707/domains/white-dragonfly-473649.hostingersite.com') !== false;
+        $pathProduccion = '/home/u861598707/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
+        $isProduccion = strpos(base_path(), '/home/u861598707/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
         $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
 
         if (!file_exists($destino)) {
