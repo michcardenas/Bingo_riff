@@ -87,10 +87,23 @@
                                                 Cartones: <strong>{{ $reserva->cantidad ?? 0 }}</strong><br>
                                                 Series:
                                                 @if(isset($reserva->series) && is_array($reserva->series))
-                                                    @foreach($reserva->series as $serie)
-                                                        <div>{{ $serie }}</div>
-                                                    @endforeach
-                                                @else
+                                                   @php
+                    $seriesData = $reserva->series;
+                    
+                    // Verificar si es una cadena JSON y convertirla a array si es necesario
+                    if (is_string($seriesData) && json_decode($seriesData) !== null) {
+                        $seriesData = json_decode($seriesData, true);
+                    }
+                @endphp
+
+                @if(is_array($seriesData))
+                    @foreach($seriesData as $serie)
+                        <div>{{ $serie }}</div>
+                    @endforeach
+                @else
+                    <div>{{ $seriesData }}</div>
+                @endif
+                                                                @else
                                                     <div>Sin series</div>
                                                 @endif
                                             </div>
