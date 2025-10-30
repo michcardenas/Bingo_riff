@@ -82,31 +82,29 @@
                                             @else
                                                 <div class="text-muted">Sin imagen</div>
                                             @endif
+<div class="text-white-50 small">
+    Cartones: <strong>{{ $reserva->cantidad ?? 0 }}</strong><br>
+    Series:
+    @php
+        // Procesar series (puede venir como string JSON o array)
+        $seriesData = $reserva->series ?? null;
+        
+        if (is_string($seriesData)) {
+            $decoded = json_decode($seriesData, true);
+            $seriesData = $decoded ?? $seriesData; // Si falla la decodificación, usar el string original
+        }
+    @endphp
 
-                                            <div class="text-white-50 small">
-                                                Cartones: <strong>{{ $reserva->cantidad ?? 0 }}</strong><br>
-                                                Series:
-                                                @if(isset($reserva->series) && is_array($reserva->series))
-                                                   @php
-                    $seriesData = $reserva->series;
-                    
-                    // Verificar si es una cadena JSON y convertirla a array si es necesario
-                    if (is_string($seriesData) && json_decode($seriesData) !== null) {
-                        $seriesData = json_decode($seriesData, true);
-                    }
-                @endphp
-
-                @if(is_array($seriesData))
-                    @foreach($seriesData as $serie)
-                        <div>{{ $serie }}</div>
-                    @endforeach
-                @else
-                    <div>{{ $seriesData }}</div>
-                @endif
-                                                                @else
-                                                    <div>Sin series</div>
-                                                @endif
-                                            </div>
+    @if(is_array($seriesData) && count($seriesData) > 0)
+        @foreach($seriesData as $serie)
+            <div>{{ $serie }}</div>
+        @endforeach
+    @elseif($seriesData)
+        <div>{{ $seriesData }}</div>
+    @else
+        <div>Sin series</div>
+    @endif
+</div>
 
                                             {{-- Botón de rechazar si no está rechazado --}}
                                             @unless($esRechazado)
