@@ -9,7 +9,7 @@
     @php $grupoIndex = 1; @endphp
 
     @forelse ($paginador as $hash => $reservas)
-    @php
+        @php
             $rechazados = collect($reservas)->filter(fn($r) => $r->estado === 'rechazado' && $r->eliminado == 1)->count();
             $total = count($reservas);
             $restantes = $total - $rechazados;
@@ -65,16 +65,33 @@
                                 </div>
 
                                 <div class="card-body text-center" style="z-index: 2;">
-                                    <a href="{{ asset( $ruta) }}" target="_blank">
-                                        <img src="{{ asset( $ruta) }}" class="img-fluid rounded mb-2" style="max-height: 220px;">
+                                    <a href="{{ asset($ruta) }}" target="_blank">
+                                        <img src="{{ asset($ruta) }}" class="img-fluid rounded mb-2" style="max-height: 220px;">
                                     </a>
 
                                     <div class="text-white-50 small">
                                         Cartones: <strong>{{ $reserva->cantidad }}</strong><br>
                                         Series:
-                                        @foreach($reserva->series as $serie)
-                                            <div>{{ $serie }}</div>
-                                        @endforeach
+                                        @php
+                                            // Procesar series - puede ser string JSON o array
+                                            $seriesArray = [];
+                                            if (isset($reserva->series)) {
+                                                if (is_string($reserva->series)) {
+                                                    $decoded = json_decode($reserva->series, true);
+                                                    $seriesArray = is_array($decoded) ? $decoded : [];
+                                                } elseif (is_array($reserva->series)) {
+                                                    $seriesArray = $reserva->series;
+                                                }
+                                            }
+                                        @endphp
+
+                                        @if(count($seriesArray) > 0)
+                                            @foreach($seriesArray as $serie)
+                                                <div>{{ $serie }}</div>
+                                            @endforeach
+                                        @else
+                                            <div>Sin series</div>
+                                        @endif
                                     </div>
 
                                     {{-- Botón de rechazar si no está rechazado --}}
@@ -97,11 +114,12 @@
     @empty
         <div class="alert alert-secondary">No se encontraron comprobantes potencialmente repetidos.</div>
     @endforelse
+    
     <div class="mt-4 d-flex justify-content-center">
-    <div class="pagination-sm">
-        {{ $paginador->links() }}
+        <div class="pagination-sm">
+            {{ $paginador->links() }}
+        </div>
     </div>
-</div>
 
     <div class="text-end mt-4">
         <a href="{{ route('bingos.reservas.rapidas', $bingo->id) }}" class="btn btn-sm btn-secondary">
