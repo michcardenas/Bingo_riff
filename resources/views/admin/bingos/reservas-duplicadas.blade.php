@@ -86,21 +86,20 @@
     Cartones: <strong>{{ $reserva->cantidad ?? 0 }}</strong><br>
     Series:
     @php
-        // Procesar series (puede venir como string JSON o array)
         $seriesData = $reserva->series ?? null;
         
         if (is_string($seriesData)) {
-            $decoded = json_decode($seriesData, true);
-            $seriesData = $decoded ?? $seriesData; // Si falla la decodificación, usar el string original
+            $seriesArray = json_decode($seriesData, true);
+            $seriesData = is_array($seriesArray) ? $seriesArray : [$seriesData];
+        } elseif (!is_array($seriesData)) {
+            $seriesData = $seriesData ? [$seriesData] : [];
         }
     @endphp
 
-    @if(is_array($seriesData) && count($seriesData) > 0)
+    @if(count($seriesData) > 0)
         @foreach($seriesData as $serie)
             <div>{{ $serie }}</div>
         @endforeach
-    @elseif($seriesData)
-        <div>{{ $seriesData }}</div>
     @else
         <div>Sin series</div>
     @endif
