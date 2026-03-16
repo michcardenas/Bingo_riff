@@ -28,6 +28,8 @@ class Reserva extends Model
         'ganador',
         'premio',
         'fecha_ganador',
+        'ocr_data',
+        'ocr_status',
     ];
 
     protected $casts = [
@@ -36,7 +38,8 @@ class Reserva extends Model
         'total' => 'decimal:2',
         'eliminado' => 'boolean',
         'ganador' => 'boolean',        // Cast para el campo ganador
-        'fecha_ganador' => 'datetime', // Cast para la fecha de ganador
+        'fecha_ganador' => 'datetime',
+        'ocr_data' => 'array',
     ];
 
     /**

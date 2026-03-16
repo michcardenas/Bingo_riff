@@ -3,6 +3,8 @@
 /public/build
 /public/hot
 /public/storage
+/public/comprobantes-test
+/public/comprobantes
 /storage/*.key
 /storage/pail
 /vendor

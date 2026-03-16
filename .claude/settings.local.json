@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(composer require thiagoalessio/tesseract_ocr)",
+      "Bash(php artisan migrate)",
+      "Bash(composer remove thiagoalessio/tesseract_ocr)"
+    ]
+  }
+}

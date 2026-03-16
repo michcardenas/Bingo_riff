@@ -285,7 +285,9 @@ class BingoAdminController extends Controller
             'comprobante',
             'numero_comprobante',
             'estado',
-            DB::raw('COALESCE(orden_bingo, 0) as orden_bingo') // 👈 Ajuste clave aquí
+            'ocr_data',
+            'ocr_status',
+            DB::raw('COALESCE(orden_bingo, 0) as orden_bingo')
         )
         ->where('bingo_id', $bingoId)
         ->orderByDesc('id')
@@ -322,10 +324,14 @@ class BingoAdminController extends Controller
             ['path' => request()->url(), 'query' => request()->query()]
         );
     
+        // Calcular referencias OCR duplicadas
+        $refsDuplicadas = $this->getReferenciasDuplicadas($bingoId);
+
         return view('admin.bingos.reservas-rapidas', [
             'reservas' => $paginator,
             'bingo' => $bingo,
             'bingoId' => $bingoId,
+            'refsDuplicadas' => $refsDuplicadas,
         ]);
     }
    
@@ -348,15 +354,17 @@ class BingoAdminController extends Controller
             'comprobante',
             'numero_comprobante',
             'estado',
-            DB::raw('COALESCE(orden_bingo, 0) as orden_bingo') // ✅ AÑADIR ESTO para evitar error
+            'ocr_data',
+            'ocr_status',
+            DB::raw('COALESCE(orden_bingo, 0) as orden_bingo')
         )
-   
+
         ->where('bingo_id', $bingoId);
-    
-        // Filtro por campo (nombre, celular o series)
+
+        // Filtro por campo (nombre, celular, series o datos OCR)
         $campo = $request->input('campo', 'nombre');
         $valor = $request->input('search');
-    
+
         if (!empty($valor)) {
             $query->where(function ($q) use ($campo, $valor) {
                 if ($campo === 'nombre') {
@@ -370,6 +378,30 @@ class BingoAdminController extends Controller
         }
         
     
+        // Filtro OCR independiente
+        $campoOcr = $request->input('campo_ocr');
+        $valorOcr = $request->input('search_ocr');
+
+        if (!empty($valorOcr) && !empty($campoOcr)) {
+            $query->where(function ($q) use ($campoOcr, $valorOcr) {
+                if ($campoOcr === 'referencia_ocr') {
+                    $q->where('ocr_data', 'like', '%"referencia":"%' . $valorOcr . '%"%');
+                } elseif ($campoOcr === 'banco_ocr') {
+                    $q->where('ocr_data', 'like', '%"banco":"%' . $valorOcr . '%"%');
+                } elseif ($campoOcr === 'fecha_ocr') {
+                    $q->where('ocr_data', 'like', '%"fecha":"%' . $valorOcr . '%"%');
+                }
+            });
+        }
+
+        // Filtro por rango de fecha de registro
+        if ($request->filled('fecha_desde')) {
+            $query->where('created_at', '>=', $request->fecha_desde);
+        }
+        if ($request->filled('fecha_hasta')) {
+            $query->where('created_at', '<=', $request->fecha_hasta);
+        }
+
         // Filtro por estado
         if ($request->filled('estado') && $request->estado !== 'todos') {
             $query->whereRaw('LOWER(estado) = ?', [strtolower($request->estado)]);
@@ -412,6 +444,9 @@ class BingoAdminController extends Controller
             ]
         );
     
+        // Calcular referencias OCR duplicadas
+        $refsDuplicadas = $this->getReferenciasDuplicadas($bingoId);
+
         // Retornar vista con filtros aplicados
         return view('admin.bingos.reservas-rapidas', [
             'reservas' => $reservas,
@@ -420,9 +455,78 @@ class BingoAdminController extends Controller
             'searchTerm' => $valor ?? '',
             'estadoFilter' => $request->estado ?? 'todos',
             'campoFiltro' => $campo,
+            'campoOcr' => $campoOcr ?? '',
+            'searchOcr' => $valorOcr ?? '',
+            'fechaDesde' => $request->fecha_desde ?? '',
+            'fechaHasta' => $request->fecha_hasta ?? '',
+            'refsDuplicadas' => $refsDuplicadas,
         ]);
     }
     
+    /**
+     * Obtiene IDs de reservas con referencia OCR duplicada en un bingo.
+     */
+    private function getReferenciasDuplicadas($bingoId): array
+    {
+        $reservas = DB::table('reservas')
+            ->select('id', 'ocr_data')
+            ->where('bingo_id', $bingoId)
+            ->where('ocr_status', 'procesado')
+            ->whereNotNull('ocr_data')
+            ->get();
+
+        $porRef = [];
+        foreach ($reservas as $r) {
+            $ocr = json_decode($r->ocr_data, true);
+            $ref = $ocr['referencia'] ?? null;
+            if (!empty($ref)) {
+                $porRef[$ref][] = $r->id;
+            }
+        }
+
+        $idsDuplicados = [];
+        foreach ($porRef as $ids) {
+            if (count($ids) > 1) {
+                foreach ($ids as $id) {
+                    $idsDuplicados[] = $id;
+                }
+            }
+        }
+
+        return $idsDuplicados;
+    }
+
+    public function duplicadosOcr($bingoId)
+    {
+        $bingo = Bingo::findOrFail($bingoId);
+
+        $reservas = \App\Models\Reserva::where('bingo_id', $bingoId)
+            ->whereNotNull('ocr_data')
+            ->where('ocr_status', 'procesado')
+            ->get();
+
+        // Extraer referencia de cada reserva y agrupar
+        $porReferencia = $reservas->groupBy(function ($reserva) {
+            $ocr = is_string($reserva->ocr_data) ? json_decode($reserva->ocr_data, true) : $reserva->ocr_data;
+            return $ocr['referencia'] ?? null;
+        })->filter(function ($grupo, $key) {
+            return $key !== null && $key !== '' && $grupo->count() > 1;
+        });
+
+        // Paginacion de grupos
+        $page = request()->get('page', 1);
+        $perPage = 3;
+        $paginador = new LengthAwarePaginator(
+            $porReferencia->slice(($page - 1) * $perPage, $perPage),
+            $porReferencia->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return view('admin.bingos.duplicados-ocr', compact('bingo', 'paginador', 'bingoId'));
+    }
+
     public function actualizarEstadoReserva(Request $request)
     {
         $request->validate([

@@ -43,34 +43,21 @@
   src="https://www.facebook.com/tr?id=1291210271938936&ev=PageView&noscript=1"/>
 </noscript>
 <style>
-body {
-            background-color: #000;
+        body {
+            background-color: #0a0a0a;
             color: #fff;
             font-family: 'Poppins', sans-serif;
-            font-size: 18px;
+            font-size: 16px;
         }
 
-        h1,
-        h2,
-        h3,
-        h4,
-        h5,
-        h6,
-        .paso-title {
+        h1, h2, h3, h4, h5, h6 {
             font-family: 'Montserrat', sans-serif;
             font-weight: 700;
         }
 
-        .paso-title {
-            color: #fa9044;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-            font-size: 28px;
-        }
-
         p {
-            font-size: 18px;
-            margin-bottom: 0.8rem;
+            font-size: 16px;
+            margin-bottom: 0.6rem;
         }
 
         .logo-container {
@@ -85,13 +72,56 @@ body {
             display: block;
         }
 
+        /* Step badge - orange pill */
+        .paso-badge {
+            display: inline-flex;
+            align-items: center;
+            background-color: #fa9044;
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            padding: 5px 14px;
+            border-radius: 8px;
+            margin-right: 10px;
+            white-space: nowrap;
+            border: 2px solid #e07d35;
+        }
+
+        .paso-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-left: 4px;
+        }
+
+        .paso-header-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .paso-subtitle {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 2px;
+        }
+
         .btn-naranja {
             background-color: #fa9044;
             border-color: #fa9044;
             font-family: 'Montserrat', sans-serif;
             font-weight: 600;
             letter-spacing: 0.5px;
-            font-size: 20px;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .btn-naranja:hover {
+            background-color: #e07d35;
+            border-color: #e07d35;
+            color: #fff;
         }
 
         .text-verde {
@@ -100,27 +130,75 @@ body {
 
         .text-amarillo {
             color: #FFD700;
-            font-size: 20px;
+            font-size: 18px;
         }
-        
+
         .text-naranja {
             color: #fa9044;
         }
 
         .bingo-container {
-            background-color: #121212;
-            border-radius: 8px;
-            padding: 0; /* Quitamos padding para maximizar espacio */
+            background-color: transparent;
+            border-radius: 0;
+            padding: 0;
+        }
+
+        /* Step wrapper + sections */
+        .step-wrapper {
+            background-color: #1a1a1a;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #222;
+        }
+
+        .step-inner-box {
+            background-color: #111;
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .step-wrapper:last-child {
+            margin-bottom: 0;
         }
 
         .form-control {
             font-family: 'Poppins', sans-serif;
+            font-size: 15px;
+            padding: 10px 14px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .form-control:focus {
+            box-shadow: 0 0 0 2px rgba(0, 191, 99, 0.3);
+            border-color: #00bf63;
+        }
+
+        /* Input groups with icons */
+        .input-icon-group {
+            position: relative;
+        }
+
+        .input-icon-group .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
             font-size: 18px;
-            padding: 10px;
+            z-index: 2;
+        }
+
+        .input-icon-group .form-control {
+            padding-left: 42px;
         }
 
         .form-label {
-            font-size: 18px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 6px;
         }
 
         .nav-link-custom {
@@ -130,20 +208,246 @@ body {
         .btn {
             font-family: 'Montserrat', sans-serif;
             font-weight: 600;
+            font-size: 16px;
+            border-radius: 8px;
+        }
+
+        /* Quantity selector */
+        .qty-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            border: 1px solid #333;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .qty-selector .btn-qty {
+            width: 42px;
+            height: 42px;
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background-color: #2a2a2a;
+            color: #aaa;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .qty-selector .btn-qty:hover {
+            background-color: #3a3a3a;
+            color: #fff;
+        }
+
+        .qty-selector .qty-input {
+            width: 100%;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            border: none;
+            border-left: 1px solid #333;
+            border-right: 1px solid #333;
+            background-color: #0d0d0d;
+            color: #fff;
+            height: 42px;
+            border-radius: 0;
+            margin: 0;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 0;
+        }
+
+        .total-label {
+            color: #00bf63;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .total-value {
+            font-weight: 700;
             font-size: 18px;
         }
 
+        /* Payment section */
+        .payment-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            margin-bottom: 14px;
+        }
+
+        .payment-total-row .total-left {
+            color: #00bf63;
+            font-weight: 700;
+            font-size: 15px;
+            font-style: italic;
+        }
+
+        .payment-total-row .total-right {
+            font-weight: 700;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .payment-tabs {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        button.payment-tab {
+            background: none !important;
+            border: none !important;
+            font-weight: 700;
+            font-size: 15px;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            border-radius: 4px;
+            outline: none;
+            position: relative;
+            z-index: 1;
+        }
+
+        button.payment-tab:hover {
+            opacity: 0.8;
+        }
+
+        button.payment-tab.active {
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        button.payment-tab.payment-tab-nequi,
+        button.payment-tab.payment-tab-daviplata,
+        button.payment-tab.payment-tab-transfiya { color: #00bf63 !important; }
+
+        .payment-tab-separator {
+            color: #555;
+            font-size: 16px;
+            user-select: none;
+        }
+
+        .payment-number-display {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .payment-number-display .number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .payment-copy-center {
+            text-align: center;
+            margin-bottom: 14px;
+        }
+
+        .btn-copiar {
+            background-color: transparent;
+            border: 1px solid #555;
+            color: #ccc;
+            font-size: 13px;
+            padding: 6px 20px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-copiar:hover {
+            border-color: #00bf63;
+            color: #00bf63;
+        }
+
+        .payment-holders {
+            text-align: center;
+            font-size: 13px;
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .payment-holders strong {
+            color: #ccc;
+        }
+
+        /* Upload section */
         .border-naranja {
-            border: 1px dashed #ffffff !important;
+            border: 2px dashed #555 !important;
+            transition: border-color 0.2s;
+        }
+
+        .border-naranja:hover {
+            border-color: #00bf63 !important;
         }
 
         .etiqueta-archivo {
             cursor: pointer;
             color: #ffffff;
-            font-size: 18px;
+            font-size: 16px;
         }
 
-        /* Contenedor de vista previa con grid para agrupar en cuadraditos */
+        .btn-upload {
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: opacity 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-upload:hover {
+            opacity: 0.9;
+            color: #fff;
+        }
+
+        .btn-enviar {
+            background-color: #00bf63;
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 14px;
+            border-radius: 10px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-enviar:hover {
+            background-color: #00a854;
+            color: #fff;
+        }
+
+        .btn-enviar:disabled, .btn-enviar.disabled {
+            background-color: #1a4a2e;
+            border: none;
+            color: #666;
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        /* Preview */
         #previewContainer {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -151,21 +455,43 @@ body {
             margin-top: 10px;
         }
 
-        /* Imagenes de vista previa en cuadraditos */
         .img-preview {
             width: 100%;
             height: 100px;
             object-fit: cover;
-            border: 2px solid #fa9044;
-            border-radius: 5px;
+            border: 2px solid #00bf63;
+            border-radius: 8px;
             position: relative;
         }
-        
-        /* Estilo para bingo cerrado */
+
+        .delete-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(220, 38, 38, 0.9);
+            border: none;
+            color: #fff;
+            font-size: 12px;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-item {
+            position: relative;
+            width: 100%;
+            height: 100px;
+        }
+
+        /* Bingo cerrado */
         .bingo-cerrado-container {
-            background-color: #121212;
-            border-radius: 8px;
-            padding: 1.5rem;
+            background-color: #1a1a1a;
+            border-radius: 16px;
+            padding: 2rem;
             margin-bottom: 1.5rem;
             text-align: center;
             display: none;
@@ -173,16 +499,15 @@ body {
 
         .bingo-cerrado-titulo {
             color: #fa9044;
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 700;
             margin-bottom: 0.75rem;
             line-height: 1.2;
-            text-align: center;
         }
 
         .bingo-cerrado-fecha {
             color: #ffffff;
-            font-size: 20px;
+            font-size: 18px;
             margin-bottom: 1rem;
         }
 
@@ -193,17 +518,14 @@ body {
             margin-top: 1rem;
         }
 
-        /* Estilos para el contenedor de video vertical - FORMATO TELÉFONO */
+        /* Video container */
         .video-vertical-container {
-            width: 100%; /* Ancho del 95% del contenedor para dejar un pequeño margen */
-            max-width: 400px; /* Ancho máximo para simular un teléfono */
-            height: auto; /* Auto para mantener proporción */
-            aspect-ratio: 9/16; /* Proporción de aspecto de teléfono vertical (16:9 invertido) */
-            margin: 0 auto;
-            margin-top: 10px;
-            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            aspect-ratio: 9/16;
+            margin: 10px auto 20px;
             position: relative;
-            padding: 0;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -216,11 +538,9 @@ body {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
         }
 
-        /* Estilos para notificaciones */
+        /* Notifications */
         .notification-container {
             position: fixed;
             top: 20px;
@@ -235,13 +555,12 @@ body {
             color: #FF0000;
             padding: 15px;
             margin-bottom: 10px;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             font-weight: bold;
-            animation: slideIn 0.5s ease-out;
+            animation: slideIn 0.4s ease-out;
         }
 
-        /* Estilos más específicos para notificaciones de éxito */
         .notification.success-notification {
             background-color: #EEFFEE !important;
             border-left: 4px solid #28a745 !important;
@@ -249,25 +568,17 @@ body {
         }
 
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
         .notification-title {
             margin-top: 0;
             margin-bottom: 5px;
-            font-size: 18px;
+            font-size: 16px;
         }
 
-        .notification-message {
-            margin: 0;
-        }
+        .notification-message { margin: 0; }
 
         .notification-close {
             float: right;
@@ -283,6 +594,7 @@ body {
             color: #28a745 !important;
         }
 
+        /* WhatsApp float */
         .whatsapp-float {
             position: fixed;
             width: 60px;
@@ -291,10 +603,10 @@ body {
             right: 40px;
             background-color: #25d366;
             color: #FFF;
-            border-radius: 50px;
+            border-radius: 50%;
             text-align: center;
-            font-size: 40px;
-            box-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            font-size: 36px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -307,128 +619,55 @@ body {
             background-color: #128C7E;
             color: white;
             transform: scale(1.1);
-            box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
         }
 
-        /* Media query para dispositivos móviles */
+        /* Responsive */
         @media screen and (max-width: 767px) {
-            .nav-link-custom {
-            font-size: 14px;
-        }
-
+            .nav-link-custom { font-size: 13px; }
             .whatsapp-float {
-                width: 65px;
-                height: 65px;
-                bottom: 30px;
-                right: 30px;
-                font-size: 35px;
+                width: 56px; height: 56px;
+                bottom: 24px; right: 24px;
+                font-size: 30px;
             }
-            
             .video-vertical-container {
                 width: 100%;
-                max-width: 467px; /* Ligeramente más estrecho en móviles */
-                min-height: 600px; /* Altura mínima para asegurar que se vea bien */
+                max-width: 467px;
+                min-height: 600px;
             }
+            .paso-header-text { font-size: 16px; }
         }
 
         @media (min-width: 768px) {
-            
-
             .bingo-container {
                 max-width: 500px;
                 margin: 0 auto;
             }
-            
             .bingo-cerrado-container {
                 max-width: 500px;
                 margin: 0 auto;
             }
-
-            body {
-                font-size: 20px;
-            }
-
-            p {
-                font-size: 20px;
-            }
-
-            .paso-title {
-                font-size: 32px;
-            }
-            
-            .bingo-cerrado-titulo {
-                font-size: 32px;
-            }
-
-            .form-control,
-            .form-label,
-            .etiqueta-archivo {
-                font-size: 20px;
-            }
-
-            .text-amarillo,
-            .btn-naranja {
-                font-size: 22px;
-            }
-            
-            .bingo-cerrado-fecha {
-                font-size: 22px;
-            }
-
-            .logo-container {
-                height: 50px;
-            }
-
+            .logo-container { height: 50px; }
             .video-vertical-container {
-                max-width: 458px; /* Tamaño ideal para simular un teléfono */
-                min-height: 650px; /* Altura mínima para tablets */
+                max-width: 458px;
+                min-height: 650px;
             }
         }
 
         @media (min-width: 992px) {
-            .bingo-container {
-                max-width: 600px;
-            }
-            
-            .bingo-cerrado-container {
-                max-width: 600px;
-            }
-            
+            .bingo-container { max-width: 550px; }
+            .bingo-cerrado-container { max-width: 550px; }
             .video-vertical-container {
-                max-width: 568px; /* Ligeramente más ancho en desktop */
-                min-height: 700px; /* Altura mínima para desktop */
+                max-width: 568px;
+                min-height: 700px;
             }
         }
 
         @media (max-width: 480px) {
-            
-
             .video-vertical-container {
-                width: 103%; /* Casi todo el ancho en móviles pequeños */
-                max-width: 400px; /* Limitado para mantener proporción */
-                min-height: 550px; /* Altura mínima para móviles pequeños */
+                width: 100%;
+                max-width: 400px;
+                min-height: 550px;
             }
-        }
-
-        /* Botón de borrar sobre cada preview */
-        .delete-btn {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            background: #fa9044;
-            border: none;
-            color: #fff;
-            font-size: 14px;
-            padding: 1px 6px;
-            cursor: pointer;
-            border-radius: 50%;
-        }
-
-        /* Contenedor de cada preview */
-        .preview-item {
-            position: relative;
-            width: 100%;
-            height: 100px;
         }
     </style>
 </head>
@@ -440,7 +679,7 @@ body {
         // Usar el nuevo campo telefono_atencion con respaldo al número de contacto antiguo
         $numeroContacto = $enlaces->numero_contacto ?? '3235903774'; // Número para pagos (original)
         $telefonoAtencion = $enlaces->telefono_atencion ?? $numeroContacto; // Teléfono de atención (nuevo)
-        
+
         // Nuevos métodos de pago con respaldo al número de contacto
         $numeroNequi = $enlaces->numero_nequi ?? $numeroContacto;
         $numeroDaviplata = $enlaces->numero_daviplata ?? $numeroContacto;
@@ -478,11 +717,11 @@ body {
         <!-- Contenedor para bingo cerrado -->
         <div class="bingo-cerrado-container" id="bingoCerradoContainer">
             <h1 class="bingo-cerrado-titulo">No hay más cartones disponibles para este Bingo</h1>
-            
+
             <h3 class="bingo-cerrado-fecha" id="bingoCerradoFecha">
                 <!-- La fecha se llenará dinámicamente -->
             </h3>
-            
+
             <div class="bingo-actions">
                 <a href="{{ route('cartones.index') }}" class="btn btn-naranja text-white">
                     Buscar mi cartón
@@ -494,149 +733,145 @@ body {
                 @endif
             </div>
         </div>
-    
+
         <!-- Formulario de compra -->
-        <div class="bingo-container p-4" id="bingoFormContainer">
+        <div class="bingo-container p-3 p-md-4" id="bingoFormContainer">
             <!-- FORMULARIO -->
             <form action="{{ route('bingo.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="bingo_id" id="bingo_id" value="{{ $bingo->id ?? '' }}">
+
                 <!-- Paso 1 -->
-                <h4 class="paso-title text-center mb-2">Paso 1</h4>
-                <p class="text-start mb-3 fw-bold">Escoge la cantidad de Hojas <br> 1 Hoja trae 6 cartones</p>
-                <div class="bg-black p-3 rounded mb-4">
-                    <div class="d-flex justify-content-center align-items-center mb-3">
-                        <button
-                            type="button"
-                            id="btnMinus"
-                            class="btn btn-light fw-bold px-3 py-2">-</button>
-
-                        <input
-                            type="number"
-                            id="inputCartones"
-                            name="cartones"
-                            class="form-control mx-2 text-center bg-white text-dark fw-bold"
-                            style="max-width: 900px;"
-                            value="1"
-                            min="1"
-                            readonly
-                            max="10">
-
-                        <button
-                            type="button"
-                            id="btnPlus"
-                            class="btn btn-light fw-bold px-3 py-2">+</button>
+                <div class="step-wrapper">
+                    <div class="paso-header">
+                        <span class="paso-badge">Paso 1</span>
+                        <div>
+                            <div class="paso-header-text">Escoge la cantidad de Cartones</div>
+                            <div class="paso-subtitle">1 Carton trae 6 tablas</div>
+                        </div>
                     </div>
-                    <!-- Sección de precios en HTML con formato correcto -->
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div><span class="text-verde fw-bold">Precio por Hoja </span></div>
-                        <div class="text-end fw-bold" id="precioCarton">${{ number_format((float)($bingo->precio ?? 6000), 2, '.', '.') }} Pesos</div>
-                    </div>
+                    <div class="step-inner-box">
+                        <div class="qty-selector mb-2">
+                            <button type="button" id="btnMinus" class="btn-qty">-</button>
+                            <input
+                                type="number"
+                                id="inputCartones"
+                                name="cartones"
+                                class="qty-input"
+                                value="1"
+                                min="1"
+                                readonly
+                                max="10">
+                            <button type="button" id="btnPlus" class="btn-qty">+</button>
+                        </div>
 
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div><span class="text-verde fw-bold">Total:</span></div>
-                        <div class="text-end fw-bold" id="totalPrice">${{ number_format((float)($bingo->precio ?? 6000), 0, '', '.') }} Pesos</div>
+                        <div class="total-row">
+                            <span class="total-label">Total:</span>
+                            <span class="total-value" id="totalPrice">${{ number_format((float)($bingo->precio ?? 6000), 0, '', '.') }} Pesos</span>
+                        </div>
                     </div>
+                    <div id="precioCarton" style="display:none;">${{ number_format((float)($bingo->precio ?? 6000), 2, '.', '.') }} Pesos</div>
                 </div>
 
                 <!-- Paso 2 -->
-                <h4 class="paso-title text-center mb-2">Paso 2</h4>
-                <p class="paso-title text-center mb-2">Ingresa tus datos:</p>
-                <div class="bg-black p-3 rounded mb-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Nombre y Apellidos</label>
-                        <input
-                            type="text"
-                            name="nombre"
-                            class="form-control bg-white text-dark"
-                            placeholder="Ingresa tu nombre completo"
-                            >
+                <div class="step-wrapper">
+                    <div class="paso-header">
+                        <span class="paso-badge">Paso 2</span>
+                        <div class="paso-header-text">Ingresa tus datos:</div>
                     </div>
-                    <div class="mb-2">
-                    <label class="form-label fw-bold">Numero de Whatsapp</label>
-                    <input
-                        type="tel"
-                        name="celular"
-                        class="form-control bg-white text-dark"
-                        placeholder="Ingresa tu número de whatsapp"
-                        pattern="[0-9]+"
-                        inputmode="numeric">
-                </div>
+                    <div class="mb-3">
+                        <div class="input-icon-group">
+                            <i class="fas fa-user input-icon"></i>
+                            <input
+                                type="text"
+                                name="nombre"
+                                class="form-control"
+                                placeholder="Ingresa tu nombre completo">
+                        </div>
+                    </div>
+                    <div class="mb-1">
+                        <div class="input-icon-group">
+                            <i class="fab fa-whatsapp input-icon" style="color: #25d366; font-size: 20px;"></i>
+                            <input
+                                type="tel"
+                                name="celular"
+                                class="form-control"
+                                placeholder="Ingresa tu número de whatsapp"
+                                pattern="[0-9]+"
+                                inputmode="numeric">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Paso 3 -->
-                <h4 class="paso-title text-center mb-2">Paso 3</h4>
-<p class="text-start mb-3">Realiza el pago y toma una captura del comprobante</p>
-<div class="bg-black p-3 rounded mb-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="text-verde fw-bold">
-                    Nequi: <span class="text-white">{{ $numeroNequi }}</span>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroNequi }}', event)">
-                    Copiar
-                </button>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="text-verde fw-bold">
-                    Daviplata: <span class="text-white">{{ $numeroDaviplata }}</span>
-                </div>
-                <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroDaviplata }}', event)">
-                    Copiar
-                </button>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <!-- <div class="text-verde fw-bold">
-                    Transfiya: <span class="text-white">{{ $numeroTransfiya }}</span>
-                </div>
-                <button class="btn btn-sm btn-outline-light" onclick="return copiarNumero('{{ $numeroTransfiya }}', event)">
-                    Copiar
-                </button> -->
-            </div>
-            <div class="d-flex justify-content-between align-items-center">
-                <div><span class="text-amarillo fw-bold">Total a pagar:</span></div>
-                <div class="text-end fw-bold" id="totalPagar">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</div>
-            </div>
-        </div>
-    </div>
-</div>
+                <div class="step-wrapper">
+                    <div class="paso-header">
+                        <span class="paso-badge">Paso 3</span>
+                        <div class="paso-header-text">Realiza el pago y toma una captura del comprobante:</div>
+                    </div>
+                    <div class="step-inner-box">
+                        <!-- Total a pagar row -->
+                        <div class="payment-total-row">
+                            <span class="total-left">Total a pagar: <span id="totalPagarLeft">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</span></span>
+                            <span class="total-right" id="totalPagar">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</span>
+                        </div>
 
+                        <!-- Payment method tabs -->
+                        <div class="payment-tabs">
+                            <button type="button" class="payment-tab payment-tab-nequi active" data-method="nequi" data-number="{{ $numeroNequi }}">Nequi</button>
+                            <span class="payment-tab-separator">|</span>
+                            <button type="button" class="payment-tab payment-tab-daviplata" data-method="daviplata" data-number="{{ $numeroDaviplata }}">Daviplata</button>
+                            <span class="payment-tab-separator">|</span>
+                            <button type="button" class="payment-tab payment-tab-transfiya" data-method="transfiya" data-number="{{ $numeroTransfiya }}">llave Bre-B</button>
+                        </div>
+
+                        <!-- Number display -->
+                        <div class="payment-number-display">
+                            <span class="number" id="paymentNumber">{{ $numeroNequi }}</span>
+                        </div>
+
+                        <!-- Copy button centered -->
+                        <div class="payment-copy-center">
+                            <button type="button" class="btn-copiar" id="btnCopiarPago" onclick="return copiarNumeroActivo(event)">
+                                <i class="far fa-copy me-1"></i> Copiar
+                            </button>
+                        </div>
+
+                        <!-- Account holder names -->
+                        <div class="payment-holders">
+                            Nequi: <strong>{{ $enlaces->nombre_nequi ?? 'Carmen causil' }}</strong><br>
+                            Daviplata: <strong>{{ $enlaces->nombre_daviplata ?? 'Martin Rodriguez' }}</strong>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Paso 4 -->
-                <h4 class="paso-title text-center mb-2">Paso 4</h4>
-                <p class="text-start mb-3 fw-bold">Sube tu comprobante de pago</p>
-                <div class="bg-black p-3 rounded mb-4">
-                    <div class="border-naranja rounded p-3 text-center mb-3">
-                        <!-- Botón para seleccionar archivos -->
-                        <label class="etiqueta-archivo mb-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                fill="currentColor" class="bi bi-camera me-2" viewBox="0 0 16 16">
-                                <path d="M15 12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h1.172a3 3 0 0 0 2.12-.879l.83-.828
-                                         A1 1 0 0 1 6.827 3h2.344a1 1 0 0 1 .707.293l.828.828A3 3 0 0 0
-                                         12.828 5H14a1 1 0 0 1 1 1zM2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2
-                                         2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828
-                                         A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828
-                                         A2 2 0 0 1 3.172 4z" />
-                                <path d="M8 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0
-                                         5m0 1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M3
-                                         6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0" />
-                            </svg>
-                            <span>Foto/Captura de pantalla</span>
+                <div class="step-wrapper">
+                    <div class="paso-header">
+                        <span class="paso-badge">Paso 4</span>
+                        <div>
+                            <div class="paso-header-text">Confirma tu pago:</div>
+                            <div class="paso-subtitle">Sube tu comprobante y luego presiona <strong style="color:#fff;">Enviar comprobante de pago</strong>.</div>
+                        </div>
+                    </div>
+                    <div class="text-center mb-3">
+                        <label class="btn-upload mb-0">
+                            <i class="fas fa-camera"></i>
+                            <span>Selecciona y sube tu comprobante</span>
                             <input
                                 type="file"
                                 name="comprobante"
                                 id="comprobante"
                                 style="display: none;"
                                 accept="image/*"
-                                multiple
-                                >
+                                multiple>
                         </label>
                     </div>
-                    <!-- Contenedor para la vista previa de las imágenes -->
+
                     <div id="previewContainer"></div>
-                    <button class="btn btn-naranja text-white fw-bold w-100 py-2" style="margin-top: 10px;">
-                        RESERVAR MIS CARTONES
+
+                    <button class="btn btn-enviar w-100 mt-2" type="submit">
+                        Enviar comprobante de pago
                     </button>
                 </div>
             </form>
@@ -646,11 +881,11 @@ body {
                 <p class="mb-1">¿Cómo comprar?</p>
                 @if($enlaces->video_1)
                     <div class="video-vertical-container">
-                        <iframe 
-                            src="{{ str_replace('watch?v=', 'embed/', $enlaces->video_1) }}" 
-                            title="Video tutorial de compra" 
-                            frameborder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        <iframe
+                            src="{{ str_replace('watch?v=', 'embed/', $enlaces->video_1) }}"
+                            title="Video tutorial de compra"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowfullscreen>
                         </iframe>
                     </div>
@@ -673,10 +908,8 @@ body {
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
     </script>
 
-<!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
-<!-- Script para manejar la lógica de + / -, cálculo de total, y vista previa con eliminación de imágenes -->
 <script>
-    
+
 // Variables globales
 let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
 let inputCartones, btnMinus, btnPlus, totalPrice, totalPagar, precioCarton;
@@ -707,6 +940,8 @@ function updateTotal() {
     precioCarton.textContent = formatNumber(PRICE_PER_CARTON);
     totalPrice.textContent = formatNumber(total);
     totalPagar.textContent = formatNumber(total);
+    const totalPagarLeft = document.getElementById('totalPagarLeft');
+    if (totalPagarLeft) totalPagarLeft.textContent = formatNumber(total);
 }
 
 // Function to validate all required fields
@@ -714,13 +949,13 @@ function validateFields() {
     // Get form elements
     const nombre = document.querySelector('input[name="nombre"]');
     const celular = document.querySelector('input[name="celular"]');
-    const submitButton = document.querySelector('.btn-naranja.text-white.fw-bold.w-100');
-    
+    const submitButton = document.querySelector('.btn-enviar');
+
     // Check if all required fields are filled
     const isNombreValid = nombre.value.trim() !== '';
     const isCelularValid = celular.value.trim() !== '' && /^[0-9]+$/.test(celular.value.trim());
     const isFileValid = selectedFiles.length > 0;
-    
+
     // Enable button only if all validations pass
     if (isNombreValid && isCelularValid && isFileValid) {
         submitButton.disabled = false;
@@ -734,22 +969,22 @@ function validateFields() {
 // Function to initialize button state
 function initializeButtonState() {
     // Get the submit button
-    const submitButton = document.querySelector('.btn-naranja.text-white.fw-bold.w-100');
-    
+    const submitButton = document.querySelector('.btn-enviar');
+
     // Initially disable the button
     if (submitButton) {
         submitButton.disabled = true;
         submitButton.classList.add('disabled');
     }
-    
+
     // Add event listeners to all form fields
     const nombre = document.querySelector('input[name="nombre"]');
     const celular = document.querySelector('input[name="celular"]');
-    
+
     if (nombre) {
         nombre.addEventListener('input', validateFields);
     }
-    
+
     if (celular) {
         celular.addEventListener('input', validateFields);
     }
@@ -764,11 +999,11 @@ function showErrorNotification(title, message) {
         container.className = 'notification-container';
         document.body.appendChild(container);
     }
-    
+
     // Crear la notificación
     const notification = document.createElement('div');
     notification.className = 'notification';
-    
+
     // Agregar botón de cierre
     const closeBtn = document.createElement('button');
     closeBtn.className = 'notification-close';
@@ -776,25 +1011,25 @@ function showErrorNotification(title, message) {
     closeBtn.addEventListener('click', function() {
         container.removeChild(notification);
     });
-    
+
     // Agregar título
     const titleElement = document.createElement('h5');
     titleElement.className = 'notification-title';
     titleElement.textContent = title;
-    
+
     // Agregar mensaje
     const messageElement = document.createElement('p');
     messageElement.className = 'notification-message';
     messageElement.innerHTML = message;
-    
+
     // Ensamblar la notificación
     notification.appendChild(closeBtn);
     notification.appendChild(titleElement);
     notification.appendChild(messageElement);
-    
+
     // Agregar al contenedor
     container.appendChild(notification);
-    
+
     // Auto-eliminar después de 5 segundos
     setTimeout(function() {
         if (container.contains(notification)) {
@@ -807,43 +1042,44 @@ function showErrorNotification(title, message) {
 function validarFormulario(event) {
     // Prevent form submission
     event.preventDefault();
-    
+
     // Evitar múltiples envíos
     if (isSubmitting) {
         console.log('Envío en progreso, ignorando clics adicionales');
         return false;
     }
-    
+
     // Marcar como en proceso de envío
     isSubmitting = true;
-    
+
     // Deshabilitar el botón de reserva
-    const submitButton = document.querySelector('.btn-naranja.text-white.fw-bold');
+    const submitButton = document.querySelector('.btn-enviar');
+    let originalText = '';
     if (submitButton) {
-        const originalText = submitButton.innerHTML;
+        originalText = submitButton.innerHTML;
         submitButton.disabled = true;
         submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
         submitButton.classList.add('disabled');
     }
-    
+
     // Get form elements
     const form = event.target;
     const nombre = form.querySelector('input[name="nombre"]');
     const celular = form.querySelector('input[name="celular"]');
-    const comprobantes = form.querySelector('input[name="comprobante[]"]');
-    
+    const comprobantes = form.querySelector('input[name="comprobante"]');
+
     // Reset previous error messages
     removeAllErrorHighlights();
-    
+
     // Array to collect field errors
     let camposFaltantes = [];
-    
+
     // Validate nombre
     if (!nombre.value.trim()) {
         highlightField(nombre);
         camposFaltantes.push('Nombre');
     }
-    
+
     // Validate celular
     if (!celular.value.trim()) {
         highlightField(celular);
@@ -852,13 +1088,16 @@ function validarFormulario(event) {
         highlightField(celular);
         camposFaltantes.push('Celular (formato inválido)');
     }
-    
+
     // Validate file upload
     if (selectedFiles.length === 0) {
-        highlightField(comprobantes.closest('.border-naranja'));
+        const uploadLabel = document.querySelector('.btn-upload');
+        if (uploadLabel) {
+            highlightField(uploadLabel);
+        }
         camposFaltantes.push('Comprobante de pago');
     }
-    
+
     // If fields are missing, show notification
     if (camposFaltantes.length > 0) {
         let message = '<ul style="margin-bottom: 0; padding-left: 20px;">';
@@ -866,15 +1105,15 @@ function validarFormulario(event) {
             message += `<li>${campo}</li>`;
         });
         message += '</ul>';
-        
+
         showErrorNotification('Por favor completa los siguientes campos:', message);
-        
+
         // Scroll to the first error field
         const firstErrorField = document.querySelector('.border-danger');
         if (firstErrorField) {
             firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        
+
         // Reactivar el botón de envío si hay errores de validación
         if (submitButton) {
             submitButton.disabled = false;
@@ -882,21 +1121,21 @@ function validarFormulario(event) {
             submitButton.classList.remove('disabled');
             isSubmitting = false; // Permitir nuevo intento
         }
-        
+
         return false;
     }
-    
+
     // Preparar los datos para enviar al servidor
     const formData = new FormData(form);
-    
+
     // Eliminar los archivos existentes en el FormData (para evitar duplicados)
     formData.delete('comprobante[]');
-    
+
     // Agregar cada archivo seleccionado al FormData
     selectedFiles.forEach(file => {
         formData.append('comprobante[]', file);
     });
-    
+
     // Ahora vamos a enviar el formulario usando Fetch API
     fetch(form.action, {
     method: 'POST',
@@ -921,9 +1160,9 @@ function validarFormulario(event) {
 })
 .catch(error => {
     console.error('Error completo:', error);
-    showErrorNotification('Error al enviar formulario', 
+    showErrorNotification('Error al enviar formulario',
         `Hubo un problema al enviar los datos. Error: ${error.message}. Revisa la consola para más detalles.`);
-    
+
     // Reactivar el botón de envío en caso de error
     if (submitButton) {
         submitButton.disabled = false;
@@ -951,13 +1190,13 @@ function removeAllErrorHighlights() {
 // Updated preview function that also validates fields
 function updatePreview() {
     previewContainer.innerHTML = '';
-    
+
     // Si no hay archivos seleccionados, no hacer nada más
     if (selectedFiles.length === 0) {
         validateFields(); // Validate fields when no files are present
         return;
     }
-    
+
     selectedFiles.forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -972,7 +1211,7 @@ function updatePreview() {
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = 'X';
             deleteBtn.classList.add('delete-btn');
-            deleteBtn.setAttribute('data-index', index); 
+            deleteBtn.setAttribute('data-index', index);
             deleteBtn.addEventListener('click', function() {
                 const idx = parseInt(this.getAttribute('data-index'));
                 // Eliminar el archivo del array
@@ -984,12 +1223,19 @@ function updatePreview() {
             previewItem.appendChild(img);
             previewItem.appendChild(deleteBtn);
             previewContainer.appendChild(previewItem);
-            
+
             // Validate fields after each preview is loaded
             validateFields();
         };
         reader.readAsDataURL(file);
     });
+}
+
+// Variable para el número activo del pago
+let activePaymentNumber = '{{ $numeroNequi }}';
+
+function copiarNumeroActivo(event) {
+    return copiarNumero(activePaymentNumber, event);
 }
 
 function copiarNumero(numero, event) {
@@ -998,7 +1244,7 @@ function copiarNumero(numero, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    
+
     // Copiar el número al portapapeles
     navigator.clipboard.writeText(numero)
         .then(() => {
@@ -1008,7 +1254,7 @@ function copiarNumero(numero, event) {
         .catch(err => {
             console.error('Error al copiar: ', err);
         });
-        
+
     // Retornar false para evitar propagación adicional
     return false;
 }
@@ -1022,42 +1268,42 @@ function showSuccessNotification(title, message) {
         container.className = 'notification-container';
         document.body.appendChild(container);
     }
-    
+
     // Crear la notificación
     const notification = document.createElement('div');
-    notification.className = 'notification success-notification'; // Aseguramos la clase para estilo verde
-    notification.style.backgroundColor = '#EEFFEE'; // Forzar color de fondo
-    notification.style.borderLeftColor = '#28a745'; // Forzar color de borde
-    notification.style.color = '#28a745'; // Forzar color de texto
-    
+    notification.className = 'notification success-notification';
+    notification.style.backgroundColor = '#EEFFEE';
+    notification.style.borderLeftColor = '#28a745';
+    notification.style.color = '#28a745';
+
     // Agregar botón de cierre
     const closeBtn = document.createElement('button');
     closeBtn.className = 'notification-close';
     closeBtn.innerHTML = '&times;';
-    closeBtn.style.color = '#28a745'; // Forzar color del botón de cierre
+    closeBtn.style.color = '#28a745';
     closeBtn.addEventListener('click', function() {
         container.removeChild(notification);
     });
-    
+
     // Agregar título
     const titleElement = document.createElement('h5');
     titleElement.className = 'notification-title';
     titleElement.textContent = title;
-    
+
     // Agregar mensaje
     const messageElement = document.createElement('p');
     messageElement.className = 'notification-message';
     messageElement.innerHTML = message;
-    
+
     // Ensamblar la notificación
     notification.appendChild(closeBtn);
     notification.appendChild(titleElement);
     notification.appendChild(messageElement);
-    
+
     // Agregar al contenedor
     container.appendChild(notification);
-    
-    // Auto-eliminar después de 3 segundos (más corto para notificaciones de éxito)
+
+    // Auto-eliminar después de 3 segundos
     setTimeout(function() {
         if (container.contains(notification)) {
             container.removeChild(notification);
@@ -1067,75 +1313,15 @@ function showSuccessNotification(title, message) {
 
 // Initialize elements after DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize button validation state (NEW)
+    // Initialize button validation state
     initializeButtonState();
-    
-    // Add styles for notifications
+
+    // Add styles for error states
     const styleElement = document.createElement('style');
     styleElement.textContent = `
-        /* Estilos para notificaciones de error */
-        .notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            max-width: 350px;
-            z-index: 1050;
-        }
-        
-        .notification {
-            background-color: #FFEEEE;
-            border-left: 4px solid #FF0000;
-            color: #FF0000;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            font-weight: bold;
-            animation: slideIn 0.5s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        .notification-title {
-            margin-top: 0;
-            margin-bottom: 5px;
-            font-size: 18px;
-        }
-        
-        .notification-message {
-            margin: 0;
-        }
-        
-        .notification-close {
-            float: right;
-            background: none;
-            border: none;
-            color: #FF0000;
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-        }
-        
         /* Estilo para campos con error */
         .border-danger {
             border: 2px solid #FF0000 !important;
-        }
-        
-        /* Estilo para botón deshabilitado */
-        .btn-naranja.disabled {
-            background-color: #ccc;
-            border-color: #ccc;
-            cursor: not-allowed;
-            opacity: 0.65;
         }
     `;
     document.head.appendChild(styleElement);
@@ -1152,12 +1338,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const esBingoCerrado = {{ $esBingoCerrado ? 'true' : 'false' }};
     const bingoFormContainer = document.getElementById('bingoFormContainer');
     const bingoCerradoContainer = document.getElementById('bingoCerradoContainer');
-    
+
     if (esBingoCerrado) {
         // Si el bingo está cerrado, mostrar el mensaje correspondiente
         bingoFormContainer.style.display = 'none';
         bingoCerradoContainer.style.display = 'block';
-        
+
         // Actualizar la fecha del bingo cerrado
         const bingoCerradoFecha = document.getElementById('bingoCerradoFecha');
         if (bingoCerradoFecha) {
@@ -1192,7 +1378,7 @@ btnPlus.addEventListener('click', () => {
     inputCartones.addEventListener('change', updateTotal);
     updateTotal();
 
-    // File handling for multiple preview with deletion - CORREGIDO
+    // File handling for multiple preview with deletion
     const fileInput = document.getElementById('comprobante');
     const previewContainer = document.getElementById('previewContainer');
 
@@ -1203,16 +1389,16 @@ btnPlus.addEventListener('click', () => {
             selectedFiles.push(file);
         });
         updatePreview();
-        
+
         // Reset el input para permitir seleccionar el mismo archivo múltiples veces
         fileInput.value = '';
     });
-    
+
     // Add form validation on submit
     const bingoForm = document.querySelector('form');
     if (bingoForm) {
         bingoForm.addEventListener('submit', validarFormulario);
-        
+
         // Add event listeners to remove validation errors when user interacts with field
         const formInputs = bingoForm.querySelectorAll('input, select, textarea');
         formInputs.forEach(input => {
@@ -1221,20 +1407,20 @@ btnPlus.addEventListener('click', () => {
                 this.classList.remove('border-danger');
             });
         });
-        
+
         // Special case for file upload
         if (fileInput) {
-            const fileContainer = fileInput.closest('.border-naranja');
             fileInput.addEventListener('change', function() {
-                if (fileContainer) {
-                    fileContainer.classList.remove('border-danger');
+                const uploadLabel = document.querySelector('.btn-upload');
+                if (uploadLabel) {
+                    uploadLabel.classList.remove('border-danger');
                 }
             });
         }
     }
-    
+
     // Agregar funcionalidad de un solo clic al botón de reserva
-    const reservarButton = document.querySelector('.btn-naranja.text-white.fw-bold.w-100');
+    const reservarButton = document.querySelector('.btn-enviar');
     if (reservarButton) {
         reservarButton.addEventListener('click', function() {
             // Si ya está en proceso de envío, no hacer nada
@@ -1242,7 +1428,7 @@ btnPlus.addEventListener('click', () => {
                 console.log('Ya hay un envío en proceso, ignorando clic adicional');
                 return false;
             }
-            
+
             // Si no está dentro de un formulario, manejar independientemente
             const form = this.closest('form');
             if (!form) {
@@ -1251,7 +1437,23 @@ btnPlus.addEventListener('click', () => {
             }
         });
     }
-    
+
+    // Payment tabs switching
+    const paymentTabs = document.querySelectorAll('.payment-tab');
+    const paymentNumberDisplay = document.getElementById('paymentNumber');
+    paymentTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Remove active from all tabs
+            paymentTabs.forEach(t => t.classList.remove('active'));
+            // Set this tab as active
+            this.classList.add('active');
+            // Update displayed number
+            const number = this.getAttribute('data-number');
+            paymentNumberDisplay.textContent = number;
+            activePaymentNumber = number;
+        });
+    });
+
     // Perform initial validation
     validateFields();
 });

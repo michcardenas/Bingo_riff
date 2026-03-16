@@ -38,8 +38,67 @@ class ReservaService
                 $maxOrdenBingo = Reserva::where('bingo_id', $bingo->id)->max('orden_bingo') ?? 0;
                 $nuevoOrdenBingo = $maxOrdenBingo + 1;
 
-                $estadoInicial = $data['auto_approve'] ?? false ? 'aprobado' : 'revision';
-                $numeroComprobante = ($data['auto_approve'] ?? false) ? 'AUTO-' . time() : null;
+                // Auto-aprobación manual desde admin
+                $autoApproveManual = $data['auto_approve'] ?? false;
+
+                // Auto-aprobación por OCR
+                $autoApproveOcr = false;
+                $ocrData = $data['ocr_data'] ?? null;
+                $ocrStatus = $data['ocr_status'] ?? 'pendiente';
+
+                if ($ocrData && $ocrStatus === 'procesado' && !$autoApproveManual) {
+                    $ocr = is_string($ocrData) ? json_decode($ocrData, true) : (is_array($ocrData) ? $ocrData : null);
+
+                    if ($ocr) {
+                        $banco = strtolower($ocr['banco'] ?? '');
+                        $montoOcr = (float) ($ocr['monto'] ?? 0);
+                        $referenciaOcr = $ocr['referencia'] ?? null;
+                        $fechaOcr = $ocr['fecha'] ?? null;
+
+                        // 1. Banco verificado (nequi o daviplata)
+                        $bancoValido = in_array($banco, ['nequi', 'daviplata']);
+
+                        // 2. Monto coincide (tolerancia 1%)
+                        $montoCoincide = $montoOcr > 0 && abs($montoOcr - $totalPagar) <= ($totalPagar * 0.01);
+
+                        // 3. Sin duplicado por referencia OCR
+                        $sinDuplicado = true;
+                        if (!empty($referenciaOcr)) {
+                            $existeRef = Reserva::where('bingo_id', $bingo->id)
+                                ->where('ocr_data', 'like', '%"referencia":"' . $referenciaOcr . '"%')
+                                ->exists();
+                            $sinDuplicado = !$existeRef;
+                        }
+
+                        // 4. Fecha/hora dentro de margen de 30 minutos
+                        $fechaValida = false;
+                        if ($fechaOcr) {
+                            try {
+                                $fechaComprobante = \Carbon\Carbon::parse($fechaOcr);
+                                $ahora = now();
+                                $fechaValida = $fechaComprobante->diffInMinutes($ahora) <= 30;
+                            } catch (\Exception $e) {
+                                $fechaValida = false;
+                            }
+                        }
+
+                        $esDuplicadoOcr = !$sinDuplicado;
+                        $autoApproveOcr = $bancoValido && $montoCoincide && $sinDuplicado && $fechaValida;
+
+                        Log::info('Auto-aprobación OCR evaluada', [
+                            'banco_valido' => $bancoValido,
+                            'monto_coincide' => $montoCoincide,
+                            'sin_duplicado' => $sinDuplicado,
+                            'fecha_valida' => $fechaValida,
+                            'es_duplicado' => $esDuplicadoOcr,
+                            'resultado' => $autoApproveOcr,
+                        ]);
+                    }
+                }
+
+                $esDuplicadoOcr = $esDuplicadoOcr ?? false;
+                $estadoInicial = ($autoApproveManual || $autoApproveOcr) ? 'aprobado' : 'revision';
+                $numeroComprobante = $autoApproveManual ? 'AUTO-' . time() : ($autoApproveOcr ? 'Approved' : ($esDuplicadoOcr ? 'Duplicado' : null));
 
                 $reservaData = [
                     'nombre'               => $data['nombre'],
@@ -47,6 +106,8 @@ class ReservaService
                     'cantidad'             => $cantidad,
                     'comprobante'          => $data['comprobante'] ?? null,
                     'comprobante_metadata' => $data['comprobante_metadata'] ?? null,
+                    'ocr_data'             => $data['ocr_data'] ?? null,
+                    'ocr_status'           => $data['ocr_status'] ?? 'pendiente',
                     'total'                => $totalPagar,
                     'series'               => $series,
                     'estado'               => $estadoInicial,

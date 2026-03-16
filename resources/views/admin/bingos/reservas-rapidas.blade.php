@@ -12,10 +12,97 @@
         
     </div>
 
- <!-- Card container for the table -->
+ <!-- Buscador OCR independiente -->
+<div class="card bg-dark border-0 shadow-sm mb-3 rounded-3" style="border-left: 3px solid #0dcaf0 !important;">
+    <div class="card-header bg-dark border-bottom border-secondary py-3">
+        <form action="{{ route('bingos.reservas.filtro', $bingoId) }}" method="GET" id="filtro-ocr-form">
+            {{-- Preservar filtros existentes --}}
+            <input type="hidden" name="campo" value="{{ $campoFiltro ?? 'nombre' }}">
+            <input type="hidden" name="search" value="{{ $searchTerm ?? '' }}">
+            <input type="hidden" name="estado" value="{{ $estadoFilter ?? 'todos' }}">
+            <input type="hidden" name="fecha_desde" value="{{ $fechaDesde ?? '' }}">
+            <input type="hidden" name="fecha_hasta" value="{{ $fechaHasta ?? '' }}">
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label text-info mb-1 fw-semibold">
+                        <i class="bi bi-eye"></i> Buscar por datos OCR:
+                    </label>
+                    <div class="input-group input-group-sm">
+                        <select name="campo_ocr" class="form-select bg-dark border-info text-light w-auto">
+                            <option value="referencia_ocr" {{ ($campoOcr ?? '') === 'referencia_ocr' ? 'selected' : '' }}>Referencia</option>
+                            <option value="fecha_ocr" {{ ($campoOcr ?? '') === 'fecha_ocr' ? 'selected' : '' }}>Fecha / Hora</option>
+                            <option value="banco_ocr" {{ ($campoOcr ?? '') === 'banco_ocr' ? 'selected' : '' }}>Banco</option>
+                        </select>
+                        <input type="text" name="search_ocr"
+                               class="form-control bg-dark border-info text-light"
+                               placeholder="Ej: M12345678, 2026-03-05, nequi"
+                               value="{{ $searchOcr ?? '' }}">
+                        <button type="submit" class="btn btn-sm btn-info px-3">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex justify-content-end">
+                    <a href="{{ route('bingos.reservas.rapidas', $bingoId) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Limpiar todo
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Filtro de fecha de registro -->
+<div class="card bg-dark border-0 shadow-sm mb-3 rounded-3" style="border-left: 3px solid #ffc107 !important;">
+    <div class="card-header bg-dark border-bottom border-secondary py-3">
+        <form action="{{ route('bingos.reservas.filtro', $bingoId) }}" method="GET" id="filtro-fecha-form">
+            {{-- Preservar otros filtros --}}
+            <input type="hidden" name="campo" value="{{ $campoFiltro ?? 'nombre' }}">
+            <input type="hidden" name="search" value="{{ $searchTerm ?? '' }}">
+            <input type="hidden" name="estado" value="{{ $estadoFilter ?? 'todos' }}">
+            <input type="hidden" name="campo_ocr" value="{{ $campoOcr ?? '' }}">
+            <input type="hidden" name="search_ocr" value="{{ $searchOcr ?? '' }}">
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label text-warning mb-1 fw-semibold">
+                        <i class="bi bi-calendar-range"></i> Fecha registro desde:
+                    </label>
+                    <input type="datetime-local" name="fecha_desde"
+                           class="form-control form-control-sm bg-dark border-warning text-light"
+                           value="{{ $fechaDesde ?? '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-warning mb-1 fw-semibold">
+                        <i class="bi bi-calendar-range"></i> Hasta:
+                    </label>
+                    <input type="datetime-local" name="fecha_hasta"
+                           class="form-control form-control-sm bg-dark border-warning text-light"
+                           value="{{ $fechaHasta ?? '' }}">
+                </div>
+                <div class="col-md-4 d-flex gap-2 align-items-end">
+                    <button type="submit" class="btn btn-sm btn-warning px-3">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                    <a href="{{ route('bingos.reservas.rapidas', $bingoId) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Card container for the table -->
 <div class="card bg-dark border-0 shadow-sm mb-4 rounded-3">
     <div class="card-header bg-dark border-bottom border-secondary py-3">
         <form action="{{ route('bingos.reservas.filtro', $bingoId) }}" method="GET" id="filtro-form">
+            {{-- Preservar filtros OCR y fecha --}}
+            <input type="hidden" name="campo_ocr" value="{{ $campoOcr ?? '' }}">
+            <input type="hidden" name="search_ocr" value="{{ $searchOcr ?? '' }}">
+            <input type="hidden" name="fecha_desde" value="{{ $fechaDesde ?? '' }}">
+            <input type="hidden" name="fecha_hasta" value="{{ $fechaHasta ?? '' }}">
             <div class="row g-3 align-items-end justify-content-between">
 
                 <!-- Campo de búsqueda con tipo -->
@@ -76,6 +163,10 @@
 
     <a href="{{ route('bingos.reservas.duplicadas', $bingoId) }}" class="btn btn-sm btn-outline-warning">
         <i class="bi bi-exclamation-triangle"></i> Comprobantes Duplicados
+    </a>
+
+    <a href="{{ route('bingos.reservas.duplicadas-ocr', $bingoId) }}" class="btn btn-sm btn-outline-info">
+        <i class="bi bi-search"></i> Duplicados por Referencia
     </a>
 
     <a href="{{ route('bingos.reservas.pedidos-duplicados', $bingoId) }}" class="btn btn-sm btn-outline-danger">
@@ -216,6 +307,27 @@
         }
     @endphp
 
+    @if($reserva->ocr_data && $reserva->ocr_status === 'procesado')
+    @php
+        $ocrRaw = is_string($reserva->ocr_data) ? json_decode($reserva->ocr_data, true) : (is_array($reserva->ocr_data) ? $reserva->ocr_data : null);
+        if ($ocrRaw) {
+            unset($ocrRaw['texto_crudo']);
+            $ocrSafe = json_encode($ocrRaw, JSON_HEX_QUOT | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_TAG);
+        } else {
+            $ocrSafe = '{}';
+        }
+    @endphp
+    <div class="text-center">
+        <button class="btn btn-sm ver-ocr mb-1"
+            data-id="{{ $reserva->id }}"
+            data-ocr="{{ $ocrSafe }}"
+            data-status="{{ $reserva->ocr_status }}"
+            style="border-color: #0dcaf0; color: #0dcaf0;">
+            <i class="bi bi-eye"></i>
+        </button>
+    </div>
+    @endif
+
     @if (count($comprobantes))
         @foreach ($comprobantes as $index => $comprobante)
             @php
@@ -248,7 +360,7 @@
                                                 style="min-width: 120px;">
                                             </td>
                                             <td>
-                                            <span class="estado-badge badge 
+                                            <span class="estado-badge badge
                                                 {{ $reserva->estado == 'revision' ? 'bg-warning text-dark' : '' }}
                                                 {{ $reserva->estado == 'aprobado' ? 'bg-success' : '' }}
                                                 {{ $reserva->estado == 'rechazado' ? 'bg-danger' : '' }}
@@ -256,6 +368,12 @@
                                                 data-id="{{ $reserva->id }}">
                                                 {{ ucfirst($reserva->estado) }}
                                             </span>
+                                            @if(in_array($reserva->id, $refsDuplicadas ?? []))
+                                                <br>
+                                                <span class="badge bg-danger mt-1 px-2 py-1">
+                                                    <i class="bi bi-exclamation-triangle-fill"></i> Duplicado
+                                                </span>
+                                            @endif
                                         </td>
 
                             <td>
@@ -266,7 +384,6 @@
                         <button class="btn btn-sm btn-outline-info subir-comprobante" data-id="{{ $reserva->id }}">
     <i class="bi bi-upload"></i>   Comprobante
 </button>
-
 
                                     <button class="btn btn-sm btn-outline-warning cambiar-estado" data-id="{{ $reserva->id }}" data-estado="revision">
                                         <i class="bi bi-pencil"></i> Revision
@@ -328,6 +445,69 @@
   </div>
 </div>
 
+
+<!-- Modal de datos OCR -->
+<div class="modal fade" id="modalOCR" tabindex="-1" aria-labelledby="modalOCRLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="modalOCRLabel"><i class="bi bi-cpu"></i> Datos del Comprobante (OCR)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label text-light small mb-0 opacity-75">Banco / App</label>
+              <div id="ocr-banco" class="fs-5 fw-semibold text-info">-</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-light small mb-0 opacity-75">Monto</label>
+              <div id="ocr-monto" class="fs-5 fw-semibold text-success">-</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-light small mb-0 opacity-75">Referencia</label>
+              <div id="ocr-referencia" class="fs-5 fw-semibold text-warning">-</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label text-light small mb-0 opacity-75">Fecha</label>
+              <div id="ocr-fecha" class="fs-5 fw-semibold">-</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-light small mb-0 opacity-75">Teléfono Emisor</label>
+              <div id="ocr-telefono" class="fs-5 fw-semibold">-</div>
+            </div>
+          </div>
+        </div>
+        <hr class="border-secondary">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-2">
+              <label class="form-label text-light small mb-0 opacity-75">Estado Transacción</label>
+              <div id="ocr-estado-tx" class="fw-semibold">-</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-2">
+              <label class="form-label text-light small mb-0 opacity-75">Método / Confianza</label>
+              <div><span id="ocr-metodo" class="badge bg-secondary">-</span> <span id="ocr-confianza" class="badge bg-secondary">-</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- Alertas de validación -->
+        <div id="ocr-alertas" class="mt-3" style="display:none;">
+          <label class="form-label text-muted small mb-1">Alertas</label>
+          <div id="ocr-alertas-list"></div>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <style>
     /* Main styles */
@@ -940,6 +1120,62 @@ document.addEventListener('click', function(e) {
                 timer: 3000,
                 showConfirmButton: false
             });
+        }
+    }
+});
+
+// Modal OCR
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.ver-ocr')) {
+        const btn = e.target.closest('.ver-ocr');
+        try {
+            const ocrData = JSON.parse(btn.dataset.ocr);
+            const status = btn.dataset.status;
+
+            document.getElementById('ocr-banco').textContent = ocrData.banco ? ocrData.banco.toUpperCase() : 'No detectado';
+            document.getElementById('ocr-monto').textContent = ocrData.monto ? '$' + Number(ocrData.monto).toLocaleString('es-CO') : 'No detectado';
+            document.getElementById('ocr-referencia').textContent = ocrData.referencia || 'No detectada';
+            document.getElementById('ocr-fecha').textContent = ocrData.fecha || 'No detectada';
+
+            document.getElementById('ocr-telefono').textContent = ocrData.telefono_emisor || 'No detectado';
+
+            // Estado transacción
+            const estadoTx = document.getElementById('ocr-estado-tx');
+            if (ocrData.estado_transaccion) {
+                estadoTx.textContent = ocrData.estado_transaccion;
+                const estado = ocrData.estado_transaccion.toLowerCase();
+                estadoTx.className = 'fw-semibold ' + (estado === 'exitosa' ? 'text-success' : estado === 'fallida' ? 'text-danger' : 'text-warning');
+            } else {
+                estadoTx.textContent = 'No detectado';
+                estadoTx.className = 'fw-semibold text-muted';
+            }
+
+            // Método y confianza
+            document.getElementById('ocr-metodo').textContent = (ocrData.metodo || status || 'N/A').toUpperCase();
+            document.getElementById('ocr-confianza').textContent = ocrData.confianza ? ocrData.confianza + '%' : '-';
+            document.getElementById('ocr-confianza').className = 'badge ' + (ocrData.confianza >= 80 ? 'bg-success' : ocrData.confianza >= 50 ? 'bg-warning' : 'bg-danger');
+
+            // Alertas
+            const alertasContainer = document.getElementById('ocr-alertas');
+            const alertasList = document.getElementById('ocr-alertas-list');
+            alertasList.innerHTML = '';
+            if (ocrData.validacion && ocrData.validacion.alertas && ocrData.validacion.alertas.length > 0) {
+                alertasContainer.style.display = 'block';
+                ocrData.validacion.alertas.forEach(alerta => {
+                    const div = document.createElement('div');
+                    div.className = 'alert alert-warning py-1 px-2 mb-1 small';
+                    div.innerHTML = '<i class="bi bi-exclamation-triangle"></i> ' + alerta;
+                    alertasList.appendChild(div);
+                });
+            } else {
+                alertasContainer.style.display = 'none';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modalOCR'));
+            modal.show();
+        } catch (err) {
+            console.error('Error parseando OCR data:', err);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron leer los datos OCR', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
         }
     }
 });

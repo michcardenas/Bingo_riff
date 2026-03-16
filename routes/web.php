@@ -141,6 +141,8 @@ Route::post('/admin/reservas/store', [BingoController::class, 'store'])
     ->name('bingos.reservas.store');
     Route::get('/admin/reservas/{bingoId}/duplicados', [BingoController::class, 'comprobantesDuplicados'])
     ->name('bingos.reservas.duplicadas');
+    Route::get('/admin/reservas/{bingoId}/duplicados-ocr', [BingoAdminController::class, 'duplicadosOcr'])
+    ->name('bingos.reservas.duplicadas-ocr');
     Route::get('/bingos/{bingo}/pedidos-duplicados', [\App\Http\Controllers\BingoController::class, 'pedidosDuplicados'])->name('bingos.reservas.pedidos-duplicados');
     Route::put('/reservas/{id}/aprobar', [BingoController::class, 'aprobarReserva'])->name('reservas.aprobar');
     Route::get('/bingos/{bingo}/reservas/buscar-ganador', [App\Http\Controllers\BingoController::class, 'buscarGanador'])->name('bingos.reservas.buscar-ganador');

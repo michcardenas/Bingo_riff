@@ -14,15 +14,18 @@ use App\Exports\RechazadosExport;
 use App\Exports\AprobadosExport;
 use App\Models\ReservaSerie;
 use App\Services\ReservaService;
+use App\Services\ComprobanteScanner;
 
 class BingoController extends Controller
 {
 
     protected $reservaService;
+    protected $comprobanteScanner;
 
-    public function __construct(ReservaService $reservaService)
+    public function __construct(ReservaService $reservaService, ComprobanteScanner $comprobanteScanner)
     {
         $this->reservaService = $reservaService;
+        $this->comprobanteScanner = $comprobanteScanner;
     }
 
     public function store(Request $request)
@@ -111,6 +114,33 @@ class BingoController extends Controller
                 }
             }
 
+            // Escanear comprobante con OCR (primer archivo)
+            $ocrData = null;
+            $ocrStatus = 'pendiente';
+            if (!empty($rutasArchivos)) {
+                try {
+                    $primerArchivo = $rutasArchivos[0];
+                    $isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
+                    $rutaCompleta = $isProduccion
+                        ? '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/' . $primerArchivo
+                        : public_path($primerArchivo);
+
+                    $ocrResult = $this->comprobanteScanner->scan($rutaCompleta, $totalPagar);
+                    $ocrData = $ocrResult;
+                    $ocrStatus = ($ocrResult['metodo'] ?? '') === 'fallido' ? 'fallido' : 'procesado';
+
+                    Log::info('OCR completado', [
+                        'metodo' => $ocrResult['metodo'] ?? 'desconocido',
+                        'banco' => $ocrResult['banco'] ?? null,
+                        'monto' => $ocrResult['monto'] ?? null,
+                        'confianza' => $ocrResult['confianza'] ?? 0,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Error en OCR del comprobante', ['error' => $e->getMessage()]);
+                    $ocrStatus = 'fallido';
+                }
+            }
+
             $dataReserva = [
                 'bingo_id'              => $validated['bingo_id'],
                 'cartones'              => $validated['cartones'],
@@ -118,6 +148,8 @@ class BingoController extends Controller
                 'celular'               => $validated['celular'],
                 'comprobante'           => json_encode($rutasArchivos),
                 'comprobante_metadata'  => json_encode($metadatosArchivos),
+                'ocr_data'              => $ocrData ?: null,
+                'ocr_status'            => $ocrStatus,
                 'auto_approve'          => $request->has('desde_admin') && $request->desde_admin == 1 && $request->has('auto_approve')
             ];
             $resultado = $this->reservaService->crearReserva($dataReserva);
