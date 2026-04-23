@@ -55,7 +55,43 @@ class ReservaService
                         $referenciaOcr = $ocr['referencia'] ?? null;
                         $fechaOcr = $ocr['fecha'] ?? null;
 
-                        // 1. Banco verificado (nequi o daviplata)
+                        // Validación Bre-B: llave y nombre receptor deben coincidir con el bingo
+                        $bancoBingo = true;
+                        if ($banco === 'llave bre-b') {
+                            $llaveBingo = config('services.webhook.llave_bingo');
+                            $nombreReceptorBingo = strtoupper(config('services.webhook.nombre_receptor_bingo'));
+                            $llaveOcr = trim($ocr['llave_destino'] ?? '');
+                            $nombreReceptorOcr = strtoupper(trim($ocr['nombre_receptor'] ?? ''));
+
+                            // La llave debe coincidir exactamente
+                            $llaveCoincide = !empty($llaveBingo) && $llaveOcr === $llaveBingo;
+
+                            // El nombre del receptor debe contener al menos una palabra clave
+                            $nombreCoincide = false;
+                            if (!empty($nombreReceptorBingo) && !empty($nombreReceptorOcr)) {
+                                $palabrasBingo = array_filter(explode(' ', $nombreReceptorBingo), fn($p) => strlen($p) >= 3);
+                                foreach ($palabrasBingo as $palabra) {
+                                    if (str_contains($nombreReceptorOcr, $palabra)) {
+                                        $nombreCoincide = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            $bancoBingo = $llaveCoincide && $nombreCoincide;
+
+                            Log::info('Validación Bre-B', [
+                                'llave_bingo' => $llaveBingo,
+                                'llave_ocr' => $llaveOcr,
+                                'llave_coincide' => $llaveCoincide,
+                                'nombre_receptor_bingo' => $nombreReceptorBingo,
+                                'nombre_receptor_ocr' => $nombreReceptorOcr,
+                                'nombre_coincide' => $nombreCoincide,
+                            ]);
+                        }
+
+                        // 1. Banco verificado — SOLO Nequi/Daviplata se auto-aprueban con OCR.
+                        //    Llave Bre-B queda en revisión hasta que llegue el webhook del correo del banco.
                         $bancoValido = in_array($banco, ['nequi', 'daviplata']);
 
                         // 2. Monto coincide (tolerancia 1%)

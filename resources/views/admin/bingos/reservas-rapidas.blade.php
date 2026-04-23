@@ -479,6 +479,14 @@
               <label class="form-label text-light small mb-0 opacity-75">Teléfono Emisor</label>
               <div id="ocr-telefono" class="fs-5 fw-semibold">-</div>
             </div>
+            <div class="mb-3">
+              <label class="form-label text-light small mb-0 opacity-75">Llave Destino (Bre-B)</label>
+              <div id="ocr-llave" class="fs-5 fw-semibold">-</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-light small mb-0 opacity-75">Nombre Receptor</label>
+              <div id="ocr-receptor" class="fs-5 fw-semibold">-</div>
+            </div>
           </div>
         </div>
         <hr class="border-secondary">
@@ -1138,6 +1146,8 @@ document.addEventListener('click', function(e) {
             document.getElementById('ocr-fecha').textContent = ocrData.fecha || 'No detectada';
 
             document.getElementById('ocr-telefono').textContent = ocrData.telefono_emisor || 'No detectado';
+            document.getElementById('ocr-llave').textContent = ocrData.llave_destino || 'No detectada';
+            document.getElementById('ocr-receptor').textContent = ocrData.nombre_receptor || 'No detectado';
 
             // Estado transacción
             const estadoTx = document.getElementById('ocr-estado-tx');

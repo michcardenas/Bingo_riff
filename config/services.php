@@ -47,4 +47,11 @@ return [
         'api_key' => env('ANTHROPIC_API_KEY'),
     ],
 
+    'webhook' => [
+        'llave_token' => env('WEBHOOK_LLAVE_TOKEN', 'bingo-llave-secret-2026'),
+        'cuenta_bingo' => env('WEBHOOK_CUENTA_BINGO', '9988'),
+        'llave_bingo' => env('WEBHOOK_LLAVE_BINGO', '0091706852'),
+        'nombre_receptor_bingo' => env('WEBHOOK_NOMBRE_RECEPTOR', 'MARTIN RODRIGUEZ CAUSIL'),
+    ],
+
 ];

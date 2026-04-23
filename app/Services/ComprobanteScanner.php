@@ -123,19 +123,28 @@ class ComprobanteScanner
 Analiza este comprobante de pago colombiano y extrae la siguiente información en formato JSON estricto.
 
 REGLAS IMPORTANTES:
-- Los bancos/apps comunes son: Nequi, Daviplata, Bancolombia, llave Bre-B (Banco de Bogotá), PSE, Transfiya.
-- Si ves el logo o interfaz de Nequi, el banco SIEMPRE es "nequi" (no bancolombia).
+- Los bancos/apps comunes son: Nequi, Daviplata, Bancolombia, llave Bre-B (Banco de Bogotá / BBVA), PSE, Transfiya, Nu, Davivienda.
+- Si ves el logo o interfaz de Nequi, el banco SIEMPRE es "nequi".
+- Si el comprobante menciona "Bre-B", "Pasaste Plata por Bre-B", "transferencia a llave", "Vía Bre-B", muestra un número de llave larga (ej: 0091706852), o la entidad destino es BBVA → banco = "llave bre-b" (aunque el banco origen sea Nequi, Davivienda, Nu, etc).
 - La REFERENCIA es un código de transacción (en Nequi empieza con "M" seguido de números, ej: M3565348). NUNCA confundir con números de celular (10 dígitos que empiezan con 3). Si solo ves un celular y no hay código de referencia, poner null.
-- El MONTO es el valor transferido. En Colombia los pagos de bingo suelen ser entre $6.000 y $60.000. Si el número parece demasiado grande (millones), revisar si hay punto de miles (ej: 12.000 = doce mil, NO doce millones).
-- telefono_emisor: SOLO extraer en Daviplata (aparece como "Desde" con un número de celular). En Nequi y otros bancos SIEMPRE poner null.
+- El MONTO es el valor transferido. En Colombia los pagos de bingo suelen ser entre \$6.000 y \$60.000. Si el número parece demasiado grande (millones), revisar si hay punto de miles (ej: 12.000 = doce mil, NO doce millones).
+- telefono_emisor: SOLO extraer en Daviplata (aparece como "Desde" con un número de celular). En otros bancos poner null.
+
+CAMPOS DE LLAVE BRE-B (solo si es transferencia Bre-B):
+- llave_destino: el número de llave al que se transfirió (ej: "0091706852"). Suele aparecer como "Llave", "Código de negocio", "a la llave BBVA". Poner null si no es Bre-B.
+- nombre_receptor: nombre COMPLETO de la persona que RECIBE (dueño de la llave destino). En Bre-B aparece como "Para", "Enviado a", "Pasaste Plata por Bre-B [NOMBRE]", "a la llave BBVA X de [NOMBRE]". Poner null si no aparece o no es Bre-B.
+- nombre_pagador: nombre del que envía el dinero, SI aparece. En la mayoría de comprobantes Bre-B NO aparece el pagador (solo aparece el receptor). Si no es visible, poner null.
 
 Responde SOLO con un JSON válido (sin markdown, sin texto adicional, sin ```json) con esta estructura exacta:
 {
-    "banco": "nequi/daviplata/bancolombia/transfiya/otro",
+    "banco": "nequi/daviplata/bancolombia/llave bre-b/transfiya/otro",
     "monto": numero_entero_sin_formato (ejemplo: 6000, no "$6.000"),
     "referencia": "código de referencia o ID de transacción (NO celulares)",
     "fecha": "YYYY-MM-DD HH:mm:ss",
     "telefono_emisor": "SOLO para Daviplata, null para otros bancos",
+    "llave_destino": "número de llave Bre-B destino, o null",
+    "nombre_receptor": "nombre de quien RECIBE la transferencia Bre-B, o null",
+    "nombre_pagador": "nombre de quien ENVÍA, o null (raro en Bre-B)",
     "estado_transaccion": "exitosa/pendiente/fallida"
 }
 
@@ -181,6 +190,9 @@ EOT;
             'referencia' => $referencia,
             'fecha' => $parsed['fecha'] ?? null,
             'telefono_emisor' => $telefonoEmisor,
+            'llave_destino' => $parsed['llave_destino'] ?? null,
+            'nombre_receptor' => $parsed['nombre_receptor'] ?? null,
+            'nombre_pagador' => $parsed['nombre_pagador'] ?? null,
             'estado_transaccion' => $parsed['estado_transaccion'] ?? null,
             'metodo' => $metodo,
             'confianza' => $this->calcularConfianza($parsed),

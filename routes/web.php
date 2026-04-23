@@ -55,6 +55,11 @@ Route::fallback(function ($e = null) {
     }
 });
 Route::post('/admin/comprobantes/{id}', [BingoAdminController::class, 'updateComprobante'])->name('reservas.update-comprobante');
+
+// Webhook n8n - Llave Bre-B (sin CSRF, autenticado por token)
+Route::post('/webhook/llave', [\App\Http\Controllers\WebhookLlaveController::class, 'handle'])
+    ->name('webhook.llave')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 Route::get('/cartones/serie', [CartonController::class, 'buscarPorSerieCarton'])->name('cartones.serie');
 Route::post('/cartones/serie/buscar', [CartonController::class, 'buscarSeriesPorCelular'])->name('cartones.buscarserie');
 
