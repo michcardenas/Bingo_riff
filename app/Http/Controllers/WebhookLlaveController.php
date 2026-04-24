@@ -139,8 +139,8 @@ class WebhookLlaveController extends Controller
         }
 
         // Filtro por ventana de tiempo: la fecha del OCR del comprobante debe estar
-        // dentro de ±15 minutos de la fecha del correo
-        $minutosTolerancia = 15;
+        // dentro de ±5 minutos de la fecha del correo (ventana estrecha para evitar cruces)
+        $minutosTolerancia = 5;
         if (!empty($fecha)) {
             try {
                 $fechaCorreo = \Carbon\Carbon::parse($fecha);
@@ -208,11 +208,17 @@ class WebhookLlaveController extends Controller
             }
         }
 
-        // PRIORIDAD 4: FIFO
-        if (!$reserva) {
-            $reserva = (clone $queryConMonto)->orderBy('id')->first();
+        // PRIORIDAD 4: Fecha OCR más cercana a la fecha del correo
+        // (en lugar de FIFO, tomamos la reserva cuya fecha del comprobante es más cercana a la del correo)
+        if (!$reserva && !empty($fecha)) {
+            $reserva = (clone $queryConMonto)
+                ->orderByRaw(
+                    "ABS(TIMESTAMPDIFF(SECOND, STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '\$.fecha')), '%Y-%m-%d %H:%i:%s'), ?))",
+                    [$fecha]
+                )
+                ->first();
             if ($reserva) {
-                $metodoMatch = 'fallback_fifo_llave';
+                $metodoMatch = 'fecha_mas_cercana';
             }
         }
 
