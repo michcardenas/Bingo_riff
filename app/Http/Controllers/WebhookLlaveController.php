@@ -139,8 +139,8 @@ class WebhookLlaveController extends Controller
         }
 
         // Filtro por ventana de tiempo: la fecha del OCR del comprobante debe estar
-        // dentro de ±30 minutos de la fecha del correo
-        $minutosTolerancia = 30;
+        // dentro de ±15 minutos de la fecha del correo
+        $minutosTolerancia = 15;
         if (!empty($fecha)) {
             try {
                 $fechaCorreo = \Carbon\Carbon::parse($fecha);

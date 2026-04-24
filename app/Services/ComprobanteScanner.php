@@ -126,7 +126,14 @@ REGLAS IMPORTANTES:
 - Los bancos/apps comunes son: Nequi, Daviplata, Bancolombia, llave Bre-B (Banco de Bogotá / BBVA), PSE, Transfiya, Nu, Davivienda.
 - Si ves el logo o interfaz de Nequi, el banco SIEMPRE es "nequi".
 - Si el comprobante menciona "Bre-B", "Pasaste Plata por Bre-B", "transferencia a llave", "Vía Bre-B", muestra un número de llave larga (ej: 0091706852), o la entidad destino es BBVA → banco = "llave bre-b" (aunque el banco origen sea Nequi, Davivienda, Nu, etc).
-- La REFERENCIA es un código de transacción (en Nequi empieza con "M" seguido de números, ej: M3565348). NUNCA confundir con números de celular (10 dígitos que empiezan con 3). Si solo ves un celular y no hay código de referencia, poner null.
+- La REFERENCIA es el código único de la transacción. Puede aparecer con distintos nombres según el banco:
+  * Nequi: "Referencia" (empieza con "M" + números, ej: M3565348)
+  * Nu / Nubank: "Número de comprobante" (secuencia larga de ~30+ dígitos, ej: 9772671581233832307834512434079507)
+  * Davivienda / Daviplata: "Número de aprobación" o "Referencia No."
+  * Bancolombia: "Número de transacción" o "Referencia"
+  * BBVA / Bre-B: "Código de operación" o "Comprobante No."
+  * Transfiya: "Referencia"
+  Extraer SIEMPRE el número completo. NUNCA confundir con números de celular (10 dígitos que empiezan con 3). Si solo ves un celular y no hay código de referencia claro, poner null.
 - El MONTO es el valor transferido. En Colombia los pagos de bingo suelen ser entre \$6.000 y \$60.000. Si el número parece demasiado grande (millones), revisar si hay punto de miles (ej: 12.000 = doce mil, NO doce millones).
 - telefono_emisor: SOLO extraer en Daviplata (aparece como "Desde" con un número de celular). En otros bancos poner null.
 
