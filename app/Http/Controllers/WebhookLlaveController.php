@@ -107,28 +107,6 @@ class WebhookLlaveController extends Controller
             ];
         }
 
-        // Validar antigüedad del correo (máximo 2 horas)
-        $fechaCorreo = null;
-        if (!empty($fecha)) {
-            try {
-                $fechaCorreo = \Carbon\Carbon::parse($fecha);
-                $horasAntiguedad = $fechaCorreo->diffInHours(now());
-                if ($horasAntiguedad > 2) {
-                    Log::warning('Webhook Llave: Correo demasiado viejo, se ignora', [
-                        'fecha_correo' => $fecha,
-                        'horas_antiguedad' => $horasAntiguedad,
-                    ]);
-                    return [
-                        'success' => false,
-                        'codigo_operacion' => $codigoOperacion,
-                        'message' => 'Correo demasiado antiguo (> 2 horas).',
-                    ];
-                }
-            } catch (\Exception $e) {
-                // Fecha mal formateada, continuar sin validar
-            }
-        }
-
         // Buscar reserva candidata
         $bingosActivos = \App\Models\Bingo::whereIn('estado', ['activo', 'en_curso', 'abierto'])
             ->pluck('id');
@@ -138,9 +116,7 @@ class WebhookLlaveController extends Controller
 
         $query = Reserva::where('estado', 'revision')
             ->whereIn('bingo_id', $bingosActivos)
-            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.banco')) = 'llave bre-b'")
-            // Solo reservas creadas en las últimas 2 horas (ventana razonable para matchear con el correo)
-            ->where('created_at', '>=', now()->subHours(2));
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.banco')) = 'llave bre-b'");
 
         // Excluir reservas ya matcheadas en este mismo batch
         if (!empty($reservasYaMatcheadas)) {
