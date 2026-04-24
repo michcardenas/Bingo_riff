@@ -99,11 +99,11 @@ class WebhookLlaveController extends Controller
             ];
         }
 
-        if ($monto <= 0 || empty($nombrePagador)) {
+        if ($monto <= 0) {
             return [
                 'success' => false,
                 'codigo_operacion' => $codigoOperacion,
-                'message' => 'Monto y nombre_pagador requeridos.',
+                'message' => 'Monto requerido.',
             ];
         }
 
@@ -135,6 +135,27 @@ class WebhookLlaveController extends Controller
                         $q->orWhereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '\$.nombre_receptor'))) LIKE ?", ['%' . $palabra . '%']);
                     }
                 });
+            }
+        }
+
+        // Filtro por ventana de tiempo: la fecha del OCR del comprobante debe estar
+        // dentro de ±30 minutos de la fecha del correo
+        $minutosTolerancia = 30;
+        if (!empty($fecha)) {
+            try {
+                $fechaCorreo = \Carbon\Carbon::parse($fecha);
+                $fechaMin = $fechaCorreo->copy()->subMinutes($minutosTolerancia)->format('Y-m-d H:i:s');
+                $fechaMax = $fechaCorreo->copy()->addMinutes($minutosTolerancia)->format('Y-m-d H:i:s');
+
+                $query->whereRaw(
+                    "STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.fecha')), '%Y-%m-%d %H:%i:%s') BETWEEN ? AND ?",
+                    [$fechaMin, $fechaMax]
+                );
+            } catch (\Exception $ex) {
+                Log::warning('Webhook Llave: Fecha del correo inválida, se omite filtro de ventana', [
+                    'fecha' => $fecha,
+                    'error' => $ex->getMessage(),
+                ]);
             }
         }
 
@@ -203,23 +224,25 @@ class WebhookLlaveController extends Controller
             ];
         }
 
-        // Aprobar reserva
+        // Aprobar reserva — conservar los datos originales del OCR y agregar los del correo
+        // como campos separados (prefijo "correo_") para no sobreescribir la info del comprobante
         $ocrActual = is_array($reserva->ocr_data) ? $reserva->ocr_data : json_decode($reserva->ocr_data, true) ?? [];
+
+        $ocrActualizado = array_merge($ocrActual, [
+            'correo_codigo_operacion' => $codigoOperacion,
+            'correo_nombre_pagador'   => $nombrePagador,
+            'correo_cuenta_destino'   => $cuentaDestino,
+            'correo_fecha'            => $fecha,
+            'correo_monto'            => $monto,
+            'estado_transaccion'      => 'exitosa',
+            'metodo'                  => 'webhook_n8n',
+        ]);
 
         $reserva->update([
             'estado'             => 'aprobado',
             'numero_comprobante' => 'Approved',
-            'ocr_data'           => array_merge($ocrActual, [
-                'banco'              => 'llave bre-b',
-                'monto'              => $monto,
-                'referencia'         => $codigoOperacion,
-                'nombre_pagador'     => $nombrePagador,
-                'cuenta_destino'     => $cuentaDestino,
-                'fecha'              => $fecha,
-                'estado_transaccion' => 'exitosa',
-                'metodo'             => 'webhook_n8n',
-            ]),
-            'ocr_status' => 'procesado',
+            'ocr_data'           => $ocrActualizado,
+            'ocr_status'         => 'procesado',
         ]);
 
         Log::info('Webhook Llave: Reserva aprobada', [

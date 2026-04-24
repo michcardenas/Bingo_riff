@@ -487,6 +487,29 @@
               <label class="form-label text-light small mb-0 opacity-75">Nombre Receptor</label>
               <div id="ocr-receptor" class="fs-5 fw-semibold">-</div>
             </div>
+
+            {{-- Sección: Datos confirmados por correo del banco (si fue aprobado por webhook n8n) --}}
+            <div id="ocr-correo-section" class="mt-4 pt-3 border-top border-secondary" style="display:none;">
+              <h6 class="text-info mb-3">
+                <i class="bi bi-envelope-check"></i> Confirmación del correo BBVA
+              </h6>
+              <div class="mb-2">
+                <label class="form-label text-light small mb-0 opacity-75">Código de operación (correo)</label>
+                <div id="ocr-correo-codigo" class="fs-6 fw-semibold text-warning">-</div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label text-light small mb-0 opacity-75">Pagador (correo)</label>
+                <div id="ocr-correo-pagador" class="fs-6 fw-semibold">-</div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label text-light small mb-0 opacity-75">Cuenta destino (correo)</label>
+                <div id="ocr-correo-cuenta" class="fs-6 fw-semibold">-</div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label text-light small mb-0 opacity-75">Fecha (correo)</label>
+                <div id="ocr-correo-fecha" class="fs-6 fw-semibold">-</div>
+              </div>
+            </div>
           </div>
         </div>
         <hr class="border-secondary">
@@ -1148,6 +1171,18 @@ document.addEventListener('click', function(e) {
             document.getElementById('ocr-telefono').textContent = ocrData.telefono_emisor || 'No detectado';
             document.getElementById('ocr-llave').textContent = ocrData.llave_destino || 'No detectada';
             document.getElementById('ocr-receptor').textContent = ocrData.nombre_receptor || 'No detectado';
+
+            // Sección del correo (si fue aprobado por webhook n8n)
+            const correoSection = document.getElementById('ocr-correo-section');
+            if (ocrData.correo_codigo_operacion || ocrData.correo_nombre_pagador) {
+              correoSection.style.display = 'block';
+              document.getElementById('ocr-correo-codigo').textContent = ocrData.correo_codigo_operacion || '-';
+              document.getElementById('ocr-correo-pagador').textContent = ocrData.correo_nombre_pagador || '-';
+              document.getElementById('ocr-correo-cuenta').textContent = ocrData.correo_cuenta_destino ? '*****' + ocrData.correo_cuenta_destino : '-';
+              document.getElementById('ocr-correo-fecha').textContent = ocrData.correo_fecha || '-';
+            } else {
+              correoSection.style.display = 'none';
+            }
 
             // Estado transacción
             const estadoTx = document.getElementById('ocr-estado-tx');
