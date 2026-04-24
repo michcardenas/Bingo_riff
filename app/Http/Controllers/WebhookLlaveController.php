@@ -159,6 +159,13 @@ class WebhookLlaveController extends Controller
             }
         }
 
+        // Filtro por monto del OCR: el monto que leyó Claude del comprobante
+        // debe coincidir con el monto del correo (tolerancia 1%)
+        $query->whereRaw(
+            "ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.monto')) AS DECIMAL(15,2)) - ?) <= ?",
+            [$monto, max(1, $monto * 0.01)]
+        );
+
         $reserva = null;
         $metodoMatch = null;
 

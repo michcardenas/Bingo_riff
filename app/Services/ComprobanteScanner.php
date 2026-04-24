@@ -134,7 +134,15 @@ REGLAS IMPORTANTES:
   * BBVA / Bre-B: "Código de operación" o "Comprobante No."
   * Transfiya: "Referencia"
   Extraer SIEMPRE el número completo. NUNCA confundir con números de celular (10 dígitos que empiezan con 3). Si solo ves un celular y no hay código de referencia claro, poner null.
-- El MONTO es el valor transferido. En Colombia los pagos de bingo suelen ser entre \$6.000 y \$60.000. Si el número parece demasiado grande (millones), revisar si hay punto de miles (ej: 12.000 = doce mil, NO doce millones).
+- El MONTO es el valor transferido. En Colombia los pagos de bingo suelen ser entre \$6.000 y \$60.000.
+  FORMATO COLOMBIANO: el PUNTO es separador de miles y la COMA es decimal.
+  * "\$100,00" = cien pesos (100, la parte ",00" son centavos)
+  * "\$100,40" = cien pesos con 40 centavos (100, NO 10.040)
+  * "\$6.000" = seis mil pesos (6000)
+  * "\$12.000,00" = doce mil pesos (12000)
+  IMPORTANTE: ignorar los centavos (lo que va después de la coma). El monto debe ser entero en pesos.
+  Si hay varios montos en el comprobante (ej: "Monto total" e "Impuesto 4x1.000"), usa el valor principal SIN impuestos, o el que aparece más destacado (normalmente en letras grandes).
+  Si el número parece demasiado grande (millones), revisar si estás confundiendo decimal con miles.
 - telefono_emisor: SOLO extraer en Daviplata (aparece como "Desde" con un número de celular). En otros bancos poner null.
 
 CAMPOS DE LLAVE BRE-B (solo si es transferencia Bre-B):
