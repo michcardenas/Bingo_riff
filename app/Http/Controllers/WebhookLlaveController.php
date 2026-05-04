@@ -252,10 +252,9 @@ class WebhookLlaveController extends Controller
         ]);
 
         $reserva->update([
-            'estado'             => 'aprobado',
-            'numero_comprobante' => 'Approved',
-            'ocr_data'           => $ocrActualizado,
-            'ocr_status'         => 'procesado',
+            'estado'     => 'aprobado',
+            'ocr_data'   => $ocrActualizado,
+            'ocr_status' => 'procesado',
         ]);
 
         Log::info('Webhook Llave: Reserva aprobada', [

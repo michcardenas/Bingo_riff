@@ -134,7 +134,7 @@ class ReservaService
 
                 $esDuplicadoOcr = $esDuplicadoOcr ?? false;
                 $estadoInicial = ($autoApproveManual || $autoApproveOcr) ? 'aprobado' : 'revision';
-                $numeroComprobante = $autoApproveManual ? 'AUTO-' . time() : ($autoApproveOcr ? 'Approved' : ($esDuplicadoOcr ? 'Duplicado' : null));
+                $numeroComprobante = $autoApproveManual ? 'AUTO-' . time() : ($esDuplicadoOcr ? 'Duplicado' : null);
 
                 $reservaData = [
                     'nombre'               => $data['nombre'],
