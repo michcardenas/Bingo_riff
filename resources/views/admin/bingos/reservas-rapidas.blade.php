@@ -169,6 +169,10 @@
         <i class="bi bi-search"></i> Duplicados por Referencia
     </a>
 
+    <a href="{{ route('bingos.reservas.comprobantes-llave', $bingoId) }}" class="btn btn-sm btn-outline-warning">
+        <i class="bi bi-key-fill"></i> Ver Comprobantes Llave
+    </a>
+
     <a href="{{ route('bingos.reservas.pedidos-duplicados', $bingoId) }}" class="btn btn-sm btn-outline-danger">
         <i class="bi bi-files"></i> Pedido Duplicado
     </a>

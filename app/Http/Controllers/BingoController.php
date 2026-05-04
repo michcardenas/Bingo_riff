@@ -79,19 +79,24 @@ class BingoController extends Controller
                         ]);
                     }
     
-                  // Ruta de destino para comprobantes en producción
-                    $pathProduccion = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
+                  // Ruta de destino: siempre usar public_path() que Laravel resuelve bien en local y producción
+                    $destino = public_path('comprobantes');
 
-                    // Verificar si estamos en producción o local con base en el path base real
-                    $isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
-                    $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+                    // Crear carpeta si no existe
+                    if (!is_dir($destino)) {
+                        mkdir($destino, 0755, true);
+                    }
 
                     Log::info("Destino para guardar imagen", [
-                        'isProduccion' => $isProduccion,
                         'destino' => $destino
                     ]);
 
-                    $filename = time() . '_' . $file->getClientOriginalName();
+                    // Sanitizar nombre: solo letras, números, guiones y puntos
+                    $nombreOriginal = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                    $extension = $file->getClientOriginalExtension();
+                    $nombreLimpio = preg_replace('/[^A-Za-z0-9_-]/', '_', $nombreOriginal);
+                    $nombreLimpio = preg_replace('/_+/', '_', $nombreLimpio);
+                    $filename = time() . '_' . $nombreLimpio . '.' . $extension;
                     $file->move($destino, $filename);
                     $rutaRelativa = 'comprobantes/' . $filename;
                     $rutasArchivos[] = $rutaRelativa;
@@ -120,10 +125,7 @@ class BingoController extends Controller
             if (!empty($rutasArchivos)) {
                 try {
                     $primerArchivo = $rutasArchivos[0];
-                    $isProduccion = strpos(base_path(), '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
-                    $rutaCompleta = $isProduccion
-                        ? '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/' . $primerArchivo
-                        : public_path($primerArchivo);
+                    $rutaCompleta = public_path($primerArchivo);
 
                     $ocrResult = $this->comprobanteScanner->scan($rutaCompleta, $totalPagar);
                     $ocrData = $ocrResult;

@@ -139,8 +139,8 @@ class WebhookLlaveController extends Controller
         }
 
         // Filtro por ventana de tiempo: la fecha del OCR del comprobante debe estar
-        // dentro de ±5 minutos de la fecha del correo (ventana estrecha para evitar cruces)
-        $minutosTolerancia = 5;
+        // dentro de ±1 minuto de la fecha del correo (ventana mínima para máxima precisión)
+        $minutosTolerancia = 1;
         if (!empty($fecha)) {
             try {
                 $fechaCorreo = \Carbon\Carbon::parse($fecha);
@@ -166,51 +166,41 @@ class WebhookLlaveController extends Controller
             [$monto, max(1, $monto * 0.01)]
         );
 
+        // FILTRO OBLIGATORIO: el nombre del pagador (correo BBVA) debe coincidir con
+        // el nombre del cliente registrado en la reserva. Al menos UNA palabra de 3+ letras
+        // (ignorando palabras vacías como DE, LA, EL, DEL, etc.) debe estar presente.
+        $palabrasIgnoradas = ['DE', 'LA', 'EL', 'DEL', 'LOS', 'LAS', 'Y', 'DA', 'DO'];
+        $palabras = array_filter(
+            explode(' ', strtoupper($nombrePagador)),
+            fn($p) => strlen($p) >= 3 && !in_array($p, $palabrasIgnoradas)
+        );
+
+        if (empty($palabras)) {
+            Log::warning('Webhook Llave: nombre_pagador vacío o sin palabras útiles, no se puede validar', [
+                'nombre_pagador' => $nombrePagador,
+            ]);
+            return [
+                'success' => false,
+                'codigo_operacion' => $codigoOperacion,
+                'monto' => $monto,
+                'message' => 'Nombre del pagador no válido para validar.',
+            ];
+        }
+
+        // Aplicar filtro: el nombre del comprador debe contener al menos una palabra del pagador
+        $query->where(function ($q) use ($palabras) {
+            foreach ($palabras as $palabra) {
+                $q->orWhereRaw('UPPER(nombre) LIKE ?', ['%' . $palabra . '%']);
+            }
+        });
+
         $reserva = null;
         $metodoMatch = null;
 
         $queryConMonto = (clone $query)->where('total', $monto);
-        $palabras = array_filter(explode(' ', strtoupper($nombrePagador)));
 
-        // PRIORIDAD 1: nombre_pagador del OCR vs correo
-        foreach ($palabras as $palabra) {
-            if (strlen($palabra) < 3) continue;
-            $reserva = (clone $queryConMonto)
-                ->whereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '\$.nombre_pagador'))) LIKE ?", ['%' . $palabra . '%'])
-                ->first();
-            if ($reserva) {
-                $metodoMatch = 'nombre_pagador_ocr';
-                break;
-            }
-        }
-
-        // PRIORIDAD 2: nombre del comprador
-        if (!$reserva) {
-            foreach ($palabras as $palabra) {
-                if (strlen($palabra) < 3) continue;
-                $reserva = (clone $queryConMonto)
-                    ->whereRaw('UPPER(nombre) LIKE ?', ['%' . $palabra . '%'])
-                    ->first();
-                if ($reserva) {
-                    $metodoMatch = 'nombre_comprador';
-                    break;
-                }
-            }
-        }
-
-        // PRIORIDAD 3: código de operación
-        if (!$reserva && !empty($codigoOperacion)) {
-            $reserva = (clone $query)
-                ->where('ocr_data', 'like', '%' . $codigoOperacion . '%')
-                ->first();
-            if ($reserva) {
-                $metodoMatch = 'codigo_operacion';
-            }
-        }
-
-        // PRIORIDAD 4: Fecha OCR más cercana a la fecha del correo
-        // (en lugar de FIFO, tomamos la reserva cuya fecha del comprobante es más cercana a la del correo)
-        if (!$reserva && !empty($fecha)) {
+        // PRIORIDAD 1: la reserva con fecha OCR más cercana a la fecha del correo
+        if (!empty($fecha)) {
             $reserva = (clone $queryConMonto)
                 ->orderByRaw(
                     "ABS(TIMESTAMPDIFF(SECOND, STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '\$.fecha')), '%Y-%m-%d %H:%i:%s'), ?))",
@@ -218,7 +208,15 @@ class WebhookLlaveController extends Controller
                 )
                 ->first();
             if ($reserva) {
-                $metodoMatch = 'fecha_mas_cercana';
+                $metodoMatch = 'nombre_comprador_y_fecha';
+            }
+        }
+
+        // PRIORIDAD 2 (fallback): primera reserva que cumpla todos los filtros
+        if (!$reserva) {
+            $reserva = $queryConMonto->orderBy('id')->first();
+            if ($reserva) {
+                $metodoMatch = 'nombre_comprador';
             }
         }
 

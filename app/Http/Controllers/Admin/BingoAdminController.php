@@ -496,6 +496,53 @@ class BingoAdminController extends Controller
         return $idsDuplicados;
     }
 
+    /**
+     * Lista comprobantes de Llave Bre-B aprobados por webhook n8n,
+     * mostrando datos del correo BBVA y a qué cliente del bingo pertenecen.
+     */
+    public function comprobantesLlave($bingoId)
+    {
+        $bingo = Bingo::findOrFail($bingoId);
+
+        $reservas = \App\Models\Reserva::where('bingo_id', $bingoId)
+            ->whereNotNull('ocr_data')
+            ->where('ocr_status', 'procesado')
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.banco')) = 'llave bre-b'")
+            ->orderByDesc('id')
+            ->get();
+
+        // Filtros opcionales
+        $search = request('search');
+        if (!empty($search)) {
+            $reservas = $reservas->filter(function ($r) use ($search) {
+                $ocr = is_array($r->ocr_data) ? $r->ocr_data : (json_decode($r->ocr_data, true) ?? []);
+                $haystack = strtoupper(implode(' ', [
+                    $r->nombre,
+                    $r->celular,
+                    $ocr['correo_nombre_pagador'] ?? '',
+                    $ocr['correo_codigo_operacion'] ?? '',
+                    $ocr['referencia'] ?? '',
+                ]));
+                return str_contains($haystack, strtoupper($search));
+            });
+        }
+
+        // Paginación manual
+        $page = request()->get('page', 1);
+        $perPage = 15;
+        $items = $reservas->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $paginador = new LengthAwarePaginator(
+            $items,
+            $reservas->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return view('admin.bingos.comprobantes-llave', compact('bingo', 'paginador', 'bingoId', 'search'));
+    }
+
     public function duplicadosOcr($bingoId)
     {
         $bingo = Bingo::findOrFail($bingoId);
@@ -638,17 +685,19 @@ class BingoAdminController extends Controller
             }
         }
 
-        // Ruta destino
-        $pathProduccion = '/home/u861598707/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/comprobantes';
-        $isProduccion = strpos(base_path(), '/home/u861598707/domains/mediumspringgreen-chamois-657776.hostingersite.com') !== false;
-        $destino = $isProduccion ? $pathProduccion : public_path('comprobantes');
+        // Ruta destino: siempre public_path() que Laravel resuelve bien en local y producción
+        $destino = public_path('comprobantes');
 
         if (!file_exists($destino)) {
             mkdir($destino, 0775, true);
         }
 
-        // Guardar archivo
-        $filename = time() . '_' . $file->getClientOriginalName();
+        // Guardar archivo (sanitizar nombre: solo letras, números, guiones y puntos)
+        $nombreOriginal = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = $file->getClientOriginalExtension();
+        $nombreLimpio = preg_replace('/[^A-Za-z0-9_-]/', '_', $nombreOriginal);
+        $nombreLimpio = preg_replace('/_+/', '_', $nombreLimpio);
+        $filename = time() . '_' . $nombreLimpio . '.' . $extension;
         $file->move($destino, $filename);
         $rutaRelativa = 'comprobantes/' . $filename;
 
