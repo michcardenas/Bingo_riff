@@ -818,16 +818,12 @@
 
                         <!-- Payment method tabs -->
                         <div class="payment-tabs">
-                            <button type="button" class="payment-tab payment-tab-nequi active" data-method="nequi" data-number="{{ $numeroNequi }}">Nequi</button>
-                            <span class="payment-tab-separator">|</span>
-                            <button type="button" class="payment-tab payment-tab-daviplata" data-method="daviplata" data-number="{{ $numeroDaviplata }}">Daviplata</button>
-                            <span class="payment-tab-separator">|</span>
-                            <button type="button" class="payment-tab payment-tab-transfiya" data-method="transfiya" data-number="{{ $numeroTransfiya }}">llave Bre-B</button>
+                            <button type="button" class="payment-tab payment-tab-transfiya active" data-method="transfiya" data-number="{{ $numeroTransfiya }}">llave Bre-B</button>
                         </div>
 
                         <!-- Number display -->
                         <div class="payment-number-display">
-                            <span class="number" id="paymentNumber">{{ $numeroNequi }}</span>
+                            <span class="number" id="paymentNumber">{{ $numeroTransfiya }}</span>
                         </div>
 
                         <!-- Copy button centered -->
@@ -837,10 +833,9 @@
                             </button>
                         </div>
 
-                        <!-- Account holder names -->
+                        <!-- Account holder name -->
                         <div class="payment-holders">
-                            Nequi: <strong>{{ $enlaces->nombre_nequi ?? 'Carmen causil' }}</strong><br>
-                            Daviplata: <strong>{{ $enlaces->nombre_daviplata ?? 'Martin Rodriguez' }}</strong>
+                            llave Bre-B: <strong>{{ $enlaces->nombre_transfiya ?? 'Martin Rodriguez Causil' }}</strong>
                         </div>
                     </div>
                 </div>
