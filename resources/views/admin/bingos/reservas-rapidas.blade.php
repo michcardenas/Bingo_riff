@@ -494,9 +494,8 @@
 
             {{-- Sección: Link al panel de comprobantes Llave (solo si el banco es llave bre-b) --}}
             <div id="ocr-llave-link-section" class="mt-4 pt-3 border-top border-secondary" style="display:none;">
-              <a href="{{ route('bingos.reservas.comprobantes-llave', $bingoId) }}"
-                 class="btn btn-outline-warning w-100">
-                <i class="bi bi-key-fill"></i> Ver registro de comprobantes Llave
+              <a id="ocr-llave-link" href="#" class="btn btn-outline-warning w-100">
+                <i class="bi bi-key-fill"></i> Ver registro de este comprobante en Llave
               </a>
             </div>
           </div>
@@ -1151,6 +1150,7 @@ document.addEventListener('click', function(e) {
         try {
             const ocrData = JSON.parse(btn.dataset.ocr);
             const status = btn.dataset.status;
+            const reservaId = btn.dataset.id;
 
             document.getElementById('ocr-banco').textContent = ocrData.banco ? ocrData.banco.toUpperCase() : 'No detectado';
             document.getElementById('ocr-monto').textContent = ocrData.monto ? '$' + Number(ocrData.monto).toLocaleString('es-CO') : 'No detectado';
@@ -1163,10 +1163,19 @@ document.addEventListener('click', function(e) {
 
             // Sección de Llave Bre-B: mostrar link al panel de comprobantes llave
             const llaveLinkSection = document.getElementById('ocr-llave-link-section');
-            if (llaveLinkSection) {
+            const llaveLink = document.getElementById('ocr-llave-link');
+            if (llaveLinkSection && llaveLink) {
               const banco = (ocrData.banco || '').toLowerCase();
               if (banco === 'llave bre-b') {
                 llaveLinkSection.style.display = 'block';
+                // Construir link con búsqueda por código de operación o referencia
+                const baseUrl = "{{ route('bingos.reservas.comprobantes-llave', $bingoId) }}";
+                const codigoBusqueda = ocrData.correo_codigo_operacion || ocrData.referencia || '';
+                if (codigoBusqueda) {
+                  llaveLink.href = baseUrl + '?search=' + encodeURIComponent(codigoBusqueda) + '#reserva-' + reservaId;
+                } else {
+                  llaveLink.href = baseUrl + '#reserva-' + reservaId;
+                }
               } else {
                 llaveLinkSection.style.display = 'none';
               }

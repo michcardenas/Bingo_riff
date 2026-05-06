@@ -64,7 +64,7 @@
                             $codigoOp = $ocr['correo_codigo_operacion'] ?? $ocr['referencia'] ?? '—';
                             $comprobantes = is_array($reserva->comprobante) ? $reserva->comprobante : (json_decode($reserva->comprobante, true) ?? []);
                         @endphp
-                        <tr>
+                        <tr id="reserva-{{ $reserva->id }}">
                             <td><strong>{{ $reserva->id }}</strong></td>
                             <td>
                                 <strong class="text-info">{{ $reserva->nombre }}</strong>
@@ -129,4 +129,22 @@
         @endif
     </div>
 </div>
+
+<script>
+    // Resaltar fila si la URL trae #reserva-X
+    document.addEventListener('DOMContentLoaded', function () {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#reserva-')) {
+            const fila = document.querySelector(hash);
+            if (fila) {
+                fila.style.transition = 'background-color 0.5s';
+                fila.style.backgroundColor = 'rgba(255, 193, 7, 0.3)';
+                fila.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                    fila.style.backgroundColor = 'rgba(255, 193, 7, 0.15)';
+                }, 2000);
+            }
+        }
+    });
+</script>
 @endsection
