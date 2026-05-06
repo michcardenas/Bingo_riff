@@ -497,50 +497,117 @@ class BingoAdminController extends Controller
     }
 
     /**
-     * Lista comprobantes de Llave Bre-B aprobados por webhook n8n,
-     * mostrando datos del correo BBVA y a qué cliente del bingo pertenecen.
+     * Lista comprobantes de Llave Bre-B del bingo específico (con filtros avanzados).
      */
     public function comprobantesLlave($bingoId)
     {
         $bingo = Bingo::findOrFail($bingoId);
 
-        $reservas = \App\Models\Reserva::where('bingo_id', $bingoId)
-            ->whereNotNull('ocr_data')
-            ->where('ocr_status', 'procesado')
-            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.banco')) = 'llave bre-b'")
-            ->orderByDesc('id')
-            ->get();
+        $query = \App\Models\PagoLlave::with(['reserva', 'bingo'])
+            ->where('bingo_id', $bingoId)
+            ->orderByDesc('id');
 
-        // Filtros opcionales
-        $search = request('search');
-        if (!empty($search)) {
-            $reservas = $reservas->filter(function ($r) use ($search) {
-                $ocr = is_array($r->ocr_data) ? $r->ocr_data : (json_decode($r->ocr_data, true) ?? []);
-                $haystack = strtoupper(implode(' ', [
-                    $r->nombre,
-                    $r->celular,
-                    $ocr['correo_nombre_pagador'] ?? '',
-                    $ocr['correo_codigo_operacion'] ?? '',
-                    $ocr['referencia'] ?? '',
-                ]));
-                return str_contains($haystack, strtoupper($search));
+        $this->aplicarFiltrosPagosLlave($query);
+
+        $paginador = $query->paginate(20)->withQueryString();
+
+        return view('admin.bingos.comprobantes-llave', [
+            'bingo'      => $bingo,
+            'bingoId'    => $bingoId,
+            'paginador'  => $paginador,
+            'general'    => false,
+            'filtros'    => request()->only(['search', 'estado', 'desde', 'hasta', 'monto_min', 'monto_max', 'codigo', 'pagador', 'cliente']),
+        ]);
+    }
+
+    /**
+     * Lista TODOS los pagos de Llave Bre-B (general, sin filtrar por bingo).
+     * Permite trazabilidad completa de los correos que llegan al webhook.
+     */
+    public function comprobantesLlaveGeneral()
+    {
+        $query = \App\Models\PagoLlave::with(['reserva', 'bingo'])
+            ->orderByDesc('id');
+
+        $this->aplicarFiltrosPagosLlave($query);
+
+        $paginador = $query->paginate(20)->withQueryString();
+
+        $bingosDisponibles = Bingo::orderBy('nombre')->get(['id', 'nombre']);
+
+        return view('admin.bingos.comprobantes-llave', [
+            'paginador'         => $paginador,
+            'general'           => true,
+            'bingosDisponibles' => $bingosDisponibles,
+            'filtros'           => request()->only(['search', 'estado', 'desde', 'hasta', 'monto_min', 'monto_max', 'codigo', 'pagador', 'cliente', 'bingo_id']),
+        ]);
+    }
+
+    /**
+     * Aplica filtros comunes para la tabla pagos_llave (vista por bingo y general).
+     */
+    private function aplicarFiltrosPagosLlave($query): void
+    {
+        $r = request();
+
+        // Búsqueda general (busca en varios campos)
+        if ($r->filled('search')) {
+            $term = '%' . $r->search . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('codigo_operacion', 'like', $term)
+                  ->orWhere('nombre_pagador', 'like', $term)
+                  ->orWhere('cuenta_destino', 'like', $term)
+                  ->orWhere('mensaje', 'like', $term)
+                  ->orWhereHas('reserva', function ($qq) use ($term) {
+                      $qq->where('nombre', 'like', $term)
+                         ->orWhere('celular', 'like', $term);
+                  });
             });
         }
 
-        // Paginación manual
-        $page = request()->get('page', 1);
-        $perPage = 15;
-        $items = $reservas->slice(($page - 1) * $perPage, $perPage)->values();
+        // Filtro por estado
+        if ($r->filled('estado')) {
+            $query->where('estado', $r->estado);
+        }
 
-        $paginador = new LengthAwarePaginator(
-            $items,
-            $reservas->count(),
-            $perPage,
-            $page,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
+        // Filtro por bingo (solo en vista general)
+        if ($r->filled('bingo_id')) {
+            $query->where('bingo_id', $r->bingo_id);
+        }
 
-        return view('admin.bingos.comprobantes-llave', compact('bingo', 'paginador', 'bingoId', 'search'));
+        // Filtro por código de operación
+        if ($r->filled('codigo')) {
+            $query->where('codigo_operacion', 'like', '%' . $r->codigo . '%');
+        }
+
+        // Filtro por nombre del pagador
+        if ($r->filled('pagador')) {
+            $query->where('nombre_pagador', 'like', '%' . $r->pagador . '%');
+        }
+
+        // Filtro por nombre del cliente del bingo
+        if ($r->filled('cliente')) {
+            $cliente = '%' . $r->cliente . '%';
+            $query->whereHas('reserva', function ($q) use ($cliente) {
+                $q->where('nombre', 'like', $cliente);
+            });
+        }
+
+        // Filtro por rango de monto
+        if ($r->filled('monto_min')) {
+            $query->where('monto', '>=', (float) $r->monto_min);
+        }
+        if ($r->filled('monto_max')) {
+            $query->where('monto', '<=', (float) $r->monto_max);
+        }
+
+        // Filtro por rango de fecha (fecha del correo)
+        if ($r->filled('desde')) {
+            $query->where('fecha_correo', '>=', $r->desde);
+        }
+        if ($r->filled('hasta')) {
+            $query->where('fecha_correo', '<=', $r->hasta);
+        }
     }
 
     public function duplicadosOcr($bingoId)

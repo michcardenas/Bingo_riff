@@ -143,7 +143,11 @@ REGLAS IMPORTANTES:
   IMPORTANTE: ignorar los centavos (lo que va después de la coma). El monto debe ser entero en pesos.
   Si hay varios montos en el comprobante (ej: "Monto total" e "Impuesto 4x1.000"), usa el valor principal SIN impuestos, o el que aparece más destacado (normalmente en letras grandes).
   Si el número parece demasiado grande (millones), revisar si estás confundiendo decimal con miles.
-- telefono_emisor: SOLO extraer en Daviplata (aparece como "Desde" con un número de celular). En otros bancos poner null.
+- telefono_emisor: número de celular de la persona que ENVÍA el dinero. Extraer en estos casos:
+  * Daviplata: aparece como "Desde" + celular
+  * Nequi (cuando es transferencia a llave Bre-B): aparece como "¿Desde dónde se hizo el envío?" + celular (ej: "323 590 3774")
+  * Si el celular tiene espacios, eliminar espacios al guardar (ej: "3235903774")
+  * En otros casos poner null.
 
 CAMPOS DE LLAVE BRE-B (solo si es transferencia Bre-B):
 - llave_destino: el número de llave al que se transfirió (ej: "0091706852"). Suele aparecer como "Llave", "Código de negocio", "a la llave BBVA". Poner null si no es Bre-B.
@@ -196,8 +200,18 @@ EOT;
             $referencia = null;
         }
 
-        // telefono_emisor solo aplica para Daviplata
-        $telefonoEmisor = ($banco === 'daviplata') ? ($parsed['telefono_emisor'] ?? null) : null;
+        // telefono_emisor: aplica para Daviplata y para Nequi cuando es transferencia a llave Bre-B
+        $telefonoEmisor = null;
+        if (in_array($banco, ['daviplata', 'llave bre-b']) || $banco === 'nequi') {
+            $telefonoEmisor = $parsed['telefono_emisor'] ?? null;
+            if ($telefonoEmisor) {
+                // Eliminar espacios y caracteres no numéricos
+                $telefonoEmisor = preg_replace('/\D/', '', $telefonoEmisor);
+                if (strlen($telefonoEmisor) < 7) {
+                    $telefonoEmisor = null;
+                }
+            }
+        }
 
         return [
             'banco' => $banco,

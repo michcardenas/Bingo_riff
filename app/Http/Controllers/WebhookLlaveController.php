@@ -92,6 +92,16 @@ class WebhookLlaveController extends Controller
                 'recibida' => $cuentaDestino,
                 'esperada' => $cuentaEsperada,
             ]);
+            $this->registrarPago([
+                'codigo_operacion' => $codigoOperacion,
+                'nombre_pagador'   => $nombrePagador,
+                'cuenta_destino'   => $cuentaDestino,
+                'monto'            => $monto,
+                'fecha_correo'     => $fecha,
+                'estado'           => 'error',
+                'mensaje'          => 'Cuenta destino no corresponde al bingo (' . $cuentaDestino . ').',
+                'payload_raw'      => $tx,
+            ]);
             return [
                 'success' => false,
                 'codigo_operacion' => $codigoOperacion,
@@ -100,6 +110,16 @@ class WebhookLlaveController extends Controller
         }
 
         if ($monto <= 0) {
+            $this->registrarPago([
+                'codigo_operacion' => $codigoOperacion,
+                'nombre_pagador'   => $nombrePagador,
+                'cuenta_destino'   => $cuentaDestino,
+                'monto'            => 0,
+                'fecha_correo'     => $fecha,
+                'estado'           => 'error',
+                'mensaje'          => 'Monto inválido o vacío.',
+                'payload_raw'      => $tx,
+            ]);
             return [
                 'success' => false,
                 'codigo_operacion' => $codigoOperacion,
@@ -193,11 +213,17 @@ class WebhookLlaveController extends Controller
             ];
         }
 
-        // Aplicar filtro: el nombre del comprador debe contener al menos una palabra del pagador
+        // Aplicar filtro: el nombre del comprador debe contener al menos una palabra del pagador,
+        // O el celular emisor del OCR debe coincidir con el celular del cliente
         $query->where(function ($q) use ($palabras) {
+            // Match por nombre
             foreach ($palabras as $palabra) {
                 $q->orWhereRaw('UPPER(nombre) LIKE ?', ['%' . $palabra . '%']);
             }
+            // Match por celular emisor del OCR vs celular del cliente
+            $q->orWhereRaw(
+                "REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.telefono_emisor')), '[^0-9]', '') = REGEXP_REPLACE(celular, '[^0-9]', '')"
+            );
         });
 
         $reserva = null;
@@ -232,6 +258,22 @@ class WebhookLlaveController extends Controller
                 'nombre_pagador' => $nombrePagador,
                 'codigo_operacion' => $codigoOperacion,
             ]);
+
+            // Registrar el pago en pagos_llave aunque no se encontró match
+            $this->registrarPago([
+                'codigo_operacion' => $codigoOperacion,
+                'nombre_pagador'   => $nombrePagador,
+                'cuenta_destino'   => $cuentaDestino,
+                'monto'            => $monto,
+                'fecha_correo'     => $fecha,
+                'reserva_id'       => null,
+                'bingo_id'         => null,
+                'estado'           => 'no_match',
+                'metodo_match'     => null,
+                'mensaje'          => 'No se encontró reserva en revisión que coincida.',
+                'payload_raw'      => $tx,
+            ]);
+
             return [
                 'success' => false,
                 'codigo_operacion' => $codigoOperacion,
@@ -268,6 +310,21 @@ class WebhookLlaveController extends Controller
             'metodo_match' => $metodoMatch,
         ]);
 
+        // Registrar el pago en pagos_llave (caso aprobado)
+        $this->registrarPago([
+            'codigo_operacion' => $codigoOperacion,
+            'nombre_pagador'   => $nombrePagador,
+            'cuenta_destino'   => $cuentaDestino,
+            'monto'            => $monto,
+            'fecha_correo'     => $fecha,
+            'reserva_id'       => $reserva->id,
+            'bingo_id'         => $reserva->bingo_id,
+            'estado'           => 'aprobado',
+            'metodo_match'     => $metodoMatch,
+            'mensaje'          => 'Aprobada automáticamente.',
+            'payload_raw'      => $tx,
+        ]);
+
         return [
             'success'      => true,
             'reserva_id'   => $reserva->id,
@@ -275,5 +332,42 @@ class WebhookLlaveController extends Controller
             'monto'        => $monto,
             'metodo_match' => $metodoMatch,
         ];
+    }
+
+    /**
+     * Registra un pago de Llave Bre-B en la tabla pagos_llave para auditoría/trazabilidad,
+     * sin importar si encontró match con reserva o no.
+     */
+    private function registrarPago(array $datos): void
+    {
+        try {
+            $fechaCorreo = null;
+            if (!empty($datos['fecha_correo'])) {
+                try {
+                    $fechaCorreo = \Carbon\Carbon::parse($datos['fecha_correo']);
+                } catch (\Exception $e) {
+                    $fechaCorreo = null;
+                }
+            }
+
+            \App\Models\PagoLlave::create([
+                'codigo_operacion' => $datos['codigo_operacion'] ?? null,
+                'nombre_pagador'   => $datos['nombre_pagador'] ?? null,
+                'cuenta_destino'   => $datos['cuenta_destino'] ?? null,
+                'monto'            => $datos['monto'] ?? 0,
+                'fecha_correo'     => $fechaCorreo,
+                'reserva_id'       => $datos['reserva_id'] ?? null,
+                'bingo_id'         => $datos['bingo_id'] ?? null,
+                'estado'           => $datos['estado'] ?? 'pendiente',
+                'metodo_match'     => $datos['metodo_match'] ?? null,
+                'mensaje'          => $datos['mensaje'] ?? null,
+                'payload_raw'      => $datos['payload_raw'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Webhook Llave: Error al registrar pago', [
+                'error' => $e->getMessage(),
+                'datos' => $datos,
+            ]);
+        }
     }
 }

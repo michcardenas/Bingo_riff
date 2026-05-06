@@ -100,7 +100,11 @@
                     <li class="nav-item">
                         <a class="nav-link text-white" href="{{ route('enlaces.edit') }}">Enlaces</a>
                     </li>
-                    
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{{ route('admin.comprobantes-llave-general') }}">
+                            <i class="bi bi-key-fill"></i> Pagos Llave Bre-B
+                        </a>
+                    </li>
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">
