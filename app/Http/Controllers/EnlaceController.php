@@ -30,7 +30,7 @@ class EnlaceController extends Controller
             'telefono_atencion' => 'nullable|string|max:20',
             'numero_nequi' => 'nullable|string|max:20',
             'numero_daviplata' => 'nullable|string|max:20',
-            'numero_transfiya' => 'nullable|string|max:20',
+            'numero_breb' => 'nullable|string|max:20',
             'video_1' => 'nullable|url|max:255',
             'video_2' => 'nullable|url|max:255',
             'grupo_whatsapp' => 'nullable|url|max:255',

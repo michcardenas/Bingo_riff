@@ -19,7 +19,7 @@ class Enlace extends Model
         'grupo_whatsapp',
         'numero_nequi',
         'numero_daviplata',
-        'numero_transfiya',
+        'numero_breb',
         'mostrar_boton_whatsapp'
     ];
 }

@@ -683,7 +683,7 @@
         // Nuevos métodos de pago con respaldo al número de contacto
         $numeroNequi = $enlaces->numero_nequi ?? $numeroContacto;
         $numeroDaviplata = $enlaces->numero_daviplata ?? $numeroContacto;
-        $numeroTransfiya = $enlaces->numero_transfiya ?? $numeroContacto;
+        $numeroBreb = $enlaces->numero_breb ?? $numeroContacto;
     @endphp
 
     <!-- Cabecera -->
@@ -818,12 +818,12 @@
 
                         <!-- Payment method tabs -->
                         <div class="payment-tabs">
-                            <button type="button" class="payment-tab payment-tab-transfiya active" data-method="transfiya" data-number="{{ $numeroTransfiya }}">llave Bre-B</button>
+                            <button type="button" class="payment-tab payment-tab-breb active" data-method="breb" data-number="{{ $numeroBreb }}">Llave Bre-B</button>
                         </div>
 
                         <!-- Number display -->
                         <div class="payment-number-display">
-                            <span class="number" id="paymentNumber">{{ $numeroTransfiya }}</span>
+                            <span class="number" id="paymentNumber">{{ $numeroBreb }}</span>
                         </div>
 
                         <!-- Copy button centered -->
@@ -835,7 +835,7 @@
 
                         <!-- Account holder name -->
                         <div class="payment-holders">
-                            llave Bre-B: <strong>{{ $enlaces->nombre_transfiya ?? 'Martin Rodriguez Causil' }}</strong>
+                            llave Bre-B: <strong>{{ $enlaces->nombre_breb ?? 'Martin Rodriguez Causil' }}</strong>
                         </div>
                     </div>
                 </div>

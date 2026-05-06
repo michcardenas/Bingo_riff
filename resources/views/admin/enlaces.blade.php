@@ -102,14 +102,14 @@
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-bold">Número Transfiya</label>
+                                <label class="form-label fw-bold">Llave Bre-B</label>
                                 <input
                                     type="text"
                                     class="form-control"
-                                    name="numero_transfiya"
-                                    value="{{ $enlaces->numero_transfiya ?? '' }}"
-                                    placeholder="Ej: 3001234567">
-                                <small class="text-muted">Número de Transfiya para recibir pagos.</small>
+                                    name="numero_breb"
+                                    value="{{ $enlaces->numero_breb ?? '' }}"
+                                    placeholder="Ej: 0091706852">
+                                <small class="text-muted">Llave Bre-B para recibir pagos.</small>
                             </div>
 
                             <div class="mb-4">
