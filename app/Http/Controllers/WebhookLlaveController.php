@@ -123,19 +123,25 @@ class WebhookLlaveController extends Controller
             $query->whereNotIn('id', $reservasYaMatcheadas);
         }
 
-        if (!empty($llaveBingo)) {
-            $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.llave_destino')) = ?", [$llaveBingo]);
-        }
+        // La llave destino o el nombre receptor deben coincidir con los del bingo.
+        // (basta con uno de los dos: si Claude OCR no leyó la llave pero sí el receptor, igual valida)
+        $palabrasReceptor = !empty($nombreReceptorBingo)
+            ? array_filter(explode(' ', $nombreReceptorBingo), fn($p) => strlen($p) >= 3)
+            : [];
 
-        if (!empty($nombreReceptorBingo)) {
-            $palabrasReceptor = array_filter(explode(' ', $nombreReceptorBingo), fn($p) => strlen($p) >= 3);
-            if (!empty($palabrasReceptor)) {
-                $query->where(function ($q) use ($palabrasReceptor) {
-                    foreach ($palabrasReceptor as $palabra) {
-                        $q->orWhereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '\$.nombre_receptor'))) LIKE ?", ['%' . $palabra . '%']);
-                    }
-                });
-            }
+        if (!empty($llaveBingo) || !empty($palabrasReceptor)) {
+            $query->where(function ($q) use ($llaveBingo, $palabrasReceptor) {
+                if (!empty($llaveBingo)) {
+                    $q->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '\$.llave_destino')) = ?", [$llaveBingo]);
+                }
+                if (!empty($palabrasReceptor)) {
+                    $q->orWhere(function ($qq) use ($palabrasReceptor) {
+                        foreach ($palabrasReceptor as $palabra) {
+                            $qq->orWhereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '\$.nombre_receptor'))) LIKE ?", ['%' . $palabra . '%']);
+                        }
+                    });
+                }
+            });
         }
 
         // Filtro por ventana de tiempo: la fecha del OCR del comprobante debe estar
