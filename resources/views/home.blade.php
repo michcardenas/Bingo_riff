@@ -824,7 +824,7 @@
 
                         <!-- Number display -->
                         <div class="payment-number-display">
-                            <span class="number" id="paymentNumber">{{ $numeroTransfiya }}</span>
+                            <span class="number" id="paymentNumber">{{ $numeroBreb }}</span>
                         </div>
 
                         <!-- Copy button centered -->
