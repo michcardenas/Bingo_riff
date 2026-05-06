@@ -334,7 +334,8 @@
 
         button.payment-tab.payment-tab-nequi,
         button.payment-tab.payment-tab-daviplata,
-        button.payment-tab.payment-tab-transfiya { color: #00bf63 !important; }
+        button.payment-tab.payment-tab-transfiya,
+        button.payment-tab.payment-tab-breb { color: #00bf63 !important; }
 
         .payment-tab-separator {
             color: #555;
@@ -823,7 +824,7 @@
 
                         <!-- Number display -->
                         <div class="payment-number-display">
-                            <span class="number" id="paymentNumber">{{ $numeroBreb }}</span>
+                            <span class="number" id="paymentNumber">{{ $numeroTransfiya }}</span>
                         </div>
 
                         <!-- Copy button centered -->
@@ -835,7 +836,7 @@
 
                         <!-- Account holder name -->
                         <div class="payment-holders">
-                            llave Bre-B: <strong>{{ $enlaces->nombre_breb ?? 'Martin Rodriguez Causil' }}</strong>
+                            llave Bre-B: <strong>{{ $enlaces->nombre_transfiya ?? 'Martin Rodriguez Causil' }}</strong>
                         </div>
                     </div>
                 </div>
