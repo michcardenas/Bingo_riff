@@ -189,8 +189,9 @@
                                 @endphp
                                 <span class="badge {{ $colorEstado }}">{{ ucfirst($pago->estado) }}</span>
                                 @if($pago->mensaje)
-                                    <br>
-                                    <small class="text-muted" style="font-size: 0.7rem;">{{ Str::limit($pago->mensaje, 60) }}</small>
+                                    <div class="mt-1 small text-light opacity-75" style="font-size: 0.75rem; line-height: 1.2;">
+                                        {{ $pago->mensaje }}
+                                    </div>
                                 @endif
                             </td>
                             <td>
