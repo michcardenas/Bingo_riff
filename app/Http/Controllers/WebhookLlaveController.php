@@ -85,6 +85,25 @@ class WebhookLlaveController extends Controller
         $codigoOperacion = $tx['codigo_operacion'] ?? null;
         $fecha           = $tx['fecha'] ?? null;
 
+        // Anti-duplicado: si el código de operación ya está registrado en pagos_llave,
+        // no procesarlo otra vez (evita reprocesar correos que se reenviaron o re-marcaron como no leídos)
+        if (!empty($codigoOperacion)) {
+            $existente = \App\Models\PagoLlave::where('codigo_operacion', $codigoOperacion)->first();
+            if ($existente) {
+                Log::info('Webhook Llave: Correo duplicado ignorado', [
+                    'codigo_operacion'    => $codigoOperacion,
+                    'pago_existente_id'   => $existente->id,
+                    'estado_anterior'     => $existente->estado,
+                ]);
+                return [
+                    'success'          => false,
+                    'codigo_operacion' => $codigoOperacion,
+                    'message'          => 'Correo duplicado: ya fue procesado antes (estado: ' . $existente->estado . ').',
+                    'pago_existente'   => $existente->id,
+                ];
+            }
+        }
+
         // Validar cuenta destino
         $cuentaEsperada = config('services.webhook.cuenta_bingo');
         if (!empty($cuentaEsperada) && $cuentaDestino !== $cuentaEsperada) {
