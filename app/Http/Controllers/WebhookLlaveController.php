@@ -232,17 +232,15 @@ class WebhookLlaveController extends Controller
             ];
         }
 
-        // Aplicar filtro: el nombre del comprador debe contener al menos una palabra del pagador,
-        // O el celular emisor del OCR debe coincidir con el celular del cliente
+        // Filtro estricto por nombre: el nombre del comprador de la reserva debe contener
+        // al menos una palabra (3+ letras) del nombre del pagador del correo del banco.
+        // No se acepta fallback por celular: el telefono_emisor del OCR siempre coincide
+        // con el celular del propio cliente (porque él subió su propio comprobante),
+        // lo que generaba aprobaciones cruzadas con pagos de otras personas.
         $query->where(function ($q) use ($palabras) {
-            // Match por nombre
             foreach ($palabras as $palabra) {
                 $q->orWhereRaw('UPPER(nombre) LIKE ?', ['%' . $palabra . '%']);
             }
-            // Match por celular emisor del OCR vs celular del cliente
-            $q->orWhereRaw(
-                "REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(ocr_data, '$.telefono_emisor')), '[^0-9]', '') = REGEXP_REPLACE(celular, '[^0-9]', '')"
-            );
         });
 
         $reserva = null;
@@ -278,7 +276,11 @@ class WebhookLlaveController extends Controller
                 'codigo_operacion' => $codigoOperacion,
             ]);
 
-            // Registrar el pago en pagos_llave aunque no se encontró match
+            // Registrar el pago en pagos_llave aunque no se encontró match.
+            // Asignar el no_match al bingo activo (siempre hay UNO solo activo a la vez)
+            // para que aparezca en la vista del bingo donde el operador puede revisarlo.
+            $bingoActivoId = $bingosActivos->first();
+
             $this->registrarPago([
                 'codigo_operacion' => $codigoOperacion,
                 'nombre_pagador'   => $nombrePagador,
@@ -286,7 +288,7 @@ class WebhookLlaveController extends Controller
                 'monto'            => $monto,
                 'fecha_correo'     => $fecha,
                 'reserva_id'       => null,
-                'bingo_id'         => null,
+                'bingo_id'         => $bingoActivoId,
                 'estado'           => 'no_match',
                 'metodo_match'     => null,
                 'mensaje'          => 'No se encontró reserva en revisión que coincida.',
