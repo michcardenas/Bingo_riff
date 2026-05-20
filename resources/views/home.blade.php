@@ -836,7 +836,7 @@
 
                         <!-- Account holder name -->
                         <div class="payment-holders">
-                         A nombre de <strong>Carmen Causil</strong>
+                            Llave Bre B = A nombre de <strong>Carmen Causil</strong>
                         </div>
                     </div>
                 </div>
