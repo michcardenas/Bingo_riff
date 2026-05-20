@@ -819,12 +819,12 @@
 
                         <!-- Payment method tabs -->
                         <div class="payment-tabs">
-                            <button type="button" class="payment-tab payment-tab-breb active" data-method="breb" data-number="{{ $numeroBreb }}">Llave Bre-B</button>
+                            <button type="button" class="payment-tab payment-tab-breb active" data-method="breb" data-number="{{ $numeroContacto }}">Nequi - Daviplata - Llave</button>
                         </div>
 
                         <!-- Number display -->
                         <div class="payment-number-display">
-                            <span class="number" id="paymentNumber">{{ $numeroBreb }}</span>
+                            <span class="number" id="paymentNumber" style="color:#ffd60a; font-size:34px;">{{ $numeroContacto }}</span>
                         </div>
 
                         <!-- Copy button centered -->
@@ -836,7 +836,7 @@
 
                         <!-- Account holder name -->
                         <div class="payment-holders">
-                            llave Bre-B: <strong>{{ $enlaces->nombre_transfiya ?? 'Martin Rodriguez Causil' }}</strong>
+                            Llave Bre B = A nombre de <strong>Carmen Causil</strong>
                         </div>
                     </div>
                 </div>
@@ -1228,7 +1228,7 @@ function updatePreview() {
 }
 
 // Variable para el número activo del pago
-let activePaymentNumber = '{{ $numeroNequi }}';
+let activePaymentNumber = '{{ $numeroContacto }}';
 
 function copiarNumeroActivo(event) {
     return copiarNumero(activePaymentNumber, event);
