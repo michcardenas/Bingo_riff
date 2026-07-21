@@ -1,98 +1,104 @@
 @extends('layouts.guest')
 
 @section('content')
-<div class="bg-[#0d0d0d]/90 backdrop-blur border border-[#00bf63]/30 rounded-2xl shadow-2xl shadow-[#00bf63]/10 p-8">
+<div class="bg-black border border-white p-6 rounded-lg">
+    <h2 class="text-2xl font-bold text-center mb-6">Iniciar Sesión</h2>
 
-    <div class="text-center mb-7">
-        <h2 class="text-2xl font-extrabold tracking-tight">Iniciar Sesión</h2>
-        <p class="text-sm text-gray-400 mt-1">Ingresa a tu panel de administración</p>
-    </div>
-
-    <!-- Mensaje de sesión (si existe) -->
+    <!-- Mostrar mensaje de sesión (si existe) -->
     @if (session('status'))
-        <div class="mb-5 rounded-lg bg-[#00bf63]/10 border border-[#00bf63]/40 px-4 py-2.5 text-sm text-[#00bf63]">
+        <div class="mb-4 text-green-500">
             {{ session('status') }}
         </div>
     @endif
 
-    <form method="POST" action="{{ route('login') }}" class="space-y-5">
+    <form method="POST" action="{{ route('login') }}">
         @csrf
 
-        <!-- Campo Email -->
-        <div>
-            <label for="email" class="block text-sm font-medium text-gray-200 mb-1.5">Correo Electrónico</label>
-            <div class="relative">
-                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                </span>
-                <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
-                       autocomplete="username" list="email-suggestions" placeholder="tucorreo@ejemplo.com"
-                       class="block w-full rounded-lg bg-black/60 border border-[#00bf63]/40 text-white placeholder-gray-600 pl-11 pr-4 py-2.5 focus:border-[#00bf63] focus:ring-2 focus:ring-[#00bf63]/40 hover:border-[#00bf63]/70 transition-all duration-200">
-            </div>
+        <!-- Campo Email con datalist para sugerencias -->
+        <div class="mb-4">
+            <label for="email" class="block text-sm font-medium text-white">Correo Electrónico</label>
+            <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus list="email-suggestions"
+                   class="mt-1 block w-full rounded-md bg-black border border-[#00bf63] text-white focus:ring-[#00bf63] focus:border-[#00bf63] focus:outline-none hover:border-green-400 active:border-white active:bg-gray-900 focus:bg-gray-900 transition-all duration-300">          
             @error('email')
-                <p class="mt-1.5 text-red-400 text-sm">{{ $message }}</p>
+                <p class="mt-1 text-red-500 text-sm">{{ $message }}</p>
             @enderror
         </div>
 
         <!-- Campo Password -->
-        <div>
-            <label for="password" class="block text-sm font-medium text-gray-200 mb-1.5">Contraseña</label>
-            <div class="relative">
-                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                </span>
-                <input id="password" type="password" name="password" required autocomplete="current-password"
-                       placeholder="••••••••"
-                       class="block w-full rounded-lg bg-black/60 border border-[#00bf63]/40 text-white placeholder-gray-600 pl-11 pr-11 py-2.5 focus:border-[#00bf63] focus:ring-2 focus:ring-[#00bf63]/40 hover:border-[#00bf63]/70 transition-all duration-200">
-                <button type="button" id="togglePassword" aria-label="Mostrar u ocultar contraseña"
-                        class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-500 hover:text-[#00bf63] transition-colors duration-200">
-                    <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                </button>
-            </div>
+        <div class="mb-4">
+            <label for="password" class="block text-sm font-medium text-white">Contraseña</label>
+            <input id="password" type="password" name="password" required autocomplete="current-password"
+                   class="mt-1 block w-full rounded-md bg-black border border-[#00bf63] text-white focus:ring-[#00bf63] focus:border-[#00bf63] focus:outline-none hover:border-green-400 active:border-white active:bg-gray-900 focus:bg-gray-900 transition-all duration-300">
             @error('password')
-                <p class="mt-1.5 text-red-400 text-sm">{{ $message }}</p>
+                <p class="mt-1 text-red-500 text-sm">{{ $message }}</p>
             @enderror
         </div>
 
-        <!-- Recuérdame + recuperación -->
-        <div class="flex items-center justify-between">
-            <label for="remember_me" class="flex items-center cursor-pointer group">
-                <input id="remember_me" type="checkbox" name="remember"
-                       class="rounded bg-black border border-[#00bf63]/50 text-[#00bf63] focus:ring-[#00bf63] focus:ring-offset-0 cursor-pointer">
-                <span class="ml-2 text-sm text-gray-300 group-hover:text-[#00bf63] transition-colors duration-200">Recuérdame</span>
-            </label>
+        <!-- Checkbox "Recuérdame" y enlace de recuperación -->
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center group">
+                <input id="remember_me" type="checkbox" name="remember" 
+                       class="rounded bg-black border border-[#00bf63] text-[#00bf63] focus:ring-[#00bf63] cursor-pointer group-hover:border-green-400 transition-all duration-300">
+                <label for="remember_me" class="ml-2 text-sm text-white cursor-pointer group-hover:text-[#00bf63] transition-all duration-300">Recuérdame</label>
+            </div>
 
             @if (Route::has('password.request'))
-                <a class="text-sm text-[#00bf63] hover:text-green-400 hover:underline transition-colors duration-200"
+                <a class="underline text-sm text-green-500 hover:text-[#00bf63] active:text-white focus:text-[#00bf63] transition-all duration-300 relative after:content-[''] after:absolute after:w-0 after:h-0.5 after:bg-[#00bf63] after:left-0 after:bottom-0 hover:after:w-full after:transition-all after:duration-300 group" 
                    href="{{ route('password.request') }}">
-                    ¿Olvidaste tu contraseña?
+                    <span class="group-hover:bg-[#00bf63]/10 group-active:bg-[#00bf63]/30 px-2 py-1 rounded transition-all duration-300">¿Olvidaste tu contraseña?</span>
                 </a>
             @endif
         </div>
 
         <!-- Botón de envío -->
-        <button type="submit"
-                class="w-full py-3 px-4 rounded-lg font-bold text-white bg-gradient-to-r from-[#00bf63] to-[#00a656] shadow-lg shadow-[#00bf63]/30 hover:shadow-[#00bf63]/50 hover:brightness-110 focus:ring-2 focus:ring-[#00bf63]/60 active:scale-[0.98] transition-all duration-200">
-            Ingresar
-        </button>
+        <div>
+            <button type="submit" 
+                    class="w-full py-3 px-4 bg-[#00bf63] border-2 border-[#00bf63] rounded-md font-bold text-white hover:bg-transparent hover:text-[#00bf63] focus:outline-none focus:ring-2 focus:ring-[#00bf63] active:bg-green-700 active:border-green-700 transition-all duration-300 cursor-pointer transform hover:scale-[1.02]">
+                Ingresar
+            </button>
+        </div>
     </form>
 </div>
 
-<script>
-    // Mostrar/ocultar contraseña
-    document.getElementById('togglePassword')?.addEventListener('click', function () {
-        const input = document.getElementById('password');
-        const isPassword = input.type === 'password';
-        input.type = isPassword ? 'text' : 'password';
-        // Tachar el ícono cuando la contraseña es visible
-        document.getElementById('eyeIcon').style.opacity = isPassword ? '0.5' : '1';
-    });
-</script>
+<style>
+/* Estilos adicionales para garantizar que los efectos hover sean visibles */
+input:hover, button:hover, a:hover, label:hover {
+    filter: brightness(1.2);
+}
+
+/* Eliminar el contorno azul predeterminado del navegador */
+input:focus, button:focus, a:focus, *:focus {
+    outline: none !important;
+}
+
+/* Estilos para los campos de texto cuando están activos/en foco */
+input:focus, input:active {
+    box-shadow: 0 0 0 2px rgba(0, 191, 99, 0.5);
+    background-color: rgba(0, 191, 99, 0.05) !important;
+    border-color: #00bf63 !important;
+}
+
+/* Efecto especial para enlaces al hacer hover */
+a:hover {
+    text-shadow: 0 0 2px rgba(0, 191, 99, 0.5);
+}
+
+/* Efecto especial para enlaces al hacer clic */
+a:active, a:focus {
+    color: white !important;
+    background-color: rgba(0, 191, 99, 0.2);
+    border-radius: 4px;
+}
+
+/* Efecto para el botón al hacer hover */
+button:hover {
+    box-shadow: 0 0 10px rgba(0, 191, 99, 0.5);
+}
+
+/* Efecto para el botón al hacer clic */
+button:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 5px rgba(0, 191, 99, 0.8);
+}
+</style>
 @endsection
