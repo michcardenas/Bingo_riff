@@ -768,10 +768,10 @@
 
                         <div class="total-row">
                             <span class="total-label">Total:</span>
-                            <span class="total-value" id="totalPrice">${{ number_format((float)($bingo->precio ?? 6000), 0, '', '.') }} Pesos</span>
+                            <span class="total-value" id="totalPrice">${{ number_format((float)($bingo->precio ?? 7000), 0, '', '.') }} Pesos</span>
                         </div>
                     </div>
-                    <div id="precioCarton" style="display:none;">${{ number_format((float)($bingo->precio ?? 6000), 2, '.', '.') }} Pesos</div>
+                    <div id="precioCarton" style="display:none;">${{ number_format((float)($bingo->precio ?? 7000), 2, '.', '.') }} Pesos</div>
                 </div>
 
                 <!-- Paso 2 -->
@@ -813,8 +813,8 @@
                     <div class="step-inner-box">
                         <!-- Total a pagar row -->
                         <div class="payment-total-row">
-                            <span class="total-left">Total a pagar: <span id="totalPagarLeft">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</span></span>
-                            <span class="total-right" id="totalPagar">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</span>
+                            <span class="total-left">Total a pagar: <span id="totalPagarLeft">${{ number_format($bingo->precio ?? 7000, 0, ',', '.') }} Pesos</span></span>
+                            <span class="total-right" id="totalPagar">${{ number_format($bingo->precio ?? 7000, 0, ',', '.') }} Pesos</span>
                         </div>
 
                         <!-- Payment method tabs -->
@@ -907,7 +907,7 @@
 <script>
 
 // Variables globales
-let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
+let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 7000 }});
 let inputCartones, btnMinus, btnPlus, totalPrice, totalPagar, precioCarton;
 let selectedFiles = []; // Array para mantener los archivos seleccionados
 let isSubmitting = false; // Flag para controlar múltiples envíos
