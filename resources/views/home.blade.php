@@ -530,12 +530,12 @@ body {
                     <!-- Sección de precios en HTML con formato correcto -->
                     <div class="d-flex justify-content-between align-items-center">
                         <div><span class="text-verde fw-bold">Precio por Hoja </span></div>
-                        <div class="text-end fw-bold" id="precioCarton">${{ number_format((float)($bingo->precio ?? 6000), 2, '.', '.') }} Pesos</div>
+                        <div class="text-end fw-bold" id="precioCarton">${{ number_format((float)($bingo->precio ?? 7000), 2, '.', '.') }} Pesos</div>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center">
                         <div><span class="text-verde fw-bold">Total:</span></div>
-                        <div class="text-end fw-bold" id="totalPrice">${{ number_format((float)($bingo->precio ?? 6000), 0, '', '.') }} Pesos</div>
+                        <div class="text-end fw-bold" id="totalPrice">${{ number_format((float)($bingo->precio ?? 7000), 0, '', '.') }} Pesos</div>
                     </div>
                 </div>
 
@@ -596,7 +596,7 @@ body {
             </div>
             <div class="d-flex justify-content-between align-items-center">
                 <div><span class="text-amarillo fw-bold">Total a pagar:</span></div>
-                <div class="text-end fw-bold" id="totalPagar">${{ number_format($bingo->precio ?? 6000, 0, ',', '.') }} Pesos</div>
+                <div class="text-end fw-bold" id="totalPagar">${{ number_format($bingo->precio ?? 7000, 0, ',', '.') }} Pesos</div>
             </div>
         </div>
     </div>
@@ -678,7 +678,7 @@ body {
 <script>
     
 // Variables globales
-let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 6000 }});
+let PRICE_PER_CARTON = parseFloat({{ $bingo->precio ?? 7000 }});
 let inputCartones, btnMinus, btnPlus, totalPrice, totalPagar, precioCarton;
 let selectedFiles = []; // Array para mantener los archivos seleccionados
 let isSubmitting = false; // Flag para controlar múltiples envíos
