@@ -1594,8 +1594,12 @@ public function descargarCarton($bingoId, $serie)
             }
         }
         
-        // Definir rutas de archivos con directorio absoluto - USER ID CORREGIDO
-        $directorioBingo = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY';
+        // Directorio de cartones: usar public_path() para que funcione en cualquier entorno
+        $directorioBingo = public_path('TablasbingoRIFFY');
+        if (!is_dir($directorioBingo)) {
+            // Fallback legacy al servidor viejo por si el nuevo path no existe
+            $directorioBingo = '/home/u690165375/domains/mediumspringgreen-chamois-657776.hostingersite.com/public_html/TablasbingoRIFFY';
+        }
         $rutaJpg = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.jpg';
         $rutaPdf = $directorioBingo . '/Carton-RIFFY-' . $numeroCarton . '.pdf';
         
@@ -1782,7 +1786,32 @@ public function descargarCarton($bingoId, $serie)
                 // Color negro para el texto, con leve sombreado para mejor visibilidad
                 $textColor = imagecolorallocate($sourceImage, 0, 0, 0); // Negro
                 $shadowColor = imagecolorallocate($sourceImage, 255, 255, 255); // Blanco para sombreado
-                
+
+                // ============= PARCHE DINÁMICO DEL PRECIO =============
+                // Tapa el "$6.000 Pesos" quemado en el JPG y escribe el precio real del bingo.
+                try {
+                    $bingoPrecio = (float) ($bingo->precio ?? 0);
+                    if ($bingoPrecio > 0) {
+                        $rgb = imagecolorat($sourceImage, 950, 195);
+                        $fondoHeader = imagecolorallocate($sourceImage, ($rgb >> 16) & 0xFF, ($rgb >> 8) & 0xFF, $rgb & 0xFF);
+                        imagefilledrectangle($sourceImage, 375, 190, 720, 235, $fondoHeader);
+
+                        $fuentePrecio = base_path('public/fonts/arial.ttf');
+                        if (file_exists($fuentePrecio)) {
+                            $precioTexto = '$ ' . number_format($bingoPrecio, 0, ',', '.') . ' Pesos';
+                            $precioFontSize = 12;
+                            $bbox = imagettfbbox($precioFontSize, 0, $fuentePrecio, $precioTexto);
+                            $precioTextH = $bbox[1] - $bbox[7];
+                            $precioY = 190 + ((235 - 190) + $precioTextH) / 2 - 2;
+                            imagettftext($sourceImage, $precioFontSize, 0, 390, $precioY, $textColor, $fuentePrecio, $precioTexto);
+                            Log::info("✅ Precio parchado a {$precioTexto}");
+                        }
+                    }
+                } catch (\Throwable $ePrecio) {
+                    Log::error("Error aplicando parche del precio: " . $ePrecio->getMessage());
+                }
+                // ============= FIN PARCHE PRECIO =============
+
                 // Verificar si la fuente existe
                 $fuente = base_path('public/fonts/arial.ttf');
                 if (!file_exists($fuente)) {

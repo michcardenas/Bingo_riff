@@ -496,10 +496,44 @@ public function descargar($reservaId, $numeroCarton = null) {
                 }
                 
                 Log::info("✅ Colores asignados correctamente");
-                
+
+                // ============= PARCHE DINÁMICO DEL PRECIO =============
+                // Tapa el "$6.000 Pesos" quemado en el JPG y escribe el precio real del bingo.
+                // Muestrea el color del fondo del header para que el rectángulo combine.
+                try {
+                    $bingoPrecio = (float) ($reservaEncontrada->bingo->precio ?? 0);
+                    if ($bingoPrecio > 0) {
+                        $rgb = imagecolorat($sourceImage, 950, 195);
+                        $fondoR = ($rgb >> 16) & 0xFF;
+                        $fondoG = ($rgb >>  8) & 0xFF;
+                        $fondoB = ($rgb      ) & 0xFF;
+                        $fondoHeader = imagecolorallocate($sourceImage, $fondoR, $fondoG, $fondoB);
+
+                        // Rectángulo tapador sobre la línea "VALOR: $ $6.000 Pesos"
+                        imagefilledrectangle($sourceImage, 375, 190, 720, 235, $fondoHeader);
+
+                        // Escribir el precio real usando Arial Regular TTF
+                        $fuentePrecio = base_path('public/fonts/arial.ttf');
+                        if (file_exists($fuentePrecio)) {
+                            $precioTexto = '$ ' . number_format($bingoPrecio, 0, ',', '.') . ' Pesos';
+                            $precioFontSize = 12;
+                            $bbox = imagettfbbox($precioFontSize, 0, $fuentePrecio, $precioTexto);
+                            $precioTextH = $bbox[1] - $bbox[7];
+                            $precioY = 190 + ((235 - 190) + $precioTextH) / 2 - 2;
+                            imagettftext($sourceImage, $precioFontSize, 0, 390, $precioY, $textColor, $fuentePrecio, $precioTexto);
+                            Log::info("✅ Precio parchado a {$precioTexto} (fondo RGB {$fondoR},{$fondoG},{$fondoB})");
+                        } else {
+                            Log::warning("Fuente arial.ttf no encontrada en {$fuentePrecio}, se omite el parche del precio");
+                        }
+                    }
+                } catch (\Throwable $ePrecio) {
+                    Log::error("Error aplicando parche del precio: " . $ePrecio->getMessage());
+                }
+                // ============= FIN PARCHE PRECIO =============
+
                 // ✅ USAR FUENTE INCORPORADA (NO TTF) - MÁS COMPATIBLE
                 $fontSize = 5; // Tamaño de fuente incorporada (1-5)
-               $textX = max(10, $width - 500); 
+               $textX = max(10, $width - 500);
                 $textY1 = 170;
                 $textY2 = 200;
                 
