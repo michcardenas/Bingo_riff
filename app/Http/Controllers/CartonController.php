@@ -503,10 +503,16 @@ public function descargar($reservaId, $numeroCarton = null) {
                 try {
                     $bingoPrecio = (float) ($reservaEncontrada->bingo->precio ?? 0);
                     if ($bingoPrecio > 0) {
-                        $rgb = imagecolorat($sourceImage, 950, 195);
-                        $fondoR = ($rgb >> 16) & 0xFF;
-                        $fondoG = ($rgb >>  8) & 0xFF;
-                        $fondoB = ($rgb      ) & 0xFF;
+                        // Muestrear el color del fondo del header solo si la imagen es lo suficientemente grande.
+                        // Si no, usar blanco casi puro (RGB 248,248,248) que es el color estándar del header RIFFY.
+                        if ($width >= 1000 && $height >= 250) {
+                            $rgb = imagecolorat($sourceImage, 950, 195);
+                            $fondoR = ($rgb >> 16) & 0xFF;
+                            $fondoG = ($rgb >>  8) & 0xFF;
+                            $fondoB = ($rgb      ) & 0xFF;
+                        } else {
+                            $fondoR = 248; $fondoG = 248; $fondoB = 248;
+                        }
                         $fondoHeader = imagecolorallocate($sourceImage, $fondoR, $fondoG, $fondoB);
 
                         // Rectángulo tapador sobre la línea "VALOR: $ $6.000 Pesos"
@@ -515,7 +521,7 @@ public function descargar($reservaId, $numeroCarton = null) {
                         // Escribir el precio real usando Arial Regular TTF
                         $fuentePrecio = base_path('public/fonts/arial.ttf');
                         if (file_exists($fuentePrecio)) {
-                            $precioTexto = '$ ' . number_format($bingoPrecio, 0, ',', '.') . ' Pesos';
+                            $precioTexto = '$ ' . number_format(floor($bingoPrecio), 0, ',', '.') . ' Pesos';
                             $precioFontSize = 12;
                             $bbox = imagettfbbox($precioFontSize, 0, $fuentePrecio, $precioTexto);
                             $precioTextH = $bbox[1] - $bbox[7];
@@ -531,23 +537,37 @@ public function descargar($reservaId, $numeroCarton = null) {
                 }
                 // ============= FIN PARCHE PRECIO =============
 
-                // ✅ USAR FUENTE INCORPORADA (NO TTF) - MÁS COMPATIBLE
-                $fontSize = 5; // Tamaño de fuente incorporada (1-5)
-               $textX = max(10, $width - 500);
-                $textY1 = 170;
-                $textY2 = 200;
-                
-                Log::info("Posiciones calculadas - X: $textX, Y1: $textY1, Y2: $textY2");
-                Log::info("Usando fuente incorporada tamaño: $fontSize");
-                
-                // Aplicar texto con sombreado usando imagestring (fuente incorporada)
-                $result1 = imagestring($sourceImage, $fontSize, $textX+1, $textY1+1, $textoBingo, $shadowColor);
-                $result2 = imagestring($sourceImage, $fontSize, $textX+1, $textY2+1, $textoNombre, $shadowColor);
-                $result3 = imagestring($sourceImage, $fontSize, $textX, $textY1, $textoBingo, $textColor);
-                $result4 = imagestring($sourceImage, $fontSize, $textX, $textY2, $textoNombre, $textColor);
-                
-                if (!$result1 || !$result2 || !$result3 || !$result4) {
-                    throw new \Exception("Error al aplicar el texto a la imagen");
+                // Marca de agua "Bingo:" y "Nombre:" en la esquina superior derecha del header,
+                // ARRIBA del rectángulo del precio (Y=190). Usar Arial TTF 11pt para look consistente.
+                $fuenteMarca = base_path('public/fonts/arial.ttf');
+                if (file_exists($fuenteMarca)) {
+                    $marcaFontSize = 11;
+                    $marcaX  = 750;
+                    $marcaY1 = 155;   // alineado con "FECHA Y HORA"
+                    $marcaY2 = 210;   // alineado con "VALOR / $ Pesos" (fuera del rect X=375-720)
+
+                    // Truncar textos largos para que no se salgan del cartón (max ~44 chars → ~470px)
+                    // Usar mb_* para respetar UTF-8 (acentos, ñ) — no cortar en medio de un byte
+                    $truncar = function ($t, $max = 44) {
+                        return mb_strlen($t) > $max ? mb_substr($t, 0, $max - 1) . '…' : $t;
+                    };
+                    $textoBingoTrunc  = $truncar($textoBingo);
+                    $textoNombreTrunc = $truncar($textoNombre);
+
+                    // Halo blanco (offset +1) + texto negro
+                    imagettftext($sourceImage, $marcaFontSize, 0, $marcaX+1, $marcaY1+1, $shadowColor, $fuenteMarca, $textoBingoTrunc);
+                    imagettftext($sourceImage, $marcaFontSize, 0, $marcaX+1, $marcaY2+1, $shadowColor, $fuenteMarca, $textoNombreTrunc);
+                    imagettftext($sourceImage, $marcaFontSize, 0, $marcaX,   $marcaY1,   $textColor,   $fuenteMarca, $textoBingoTrunc);
+                    imagettftext($sourceImage, $marcaFontSize, 0, $marcaX,   $marcaY2,   $textColor,   $fuenteMarca, $textoNombreTrunc);
+                    Log::info("✅ Marca de agua aplicada en ({$marcaX},{$marcaY1}) y ({$marcaX},{$marcaY2})");
+                } else {
+                    // Fallback: bitmap si no está la fuente
+                    $fontSize = 5;
+                    $textX = max(10, $width - 500);
+                    imagestring($sourceImage, $fontSize, $textX+1, 156, $textoBingo,  $shadowColor);
+                    imagestring($sourceImage, $fontSize, $textX+1, 211, $textoNombre, $shadowColor);
+                    imagestring($sourceImage, $fontSize, $textX,   155, $textoBingo,  $textColor);
+                    imagestring($sourceImage, $fontSize, $textX,   210, $textoNombre, $textColor);
                 }
                 
                 Log::info("✅ Texto aplicado correctamente");

@@ -1792,13 +1792,18 @@ public function descargarCarton($bingoId, $serie)
                 try {
                     $bingoPrecio = (float) ($bingo->precio ?? 0);
                     if ($bingoPrecio > 0) {
-                        $rgb = imagecolorat($sourceImage, 950, 195);
-                        $fondoHeader = imagecolorallocate($sourceImage, ($rgb >> 16) & 0xFF, ($rgb >> 8) & 0xFF, $rgb & 0xFF);
+                        // Muestreo seguro: si la imagen es más pequeña de lo esperado, usar el color estándar del header (RGB 248,248,248).
+                        if ($width >= 1000 && $height >= 250) {
+                            $rgb = imagecolorat($sourceImage, 950, 195);
+                            $fondoHeader = imagecolorallocate($sourceImage, ($rgb >> 16) & 0xFF, ($rgb >> 8) & 0xFF, $rgb & 0xFF);
+                        } else {
+                            $fondoHeader = imagecolorallocate($sourceImage, 248, 248, 248);
+                        }
                         imagefilledrectangle($sourceImage, 375, 190, 720, 235, $fondoHeader);
 
                         $fuentePrecio = base_path('public/fonts/arial.ttf');
                         if (file_exists($fuentePrecio)) {
-                            $precioTexto = '$ ' . number_format($bingoPrecio, 0, ',', '.') . ' Pesos';
+                            $precioTexto = '$ ' . number_format(floor($bingoPrecio), 0, ',', '.') . ' Pesos';
                             $precioFontSize = 12;
                             $bbox = imagettfbbox($precioFontSize, 0, $fuentePrecio, $precioTexto);
                             $precioTextH = $bbox[1] - $bbox[7];
@@ -1812,92 +1817,32 @@ public function descargarCarton($bingoId, $serie)
                 }
                 // ============= FIN PARCHE PRECIO =============
 
-                // Verificar si la fuente existe
+                // Marca de agua "Bingo:" y "Nombre:" en la esquina superior derecha del header,
+                // ARRIBA del rectángulo del precio (Y=190). Arial 11pt para consistencia con CartonController.
                 $fuente = base_path('public/fonts/arial.ttf');
                 if (!file_exists($fuente)) {
                     throw new \Exception("No se encontró la fuente en $fuente");
                 }
-                
-                // Tamaño de la fuente (reducir si es necesario)
-                $fontSize = 14; // Reducido de 16 a 14
-                
-                // Márgenes mejorados para mover hacia la IZQUIERDA
-                $margenDerecho = 400;  // AUMENTADO para mover texto hacia la izquierda
-                $margenIzquierdo = 50; // Más margen izquierdo
-                $margenSuperior = 170; // Posición Y inicial
-                $espacioEntreLineas = 25; // Espacio entre líneas
-                
-                // Calcular el ancho máximo disponible para el texto
-                $maxTextWidth = $width - $margenDerecho - $margenIzquierdo;
-                
-                // Si el texto es muy largo, reducir el tamaño de fuente
-                $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
-                $textWidth1 = $bbox1[2] - $bbox1[0];
-                
-                $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
-                $textWidth2 = $bbox2[2] - $bbox2[0];
-                
-                // Si cualquier texto es muy largo, reducir fuente
-                if ($textWidth1 > $maxTextWidth || $textWidth2 > $maxTextWidth) {
-                    $fontSize = 12; // Reducir aún más
-                    Log::info("Texto muy largo, reduciendo fuente a {$fontSize}");
-                    
-                    // Recalcular con nueva fuente
-                    $bbox1 = imagettfbbox($fontSize, 0, $fuente, $textoBingo);
-                    $textWidth1 = $bbox1[2] - $bbox1[0];
-                    
-                    $bbox2 = imagettfbbox($fontSize, 0, $fuente, $textoNombre);
-                    $textWidth2 = $bbox2[2] - $bbox2[0];
-                }
-                
-                // Ajustar texto del bingo si sigue siendo muy largo
-                if ($textWidth1 > $maxTextWidth) {
-                    $tempTextoBingo = $textoBingo;
-                    while ($textWidth1 > $maxTextWidth && mb_strlen($tempTextoBingo) > 15) {
-                        $tempTextoBingo = mb_substr($tempTextoBingo, 0, mb_strlen($tempTextoBingo) - 4);
-                        $bbox1 = imagettfbbox($fontSize, 0, $fuente, $tempTextoBingo . "...");
-                        $textWidth1 = $bbox1[2] - $bbox1[0];
-                    }
-                    $textoBingo = $tempTextoBingo . "...";
-                    Log::info("Texto bingo truncado: " . $textoBingo);
-                }
-                
-                // Ajustar texto del nombre si sigue siendo muy largo
-                if ($textWidth2 > $maxTextWidth) {
-                    $tempTextoNombre = $textoNombre;
-                    while ($textWidth2 > $maxTextWidth && mb_strlen($tempTextoNombre) > 15) {
-                        $tempTextoNombre = mb_substr($tempTextoNombre, 0, mb_strlen($tempTextoNombre) - 4);
-                        $bbox2 = imagettfbbox($fontSize, 0, $fuente, $tempTextoNombre . "...");
-                        $textWidth2 = $bbox2[2] - $bbox2[0];
-                    }
-                    $textoNombre = $tempTextoNombre . "...";
-                    Log::info("Texto nombre truncado: " . $textoNombre);
-                }
-                
-                // Calcular posiciones finales centradas en el área disponible
-                $areaDisponible = $width - $margenIzquierdo - $margenDerecho;
-                $textX1 = $margenIzquierdo + ($areaDisponible - $textWidth1) / 2;
-                $textX2 = $margenIzquierdo + ($areaDisponible - $textWidth2) / 2;
-                
-                // Asegurarse de que el texto esté dentro de los límites
-                $textX1 = max($margenIzquierdo, min($textX1, $width - $textWidth1 - 20));
-                $textX2 = max($margenIzquierdo, min($textX2, $width - $textWidth2 - 20));
-                
-                // Posiciones Y
-                $textY1 = $margenSuperior;
-                $textY2 = $margenSuperior + $espacioEntreLineas;
-                
-                Log::info("Posiciones finales - Texto1: X={$textX1}, Y={$textY1}, Ancho={$textWidth1}");
-                Log::info("Posiciones finales - Texto2: X={$textX2}, Y={$textY2}, Ancho={$textWidth2}");
-                Log::info("Dimensiones imagen: {$width}x{$height}");
-                
-                // Añadir sombreado para mejor visibilidad (1px offset)
+
+                $fontSize = 11;
+                $textX1 = 750;
+                $textX2 = 750;
+                $textY1 = 155;   // alineado con "FECHA Y HORA"
+                $textY2 = 210;   // alineado con "VALOR / $ Pesos" (fuera del rect X=375-720)
+
+                // Truncar textos largos (max ~44 chars → ~470px)
+                $truncar = function ($t, $max = 44) {
+                    return mb_strlen($t) > $max ? mb_substr($t, 0, $max - 1) . '…' : $t;
+                };
+                $textoBingo  = $truncar($textoBingo);
+                $textoNombre = $truncar($textoNombre);
+
+                // Halo blanco (offset +1) + texto negro
                 imagettftext($sourceImage, $fontSize, 0, $textX1+1, $textY1+1, $shadowColor, $fuente, $textoBingo);
                 imagettftext($sourceImage, $fontSize, 0, $textX2+1, $textY2+1, $shadowColor, $fuente, $textoNombre);
-                
-                // Añadir las dos líneas de texto
-                imagettftext($sourceImage, $fontSize, 0, $textX1, $textY1, $textColor, $fuente, $textoBingo);
-                imagettftext($sourceImage, $fontSize, 0, $textX2, $textY2, $textColor, $fuente, $textoNombre);
+                imagettftext($sourceImage, $fontSize, 0, $textX1,   $textY1,   $textColor,   $fuente, $textoBingo);
+                imagettftext($sourceImage, $fontSize, 0, $textX2,   $textY2,   $textColor,   $fuente, $textoNombre);
+                Log::info("✅ Marca de agua aplicada en ({$textX1},{$textY1}) y ({$textX2},{$textY2})");
                 
                 // Guardar la imagen con marca de agua
                 $rutaTemporal = storage_path('app/public/tmp/Carton-RIFFY-' . $numeroCarton . '-marca.jpg');

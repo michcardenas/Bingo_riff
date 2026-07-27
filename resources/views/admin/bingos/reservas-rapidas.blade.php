@@ -1037,41 +1037,7 @@ document.querySelectorAll('.btn-eliminar-serie').forEach(btn => {
 
 
 
-// Funcionalidad para descargar cartones al hacer clic en el número de serie
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('serie-numero')) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const serie = e.target.dataset.serie;
-        const bingoId = e.target.dataset.bingoId;
-        
-        // Mostrar loading
-        Swal.fire({
-            title: 'Generando cartón...',
-            text: `Serie: ${serie}`,
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-// JAVASCRIPT SÚPER SIMPLE - Solo redirigir como enlace normal
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('serie-numero')) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const serie = e.target.dataset.serie;
-        const bingoId = e.target.dataset.bingoId;
-        
-        // Ir directo a la descarga sin complicaciones
-        window.open(`/admin/bingos/${bingoId}/carton/${serie}/descargar`, '_blank');
-    }
-});
-    }
-});
+// (Handler unificado más abajo — se eliminaron listeners duplicados que causaban multi-descarga)
 
 // Prevenir que el hover del número interfiera con el botón X
 document.addEventListener('mouseover', function(e) {
@@ -1096,49 +1062,43 @@ document.addEventListener('mouseout', function(e) {
 
 
 
-// Funcionalidad para descargar cartones al hacer clic en el número de serie
+// Funcionalidad para descargar cartón al hacer clic en el número de serie.
+// UN SOLO handler que dispara UNA sola descarga.
 document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('serie-numero')) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const serie = e.target.dataset.serie;
-        // Obtener el reservaId del botón eliminar del mismo contenedor
-        const contenedor = e.target.closest('.d-flex');
-        const btnEliminar = contenedor.querySelector('.btn-eliminar-serie');
-        const reservaId = btnEliminar.dataset.id;
-        
-        if (reservaId && serie) {
-            // Mostrar loading
-            Swal.fire({
-                title: 'Generando cartón...',
-                text: `Serie: ${serie}`,
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            
-            // Redirigir a la descarga
-            window.open(`/cartones/descargar/${reservaId}/${serie}`, '_blank');
-            
-            // Cerrar el loading después de un momento
-            setTimeout(() => {
-                Swal.close();
-            }, 1000);
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se pudo obtener la información necesaria para la descarga',
-                toast: true,
-                position: 'top-end',
-                timer: 3000,
-                showConfirmButton: false
-            });
-        }
+    if (!e.target.classList.contains('serie-numero')) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const serie = e.target.dataset.serie;
+    const contenedor = e.target.closest('.d-flex');
+    const btnEliminar = contenedor ? contenedor.querySelector('.btn-eliminar-serie') : null;
+    const reservaId = btnEliminar ? btnEliminar.dataset.id : null;
+
+    if (!reservaId || !serie) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo obtener la información necesaria para la descarga',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false
+        });
+        return;
     }
+
+    Swal.fire({
+        title: 'Generando cartón...',
+        text: `Serie: ${serie}`,
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    // Una sola descarga (usa el flujo cliente que tiene el parche del precio dinámico)
+    window.open(`/cartones/descargar/${reservaId}/${serie}`, '_blank');
+
+    setTimeout(() => { Swal.close(); }, 1000);
 });
 
 // Modal OCR
